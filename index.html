@@ -138,6 +138,14 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .toggle:active .toggle-thumb{transform:scale(.96);}
 .toggle.on:active .toggle-thumb{transform:translateX(18px) scale(.96);}
 .chips,.chip-row,.toggle{-webkit-user-select:none;user-select:none;}
+/* 모바일에서 마지막 행(CCTV) 터치가 스크롤/드래그로 오인되지 않도록 터치 영역을 확장 */
+.sheet-body{overscroll-behavior:contain;}
+.chip-row{min-height:54px;}
+.toggle::before{
+  content:'';
+  position:absolute;
+  left:-14px; right:-14px; top:-12px; bottom:-12px;
+}
 
 
 .stats-bar{display:flex;gap:8px;overflow-x:auto;padding-top:10px;border-top:1px solid var(--gray2);scrollbar-width:none;}
@@ -238,7 +246,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.14</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.15</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -435,6 +443,9 @@ let layers={}, wmsTiles={}, chipOn={}, counts={};
 let watchId=null;
 let mapDomCleanups=[];
 let chipToggleEventsBound=false;
+let canvasRenderer=null;
+let fetchRunId=0;
+const IS_MOBILE = window.matchMedia('(pointer: coarse)').matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 /* 길찾기 상태 */
 let routePickMode=false;
@@ -495,11 +506,14 @@ function goBack(){
   wmsTiles={};
   chipOn={};
   counts={};
+  canvasRenderer=null;
+  fetchRunId++;
 }
 
 /* ── 지도 ── */
 function initMap(){
   map = L.map('map',{zoomControl:false,attributionControl:false,tap:false,tapTolerance:15}).setView([36.5,127.8],7);
+  canvasRenderer = L.canvas({padding:0.5});
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
     {maxZoom:19,subdomains:'abcd'}).addTo(map);
@@ -573,8 +587,8 @@ function bindChipToggleEvents(){
   if(!c||chipToggleEventsBound) return;
   chipToggleEventsBound=true;
 
-  let touchInfo=null;
-  let lastTouchHandledAt=0;
+  let pointerInfo=null;
+  let lastHandledAt=0;
 
   const findToggle=e=>{
     const target=e.target;
@@ -586,43 +600,79 @@ function bindChipToggleEvents(){
     return null;
   };
 
-  c.addEventListener('touchstart',e=>{
-    const btn=findToggle(e);
-    if(!btn||!e.touches||!e.touches[0]) return;
-    touchInfo={
-      x:e.touches[0].clientX,
-      y:e.touches[0].clientY,
-      t:Date.now(),
-      btn,
-      moved:false
-    };
-  },{passive:true});
+  const isToggleGesture=info=>{
+    if(!info) return false;
+    const dx=(info.endX??info.x)-info.x;
+    const dy=(info.endY??info.y)-info.y;
+    // CCTV가 항상 마지막 행에 있어 모바일에서 아주 작은 스크롤 보정이 섞이는 경우가 많음.
+    // 실제 스크롤 의도가 명확한 큰 이동만 제외하고, 짧은 탭은 정상 토글로 처리함.
+    return Math.sqrt(dx*dx+dy*dy) <= 28;
+  };
 
-  c.addEventListener('touchmove',e=>{
-    if(!touchInfo||!e.touches||!e.touches[0]) return;
-    const dx=e.touches[0].clientX-touchInfo.x;
-    const dy=e.touches[0].clientY-touchInfo.y;
-    if(Math.sqrt(dx*dx+dy*dy)>10) touchInfo.moved=true;
-  },{passive:true});
+  if(window.PointerEvent){
+    c.addEventListener('pointerdown',e=>{
+      const btn=findToggle(e);
+      if(!btn) return;
+      pointerInfo={
+        id:e.pointerId,
+        x:e.clientX,
+        y:e.clientY,
+        endX:e.clientX,
+        endY:e.clientY,
+        btn
+      };
+    },{passive:true});
 
-  c.addEventListener('touchend',e=>{
-    const btn=findToggle(e)||(touchInfo&&touchInfo.btn);
-    if(!btn) return;
+    c.addEventListener('pointermove',e=>{
+      if(!pointerInfo||pointerInfo.id!==e.pointerId) return;
+      pointerInfo.endX=e.clientX;
+      pointerInfo.endY=e.clientY;
+    },{passive:true});
 
-    const dt=touchInfo?Date.now()-touchInfo.t:0;
-    if(touchInfo&&touchInfo.moved&&dt>120){
-      touchInfo=null;
-      return;
-    }
+    c.addEventListener('pointerup',e=>{
+      if(!pointerInfo||pointerInfo.id!==e.pointerId) return;
+      pointerInfo.endX=e.clientX;
+      pointerInfo.endY=e.clientY;
 
-    e.preventDefault();
-    e.stopPropagation();
-    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      const btn=findToggle(e)||pointerInfo.btn;
+      if(!btn){ pointerInfo=null; return; }
+      if(!isToggleGesture(pointerInfo)){ pointerInfo=null; return; }
 
-    lastTouchHandledAt=Date.now();
-    touchInfo=null;
-    applyToggleButton(btn);
-  },{passive:false});
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+
+      lastHandledAt=Date.now();
+      pointerInfo=null;
+      applyToggleButton(btn);
+    },{passive:false});
+
+    c.addEventListener('pointercancel',()=>{ pointerInfo=null; },{passive:true});
+  }else{
+    // 구형 모바일 브라우저 예비 처리
+    c.addEventListener('touchstart',e=>{
+      const btn=findToggle(e);
+      if(!btn||!e.touches||!e.touches[0]) return;
+      pointerInfo={x:e.touches[0].clientX,y:e.touches[0].clientY,endX:e.touches[0].clientX,endY:e.touches[0].clientY,btn};
+    },{passive:true});
+
+    c.addEventListener('touchmove',e=>{
+      if(!pointerInfo||!e.touches||!e.touches[0]) return;
+      pointerInfo.endX=e.touches[0].clientX;
+      pointerInfo.endY=e.touches[0].clientY;
+    },{passive:true});
+
+    c.addEventListener('touchend',e=>{
+      const btn=findToggle(e)||(pointerInfo&&pointerInfo.btn);
+      if(!btn||!isToggleGesture(pointerInfo)){ pointerInfo=null; return; }
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      lastHandledAt=Date.now();
+      pointerInfo=null;
+      applyToggleButton(btn);
+    },{passive:false});
+  }
 
   c.addEventListener('click',e=>{
     const btn=findToggle(e);
@@ -632,8 +682,8 @@ function bindChipToggleEvents(){
     e.stopPropagation();
     if(e.stopImmediatePropagation) e.stopImmediatePropagation();
 
-    // iPhone Safari는 touchend 뒤에 click이 한 번 더 들어오는 경우가 있어 중복 실행을 막음.
-    if(Date.now()-lastTouchHandledAt<650) return;
+    // 모바일에서는 pointerup/touchend 후 click이 한 번 더 발생할 수 있으므로 중복 토글 방지
+    if(Date.now()-lastHandledAt<700) return;
     applyToggleButton(btn);
   },true);
 }
@@ -649,23 +699,25 @@ function toggleChip(e, btn){
 function applyToggleButton(btn){
   if(!btn||btn._busy) return;
   btn._busy=true;
-  setTimeout(()=>{btn._busy=false;},120);
+  setTimeout(()=>{btn._busy=false;},180);
 
   const kind=btn.dataset.kind;
   const key=btn.dataset.key;
   const next=btn.getAttribute('aria-pressed')!=='true';
 
+  // UI 상태를 먼저 바꿔 모바일에서 터치가 먹었는지 즉시 보이게 함
   btn.setAttribute('aria-pressed',next?'true':'false');
   btn.classList.toggle('on',next);
 
-  if(kind==='xml'){
-    setXmlLayerVisible(key,next);
-    return;
-  }
-
-  if(kind==='wms'){
-    setWmsLayerVisible(key,next);
-  }
+  requestAnimationFrame(()=>{
+    if(kind==='xml'){
+      setXmlLayerVisible(key,next);
+      return;
+    }
+    if(kind==='wms'){
+      setWmsLayerVisible(key,next);
+    }
+  });
 }
 
 function setXmlLayerVisible(key,on){
@@ -1005,6 +1057,7 @@ function addWMS(){
 
 /* ── XML 데이터 ── */
 async function fetchAll(silent=false){
+  const runId=++fetchRunId;
   safeFacilityPoints=[];
   safeFacilitySeen=new Set();
 
@@ -1019,16 +1072,16 @@ async function fetchAll(silent=false){
       }
     });
 
-    await Promise.allSettled(GROUP[grp].xml.map(k=>fetchLayer(k)));
-    updateStats();
+    await Promise.allSettled(GROUP[grp].xml.map(k=>fetchLayer(k,runId)));
+    if(runId===fetchRunId) updateStats();
   }catch(e){
     console.warn('fetchAll 오류:',e);
   }finally{
-    if(spinner) spinner.classList.remove('show');
+    if(runId===fetchRunId && spinner) spinner.classList.remove('show');
   }
 }
 
-async function fetchLayer(key){
+async function fetchLayer(key,runId=fetchRunId){
   const cfg=LAYER_API[key];
   if(!cfg){
     console.warn('['+key+'] LAYER_API 없음');
@@ -1046,13 +1099,15 @@ async function fetchLayer(key){
   const se=L.CRS.EPSG3857.project(bounds.getSouthEast());
   const area3857=[nw.y,se.y,nw.x,se.x].join(',');
 
+  const perPage = key==='cctv' && IS_MOBILE ? '350' : '500';
+
   const params=new URLSearchParams({
     layerName:cfg.layer,
     style:cfg.style,
     area4326,
     area3857,
     currentPage:'1',
-    perPage:'500'
+    perPage
   });
 
   try{
@@ -1067,6 +1122,8 @@ async function fetchLayer(key){
     });
 
     const data=await res.json();
+    if(runId!==fetchRunId || !map) return;
+
     const items=data.resultList||[];
 
     if(items.length===0) throw new Error('no items');
@@ -1165,6 +1222,26 @@ function mkMarker(key,lat,lng,it){
           (jp?`<span style="color:#64748b">📍 ${jp}</span>`:'');
   }
 
+  const popup=L.popup({className:'safepopup',closeButton:true,maxWidth:240}).setContent(`
+    <div class="pbadge" style="background:${m.color}18;color:${m.color}">${m.emoji} ${m.label}</div>
+    <div class="ptitle">${name}</div>
+    ${addr?`<div class="prow">📍 ${addr}</div>`:''}
+    ${extra?`<div class="prow">${extra}</div>`:''}
+  `);
+
+  // CCTV는 데이터 개수가 많아 모바일에서 500개 안팎의 divIcon DOM을 add/remove하면 토글이 멈춘 것처럼 보임.
+  // 모바일에서는 Canvas 기반 circleMarker로 렌더링해 레이어 on/off 반응성을 확보함.
+  if(key==='cctv' && IS_MOBILE && canvasRenderer){
+    return L.circleMarker([lat,lng],{
+      renderer:canvasRenderer,
+      radius:6,
+      color:m.color,
+      weight:2,
+      fillColor:'#ffffff',
+      fillOpacity:0.95
+    }).bindPopup(popup);
+  }
+
   const icon=L.divIcon({
     html:`<div style="width:36px;height:36px;border-radius:50%;background:#fff;border:2.5px solid ${m.color};display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 3px 10px rgba(0,0,0,.18);">${m.emoji}</div>`,
     className:'',
@@ -1172,15 +1249,9 @@ function mkMarker(key,lat,lng,it){
     iconAnchor:[18,18]
   });
 
-  return L.marker([lat,lng],{icon}).bindPopup(
-    L.popup({className:'safepopup',closeButton:true,maxWidth:240}).setContent(`
-      <div class="pbadge" style="background:${m.color}18;color:${m.color}">${m.emoji} ${m.label}</div>
-      <div class="ptitle">${name}</div>
-      ${addr?`<div class="prow">📍 ${addr}</div>`:''}
-      ${extra?`<div class="prow">${extra}</div>`:''}
-    `)
-  );
+  return L.marker([lat,lng],{icon}).bindPopup(popup);
 }
+
 
 
 
