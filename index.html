@@ -143,6 +143,57 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .toggle.on .toggle-thumb{transform:translateX(18px);}
 .toggle:active .toggle-thumb{transform:scale(.96);}
 .toggle.on:active .toggle-thumb{transform:translateX(18px) scale(.96);}
+
+/* CCTV 전용: 슬라이딩 도어처럼 보이는 긴 토글 */
+.toggle.cctv-toggle{
+  width:96px;
+  height:30px;
+}
+.toggle.cctv-toggle::before{
+  inset:-16px -18px;
+}
+.toggle.cctv-toggle .toggle-track{
+  border-radius:999px;
+  background:#e2e8f0;
+  border:1px solid rgba(100,116,139,.25);
+  overflow:hidden;
+}
+.toggle.cctv-toggle .toggle-hint{
+  position:absolute;
+  top:50%;
+  left:34px;
+  right:10px;
+  transform:translateY(-50%);
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.08em;
+  line-height:1;
+  color:rgba(100,116,139,.58);
+  text-align:center;
+  pointer-events:none;
+  white-space:nowrap;
+}
+.toggle.cctv-toggle .toggle-thumb{
+  top:4px;
+  left:4px;
+  width:22px;
+  height:22px;
+}
+.toggle.cctv-toggle.on .toggle-track{
+  background:#dbeafe;
+  border-color:rgba(37,99,235,.38);
+}
+.toggle.cctv-toggle.on .toggle-thumb{
+  transform:translateX(66px);
+  background:var(--blue);
+}
+.toggle.cctv-toggle.on .toggle-hint{
+  left:10px;
+  right:36px;
+  color:rgba(37,99,235,.48);
+}
+.toggle.cctv-toggle:active .toggle-thumb{transform:scale(.96);}
+.toggle.cctv-toggle.on:active .toggle-thumb{transform:translateX(66px) scale(.96);}
 .chips,.chip-row,.toggle{-webkit-user-select:none;user-select:none;}
 
 
@@ -282,7 +333,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.22</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.23</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -659,9 +710,9 @@ function buildChips(){
           <div class="chip-label">${m.emoji} ${m.label}</div>
         </div>
       </div>
-      <button type="button" class="toggle on" aria-pressed="true"
+      <button type="button" class="toggle ${key==='cctv'?'cctv-toggle':''} on" aria-pressed="true"
         data-kind="xml" data-key="${key}">
-        <div class="toggle-track"></div>
+        <div class="toggle-track">${key==='cctv'?'<span class="toggle-hint">SLIDE</span>':''}</div>
         <div class="toggle-thumb"></div>
       </button>`;
     c.appendChild(row);
