@@ -89,8 +89,9 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .sheet-label{font-size:11px;font-weight:700;color:var(--gray);letter-spacing:.08em;}
 .sheet-body{padding:0 14px max(28px, env(safe-area-inset-bottom));touch-action:pan-y;max-height:62vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 .chips{display:flex;flex-direction:column;gap:0;}
-.chip-row{display:flex;align-items:center;justify-content:space-between;min-height:54px;padding:13px 0;border-bottom:1px solid var(--gray2);touch-action:manipulation;position:relative;cursor:pointer;}
+.chip-row{display:flex;align-items:center;justify-content:space-between;min-height:54px;padding:13px 0;border-bottom:1px solid var(--gray2);touch-action:none;position:relative;cursor:pointer;}
 .chip-row:last-child{border-bottom:none;}
+.chip-row.pressing{background:rgba(37,99,235,.045);}
 .chip-left{display:flex;align-items:center;gap:10px;}
 .chip-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 .chip-label{font-size:13px;font-weight:600;color:var(--navy);}
@@ -281,7 +282,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.20</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.22</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -328,7 +329,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
       <span class="group-tag" id="gTag"></span>
       <span class="topbar-loc" id="locTxt">위치 확인 중...</span>
     </div>
-    <div class="icon-btn" onclick="startRoutePick()" title="안전 길찾기">🧭</div>
+    <div class="icon-btn" id="routeBtn" onclick="startRoutePick()" title="안전 길찾기">🧭</div>
     <div class="icon-btn" onclick="flyHome()">📍</div>
   </div>
 </div>
@@ -459,6 +460,15 @@ function updateRoutePanelPosition(visibleHeightOverride){
   panel.style.setProperty('--route-panel-bottom',Math.round(target)+'px');
 }
 
+function updateRouteButtonVisibility(){
+  const routeBtn=document.getElementById('routeBtn');
+  if(!routeBtn) return;
+
+  // CPTED 전용 화면에서는 지도 터치가 "가장 가까운 CPTED 구역 확인" 기능으로 쓰이므로
+  // 일반 보행 경로 안내 버튼을 숨겨 기능 충돌을 방지함.
+  routeBtn.style.display = grp === 'cpted' ? 'none' : 'flex';
+}
+
 /* ── 설정 ── */
 const API_KEY = 'EYQ7ZKD8-EYQ7-EYQ7-EYQ7-EYQ7ZKD8HA';
 const R_KM = 1.0;
@@ -569,6 +579,7 @@ function start(){
   document.getElementById('intro').classList.add('out');
   document.getElementById('map-screen').classList.add('show');
   document.getElementById('sheet').classList.add('show');
+  updateRouteButtonVisibility();
   initMap();
 }
 
@@ -579,6 +590,8 @@ function startCpted(){
   document.getElementById('intro').classList.add('out');
   document.getElementById('map-screen').classList.add('show');
   document.getElementById('sheet').classList.add('show');
+  updateRouteButtonVisibility();
+  clearRoute();
   initMap();
 }
 
@@ -694,112 +707,156 @@ function bindChipToggleEvents(){
   if(!c||chipToggleEventsBound) return;
   chipToggleEventsBound=true;
 
-  let startInfo=null;
+  let active=null;
   let lastToggleAt=0;
+
+  const stopAll=e=>{
+    if(!e) return;
+    if(e.cancelable) e.preventDefault();
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+  };
 
   const findToggle=e=>{
     const target=e&&e.target;
-    if(target&&target.closest){
-      const direct=target.closest('.toggle');
-      if(direct&&c.contains(direct)) return direct;
-      const row=target.closest('.chip-row');
-      if(row&&c.contains(row)) return row.querySelector('.toggle');
-    }
+    if(!target||!target.closest) return null;
+
+    // 스위치 자체를 눌러도, 행의 글자를 눌러도 같은 토글로 처리함.
+    const row=target.closest('.chip-row');
+    if(row&&c.contains(row)) return row.querySelector('.toggle');
+
+    const direct=target.closest('.toggle');
+    if(direct&&c.contains(direct)) return direct;
     return null;
   };
 
-  const movedTooMuch=info=>{
-    if(!info) return false;
-    const dx=(info.x2??info.x)-info.x;
-    const dy=(info.y2??info.y)-info.y;
-    const adx=Math.abs(dx), ady=Math.abs(dy);
-    // CCTV처럼 마지막 행을 누를 때 손가락이 10px 이상 미끄러지는 경우가 많아서
-    // 기존보다 훨씬 느슨하게 판단함. 명확한 세로 스크롤만 토글에서 제외.
-    return ady>34 && ady>adx*1.35;
+  const setPressing=(btn,on)=>{
+    const row=btn&&btn.closest?btn.closest('.chip-row'):null;
+    if(row) row.classList.toggle('pressing',!!on);
   };
 
-  const runToggle=(e,btn)=>{
+  const runToggle=(btn)=>{
     if(!btn) return;
-    if(e){
-      e.preventDefault();
-      e.stopPropagation();
-      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
-    }
     const now=Date.now();
-    if(now-lastToggleAt<280) return;
+    if(now-lastToggleAt<240) return;
     lastToggleAt=now;
     applyToggleButton(btn);
   };
 
-  // 모바일 주 처리: pointer 이벤트가 있는 브라우저에서는 pointerup으로 처리
+  /*
+    CCTV가 마지막 행이라 모바일에서 살짝만 손가락이 미끄러져도
+    sheet-body의 세로 스크롤 제스처로 넘어가 pointercancel/touchcancel이 발생했음.
+    그래서 칩 영역 안에서는 스크롤 판정을 포기하고, 행 전체를 즉시 눌리는 버튼처럼 처리함.
+  */
   if(window.PointerEvent){
     c.addEventListener('pointerdown',e=>{
       const btn=findToggle(e);
       if(!btn) return;
-      startInfo={id:e.pointerId,x:e.clientX,y:e.clientY,x2:e.clientX,y2:e.clientY,btn};
-    },{passive:true,capture:true});
+      stopAll(e);
 
-    c.addEventListener('pointermove',e=>{
-      if(!startInfo||startInfo.id!==e.pointerId) return;
-      startInfo.x2=e.clientX;
-      startInfo.y2=e.clientY;
-    },{passive:true,capture:true});
+      active={
+        id:e.pointerId,
+        btn,
+        x:e.clientX,
+        y:e.clientY,
+        x2:e.clientX,
+        y2:e.clientY
+      };
+      setPressing(btn,true);
 
-    c.addEventListener('pointerup',e=>{
-      const btn=findToggle(e)||(startInfo&&startInfo.btn);
-      if(!btn) return;
-      if(startInfo&&startInfo.id===e.pointerId){
-        startInfo.x2=e.clientX;
-        startInfo.y2=e.clientY;
-      }
-      if(movedTooMuch(startInfo)){
-        startInfo=null;
-        return;
-      }
-      startInfo=null;
-      runToggle(e,btn);
+      try{
+        if(btn.setPointerCapture) btn.setPointerCapture(e.pointerId);
+      }catch(err){}
     },{passive:false,capture:true});
 
-    c.addEventListener('pointercancel',()=>{startInfo=null;},{passive:true,capture:true});
+    c.addEventListener('pointermove',e=>{
+      if(!active||active.id!==e.pointerId) return;
+      stopAll(e);
+      active.x2=e.clientX;
+      active.y2=e.clientY;
+    },{passive:false,capture:true});
+
+    c.addEventListener('pointerup',e=>{
+      if(!active||active.id!==e.pointerId) return;
+      stopAll(e);
+
+      const info=active;
+      active=null;
+      setPressing(info.btn,false);
+
+      const dx=e.clientX-info.x;
+      const dy=e.clientY-info.y;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+
+      // 손가락이 크게 밀려나간 경우만 취소. 일반적인 미끄러짐은 클릭으로 처리함.
+      if(dist>90) return;
+      runToggle(info.btn);
+    },{passive:false,capture:true});
+
+    c.addEventListener('pointercancel',e=>{
+      if(active){
+        setPressing(active.btn,false);
+        active=null;
+      }
+    },{passive:true,capture:true});
   }
 
-  // 구형 iOS Safari 보강: PointerEvent가 없을 때만 touchend 사용
+  // PointerEvent가 없는 구형 iOS Safari 보강
   c.addEventListener('touchstart',e=>{
     if(window.PointerEvent) return;
     const btn=findToggle(e);
     if(!btn||!e.touches||!e.touches[0]) return;
-    startInfo={x:e.touches[0].clientX,y:e.touches[0].clientY,x2:e.touches[0].clientX,y2:e.touches[0].clientY,btn};
-  },{passive:true,capture:true});
-
-  c.addEventListener('touchmove',e=>{
-    if(window.PointerEvent||!startInfo||!e.touches||!e.touches[0]) return;
-    startInfo.x2=e.touches[0].clientX;
-    startInfo.y2=e.touches[0].clientY;
-  },{passive:true,capture:true});
-
-  c.addEventListener('touchend',e=>{
-    if(window.PointerEvent) return;
-    const btn=findToggle(e)||(startInfo&&startInfo.btn);
-    if(!btn) return;
-    if(movedTooMuch(startInfo)){
-      startInfo=null;
-      return;
-    }
-    startInfo=null;
-    runToggle(e,btn);
+    stopAll(e);
+    active={
+      btn,
+      x:e.touches[0].clientX,
+      y:e.touches[0].clientY,
+      x2:e.touches[0].clientX,
+      y2:e.touches[0].clientY
+    };
+    setPressing(btn,true);
   },{passive:false,capture:true});
 
-  // PC 클릭 + 모바일 ghost click 중복 방지
+  c.addEventListener('touchmove',e=>{
+    if(window.PointerEvent||!active||!e.touches||!e.touches[0]) return;
+    stopAll(e);
+    active.x2=e.touches[0].clientX;
+    active.y2=e.touches[0].clientY;
+  },{passive:false,capture:true});
+
+  c.addEventListener('touchend',e=>{
+    if(window.PointerEvent||!active) return;
+    stopAll(e);
+
+    const info=active;
+    active=null;
+    setPressing(info.btn,false);
+
+    const t=e.changedTouches&&e.changedTouches[0];
+    const x=t?t.clientX:info.x2;
+    const y=t?t.clientY:info.y2;
+    const dx=x-info.x;
+    const dy=y-info.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+
+    if(dist>90) return;
+    runToggle(info.btn);
+  },{passive:false,capture:true});
+
+  c.addEventListener('touchcancel',()=>{
+    if(active){
+      setPressing(active.btn,false);
+      active=null;
+    }
+  },{passive:true,capture:true});
+
+  // PC 클릭 및 모바일 ghost click 중복 방지
   c.addEventListener('click',e=>{
     const btn=findToggle(e);
     if(!btn) return;
-    if(Date.now()-lastToggleAt<550){
-      e.preventDefault();
-      e.stopPropagation();
-      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
-      return;
-    }
-    runToggle(e,btn);
+    stopAll(e);
+    if(Date.now()-lastToggleAt<650) return;
+    runToggle(btn);
   },true);
 }
 
@@ -1607,6 +1664,11 @@ function getFacilityInfo(key,it){
 }
 
 function startRoutePick(){
+  if(grp === 'cpted'){
+    showRouteToast('CPTED 화면에서는 지도에서 지점을 찍으면 가장 가까운 CPTED 구역까지 직선으로 안내합니다.');
+    return;
+  }
+
   cptedTapRequestToken++;
   clearCptedGuide(true);
   if(!map){
@@ -1623,6 +1685,7 @@ function startRoutePick(){
 }
 
 async function setDestinationAndRoute(latlng){
+  if(grp === 'cpted') return;
   if(!map||!myLat||!myLng) return;
   clearRoute(false);
 
