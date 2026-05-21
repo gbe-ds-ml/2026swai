@@ -145,7 +145,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .toggle.on:active .toggle-thumb{transform:translateX(18px) scale(.96);}
 
 /* CCTV 전용: 실제로 손가락을 따라 움직이는 긴 슬라이드 토글
-   - 버튼 자체 높이를 키우고, 아래쪽 터치 여백을 더 크게 잡아 모바일에서 손가락이 살짝 아래로 닿아도 인식되게 함.
+   - 버튼 자체 높이를 키우고, 위/아래 터치 여백을 넓혀 손가락이 살짝 어긋나도 인식되게 함.
    - 이동거리는 CSS 고정값이 아니라 JS에서 실제 너비 기준으로 계산함. */
 .toggle.cctv-toggle{
   width:124px;
@@ -157,8 +157,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
   --cctv-x:84px;
 }
 .toggle.cctv-toggle::before{
-  /* 손가락이 시각적 스위치보다 살짝 아래에 닿는 문제 보정 */
-  inset:-22px -26px -34px -26px;
+  /* 손가락이 시각적 스위치보다 살짝 위/아래에 닿아도 CCTV 슬라이더로 인식되게 보정 */
+  inset:-42px -30px -36px -30px;
 }
 .toggle.cctv-toggle .toggle-track{
   position:absolute;
@@ -214,6 +214,15 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .chip-row[data-key="cctv"]{
   min-height:62px;
   padding:15px 0;
+}
+.chip-row[data-key="cctv"]::after{
+  content:'';
+  position:absolute;
+  right:-22px;
+  top:-28px;
+  bottom:-30px;
+  width:176px;
+  z-index:4;
 }
 .chips,.chip-row,.toggle{-webkit-user-select:none;user-select:none;}
 
@@ -354,7 +363,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.25</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.26</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -795,22 +804,42 @@ function bindChipToggleEvents(){
     return {x:e.clientX,y:e.clientY};
   };
 
+  const pointInCctvHotZone=(btn,p)=>{
+    if(!btn||!p||!btn.classList||!btn.classList.contains('cctv-toggle')) return false;
+    const r=btn.getBoundingClientRect();
+    // 시각적 스위치보다 위쪽을 넉넉히 잡음. 손가락이 살짝 위에 닿아도 슬라이더로 시작됨.
+    const padLeft=34;
+    const padRight=34;
+    const padTop=48;
+    const padBottom=40;
+    return p.x>=r.left-padLeft && p.x<=r.right+padRight &&
+           p.y>=r.top-padTop && p.y<=r.bottom+padBottom;
+  };
+
   const findToggle=e=>{
     const target=e&&e.target;
-    if(!target||!target.closest) return null;
+    const p=getPoint(e);
 
-    // 스위치 자체를 누르면 그 스위치를 우선 처리하고, 글자/행을 누르면 행의 스위치를 처리함.
-    const direct=target.closest('.toggle');
-    if(direct&&c.contains(direct)) return direct;
+    if(target&&target.closest){
+      // 스위치 자체를 누르면 그 스위치를 우선 처리하고, 글자/행을 누르면 행의 스위치를 처리함.
+      const direct=target.closest('.toggle');
+      if(direct&&c.contains(direct)) return direct;
 
-    const row=target.closest('.chip-row');
-    if(row&&c.contains(row)) return row.querySelector('.toggle');
+      const row=target.closest('.chip-row');
+      if(row&&c.contains(row)) return row.querySelector('.toggle');
+    }
+
+    // 모바일에서 CCTV 슬라이더보다 살짝 위를 터치하면 target이 sheet/body로 잡히는 경우가 있어
+    // 좌표 기준으로 CCTV 확장 hitbox 안에 들어오면 CCTV 토글로 보정함.
+    const cctvBtn=c.querySelector('.cctv-toggle');
+    if(pointInCctvHotZone(cctvBtn,p)) return cctvBtn;
     return null;
   };
 
-  const startedOnToggle=e=>{
+  const startedOnToggle=(e,btn,p)=>{
     const target=e&&e.target;
-    return !!(target&&target.closest&&target.closest('.toggle'));
+    if(target&&target.closest&&target.closest('.toggle')) return true;
+    return pointInCctvHotZone(btn,p);
   };
 
   const setPressing=(btn,on)=>{
@@ -899,7 +928,7 @@ function bindChipToggleEvents(){
       y:p.y,
       x2:p.x,
       y2:p.y,
-      startedOnToggle:startedOnToggle(e)
+      startedOnToggle:startedOnToggle(e,btn,p)
     };
     beginCctvSlide(active);
     setPressing(btn,true);
@@ -940,7 +969,7 @@ function bindChipToggleEvents(){
     const dy=p.y-info.y;
     const dist=Math.sqrt(dx*dx+dy*dy);
 
-    // 아주 큰 이동만 취소. 손가락이 살짝 아래로 밀리는 정도는 CCTV 토글로 인정함.
+    // 아주 큰 이동만 취소. 손가락이 살짝 위/아래로 어긋나는 정도는 CCTV 토글로 인정함.
     if(dist>110) return;
     runToggle(info.btn);
   };
