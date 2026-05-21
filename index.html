@@ -144,20 +144,28 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .toggle:active .toggle-thumb{transform:scale(.96);}
 .toggle.on:active .toggle-thumb{transform:translateX(18px) scale(.96);}
 
-/* CCTV 전용: 실제로 손가락을 따라 움직이는 긴 슬라이드 토글 */
+/* CCTV 전용: 실제로 손가락을 따라 움직이는 긴 슬라이드 토글
+   - 버튼 자체 높이를 키우고, 아래쪽 터치 여백을 더 크게 잡아 모바일에서 손가락이 살짝 아래로 닿아도 인식되게 함.
+   - 이동거리는 CSS 고정값이 아니라 JS에서 실제 너비 기준으로 계산함. */
 .toggle.cctv-toggle{
-  width:108px;
-  height:32px;
+  width:124px;
+  height:40px;
+  margin:-4px 0;
   --cctv-x:0px;
-  --cctv-max-x:76px;
 }
 .toggle.cctv-toggle.on{
-  --cctv-x:var(--cctv-max-x);
+  --cctv-x:84px;
 }
 .toggle.cctv-toggle::before{
-  inset:-18px -20px;
+  /* 손가락이 시각적 스위치보다 살짝 아래에 닿는 문제 보정 */
+  inset:-22px -26px -34px -26px;
 }
 .toggle.cctv-toggle .toggle-track{
+  position:absolute;
+  left:0;
+  right:0;
+  top:4px;
+  height:32px;
   border-radius:999px;
   background:#e2e8f0;
   border:1px solid rgba(100,116,139,.25);
@@ -166,20 +174,20 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .toggle.cctv-toggle .toggle-hint{
   position:absolute;
   top:50%;
-  left:36px;
-  right:12px;
+  left:40px;
+  right:14px;
   transform:translateY(-50%);
   font-size:10px;
   font-weight:800;
   letter-spacing:.08em;
   line-height:1;
-  color:rgba(100,116,139,.58);
+  color:rgba(100,116,139,.56);
   text-align:center;
   pointer-events:none;
   white-space:nowrap;
 }
 .toggle.cctv-toggle .toggle-thumb{
-  top:4px;
+  top:8px;
   left:4px;
   width:24px;
   height:24px;
@@ -197,12 +205,16 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
   background:var(--blue);
 }
 .toggle.cctv-toggle.on .toggle-hint{
-  left:12px;
-  right:42px;
+  left:14px;
+  right:46px;
   color:rgba(37,99,235,.48);
 }
 .toggle.cctv-toggle:active .toggle-thumb{transform:translateX(var(--cctv-x)) scale(.96);}
 .toggle.cctv-toggle.on:active .toggle-thumb{transform:translateX(var(--cctv-x)) scale(.96);}
+.chip-row[data-key="cctv"]{
+  min-height:62px;
+  padding:15px 0;
+}
 .chips,.chip-row,.toggle{-webkit-user-select:none;user-select:none;}
 
 
@@ -342,7 +354,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.24</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.25</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -777,17 +789,28 @@ function bindChipToggleEvents(){
     if(e.stopImmediatePropagation) e.stopImmediatePropagation();
   };
 
+  const getPoint=e=>{
+    if(e.touches&&e.touches[0]) return {x:e.touches[0].clientX,y:e.touches[0].clientY};
+    if(e.changedTouches&&e.changedTouches[0]) return {x:e.changedTouches[0].clientX,y:e.changedTouches[0].clientY};
+    return {x:e.clientX,y:e.clientY};
+  };
+
   const findToggle=e=>{
     const target=e&&e.target;
     if(!target||!target.closest) return null;
 
-    // 스위치 자체를 눌러도, 행의 글자를 눌러도 같은 토글로 처리함.
-    const row=target.closest('.chip-row');
-    if(row&&c.contains(row)) return row.querySelector('.toggle');
-
+    // 스위치 자체를 누르면 그 스위치를 우선 처리하고, 글자/행을 누르면 행의 스위치를 처리함.
     const direct=target.closest('.toggle');
     if(direct&&c.contains(direct)) return direct;
+
+    const row=target.closest('.chip-row');
+    if(row&&c.contains(row)) return row.querySelector('.toggle');
     return null;
+  };
+
+  const startedOnToggle=e=>{
+    const target=e&&e.target;
+    return !!(target&&target.closest&&target.closest('.toggle'));
   };
 
   const setPressing=(btn,on)=>{
@@ -795,38 +818,58 @@ function bindChipToggleEvents(){
     if(row) row.classList.toggle('pressing',!!on);
   };
 
-  const CCTV_SLIDE_MAX=76;
-
   const isCctvToggle=btn=>btn&&btn.classList&&btn.classList.contains('cctv-toggle');
-
   const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+
+  const getCctvMaxX=btn=>{
+    const thumb=btn.querySelector('.toggle-thumb');
+    const bw=btn.getBoundingClientRect().width||124;
+    const tw=thumb?(thumb.getBoundingClientRect().width||24):24;
+    // CSS에서 left/right 4px을 쓰므로 여백 8px 제외
+    return Math.max(0,Math.round(bw-tw-8));
+  };
+
+  const setCctvX=(btn,x)=>{
+    btn.style.setProperty('--cctv-x',Math.round(x)+'px');
+  };
+
+  const setCctvVisualByClientX=(info,clientX)=>{
+    if(!info||!info.isCctv) return;
+    const rect=info.btn.getBoundingClientRect();
+    // 손가락의 x좌표를 트랙 절대 위치로 환산함. 시작 위치가 손잡이 위가 아니어도 정확히 따라오게 함.
+    const x=clamp(clientX-rect.left-12,0,info.slideMax);
+    info.currentX=x;
+    setCctvX(info.btn,x);
+  };
 
   const beginCctvSlide=(info)=>{
     if(!isCctvToggle(info.btn)) return;
     info.isCctv=true;
     info.startOn=info.btn.getAttribute('aria-pressed')==='true';
-    info.slideMax=CCTV_SLIDE_MAX;
+    info.slideMax=getCctvMaxX(info.btn);
     info.currentX=info.startOn?info.slideMax:0;
     info.btn.classList.add('dragging');
-    info.btn.style.setProperty('--cctv-x',info.currentX+'px');
+    setCctvX(info.btn,info.currentX);
   };
 
-  const updateCctvSlide=(info,x)=>{
-    if(!info||!info.isCctv) return;
-    const dx=x-info.x;
-    const base=info.startOn?info.slideMax:0;
-    info.currentX=clamp(base+dx,0,info.slideMax);
-    info.btn.style.setProperty('--cctv-x',info.currentX+'px');
-  };
-
-  const finishCctvSlide=(info,x)=>{
+  const finishCctvSlide=(info,clientX)=>{
     if(!info||!info.isCctv) return false;
-    updateCctvSlide(info,x);
 
-    const dx=x-info.x;
-    const next=Math.abs(dx)<8 ? !info.startOn : info.currentX>=info.slideMax/2;
-    setToggleButtonState(info.btn,next);
-    return true;
+    const dx=clientX-info.x;
+    const dy=(info.y2??info.y)-info.y;
+    const movedEnough=Math.abs(dx)>6 || Math.abs(dy)>18;
+
+    // 스위치 위에서 시작해 실제로 밀었을 때만 위치값으로 판정함.
+    // 행/글자 영역을 그냥 탭한 경우에는 아래 일반 토글 로직으로 넘김.
+    if(info.startedOnToggle&&movedEnough){
+      setCctvVisualByClientX(info,clientX);
+      const next=info.currentX>=info.slideMax*0.5;
+      setToggleButtonState(info.btn,next);
+      return true;
+    }
+
+    resetCctvSlideVisual(info.btn);
+    return false;
   };
 
   const resetCctvSlideVisual=(btn)=>{
@@ -838,127 +881,90 @@ function bindChipToggleEvents(){
   const runToggle=(btn)=>{
     if(!btn) return;
     const now=Date.now();
-    if(now-lastToggleAt<240) return;
+    if(now-lastToggleAt<220) return;
     lastToggleAt=now;
     applyToggleButton(btn);
   };
 
-  /*
-    CCTV가 마지막 행이라 모바일에서 살짝만 손가락이 미끄러져도
-    sheet-body의 세로 스크롤 제스처로 넘어가 pointercancel/touchcancel이 발생했음.
-    그래서 칩 영역 안에서는 스크롤 판정을 포기하고, 행 전체를 즉시 눌리는 버튼처럼 처리함.
-  */
-  if(window.PointerEvent){
-    c.addEventListener('pointerdown',e=>{
-      const btn=findToggle(e);
-      if(!btn) return;
-      stopAll(e);
-
-      active={
-        id:e.pointerId,
-        btn,
-        x:e.clientX,
-        y:e.clientY,
-        x2:e.clientX,
-        y2:e.clientY
-      };
-      beginCctvSlide(active);
-      setPressing(btn,true);
-
-      try{
-        if(btn.setPointerCapture) btn.setPointerCapture(e.pointerId);
-      }catch(err){}
-    },{passive:false,capture:true});
-
-    c.addEventListener('pointermove',e=>{
-      if(!active||active.id!==e.pointerId) return;
-      stopAll(e);
-      active.x2=e.clientX;
-      active.y2=e.clientY;
-      updateCctvSlide(active,e.clientX);
-    },{passive:false,capture:true});
-
-    c.addEventListener('pointerup',e=>{
-      if(!active||active.id!==e.pointerId) return;
-      stopAll(e);
-
-      const info=active;
-      active=null;
-      setPressing(info.btn,false);
-
-      if(finishCctvSlide(info,e.clientX)) return;
-
-      const dx=e.clientX-info.x;
-      const dy=e.clientY-info.y;
-      const dist=Math.sqrt(dx*dx+dy*dy);
-
-      // 손가락이 크게 밀려나간 경우만 취소. 일반적인 미끄러짐은 클릭으로 처리함.
-      if(dist>90) return;
-      runToggle(info.btn);
-    },{passive:false,capture:true});
-
-    c.addEventListener('pointercancel',e=>{
-      if(active){
-        resetCctvSlideVisual(active.btn);
-        setPressing(active.btn,false);
-        active=null;
-      }
-    },{passive:true,capture:true});
-  }
-
-  // PointerEvent가 없는 구형 iOS Safari 보강
-  c.addEventListener('touchstart',e=>{
-    if(window.PointerEvent) return;
+  const begin=(e)=>{
     const btn=findToggle(e);
-    if(!btn||!e.touches||!e.touches[0]) return;
+    if(!btn) return;
     stopAll(e);
+
+    const p=getPoint(e);
     active={
+      id:e.pointerId,
       btn,
-      x:e.touches[0].clientX,
-      y:e.touches[0].clientY,
-      x2:e.touches[0].clientX,
-      y2:e.touches[0].clientY
+      x:p.x,
+      y:p.y,
+      x2:p.x,
+      y2:p.y,
+      startedOnToggle:startedOnToggle(e)
     };
     beginCctvSlide(active);
     setPressing(btn,true);
-  },{passive:false,capture:true});
 
-  c.addEventListener('touchmove',e=>{
-    if(window.PointerEvent||!active||!e.touches||!e.touches[0]) return;
+    try{
+      // 버튼이 아니라 chips 컨테이너가 캡처해야 행/아래쪽 여백에서 시작한 포인터도 끝까지 추적됨.
+      if(e.pointerId!=null && c.setPointerCapture) c.setPointerCapture(e.pointerId);
+    }catch(err){}
+  };
+
+  const move=(e)=>{
+    if(!active) return;
+    if(e.pointerId!=null && active.id!=null && active.id!==e.pointerId) return;
     stopAll(e);
-    active.x2=e.touches[0].clientX;
-    active.y2=e.touches[0].clientY;
-    updateCctvSlide(active,e.touches[0].clientX);
-  },{passive:false,capture:true});
 
-  c.addEventListener('touchend',e=>{
-    if(window.PointerEvent||!active) return;
+    const p=getPoint(e);
+    active.x2=p.x;
+    active.y2=p.y;
+
+    if(active.isCctv&&active.startedOnToggle){
+      setCctvVisualByClientX(active,p.x);
+    }
+  };
+
+  const end=(e)=>{
+    if(!active) return;
+    if(e.pointerId!=null && active.id!=null && active.id!==e.pointerId) return;
     stopAll(e);
 
     const info=active;
     active=null;
     setPressing(info.btn,false);
 
-    const t=e.changedTouches&&e.changedTouches[0];
-    const x=t?t.clientX:info.x2;
-    const y=t?t.clientY:info.y2;
-    if(finishCctvSlide(info,x)) return;
+    const p=getPoint(e);
+    if(finishCctvSlide(info,p.x)) return;
 
-    const dx=x-info.x;
-    const dy=y-info.y;
+    const dx=p.x-info.x;
+    const dy=p.y-info.y;
     const dist=Math.sqrt(dx*dx+dy*dy);
 
-    if(dist>90) return;
+    // 아주 큰 이동만 취소. 손가락이 살짝 아래로 밀리는 정도는 CCTV 토글로 인정함.
+    if(dist>110) return;
     runToggle(info.btn);
-  },{passive:false,capture:true});
+  };
 
-  c.addEventListener('touchcancel',()=>{
+  const cancel=()=>{
     if(active){
       resetCctvSlideVisual(active.btn);
       setPressing(active.btn,false);
       active=null;
     }
-  },{passive:true,capture:true});
+  };
+
+  if(window.PointerEvent){
+    c.addEventListener('pointerdown',begin,{passive:false,capture:true});
+    c.addEventListener('pointermove',move,{passive:false,capture:true});
+    c.addEventListener('pointerup',end,{passive:false,capture:true});
+    c.addEventListener('pointercancel',cancel,{passive:true,capture:true});
+  }
+
+  // PointerEvent가 없는 구형 iOS Safari 보강
+  c.addEventListener('touchstart',e=>{ if(!window.PointerEvent) begin(e); },{passive:false,capture:true});
+  c.addEventListener('touchmove',e=>{ if(!window.PointerEvent) move(e); },{passive:false,capture:true});
+  c.addEventListener('touchend',e=>{ if(!window.PointerEvent) end(e); },{passive:false,capture:true});
+  c.addEventListener('touchcancel',()=>{ if(!window.PointerEvent) cancel(); },{passive:true,capture:true});
 
   // PC 클릭 및 모바일 ghost click 중복 방지
   c.addEventListener('click',e=>{
@@ -1009,7 +1015,14 @@ function setToggleButtonState(btn,next){
   btn.classList.toggle('on',next);
 
   if(kind==='xml'){
-    setXmlLayerVisible(key,next);
+    // CCTV는 마커가 많아 add/removeLayer가 모바일 메인 스레드를 잠깐 막을 수 있음.
+    // 먼저 슬라이더 UI를 움직인 뒤, 레이어 처리는 아주 짧게 늦춰 체감 반응성을 확보함.
+    if(key==='cctv'){
+      chipOn[key]=next;
+      setTimeout(()=>setXmlLayerVisible(key,next),80);
+    }else{
+      setXmlLayerVisible(key,next);
+    }
     return;
   }
 
