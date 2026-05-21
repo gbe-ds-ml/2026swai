@@ -158,7 +158,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 }
 .toggle.cctv-toggle::before{
   /* 손가락이 시각적 스위치보다 살짝 위/아래에 닿아도 CCTV 슬라이더로 인식되게 보정 */
-  inset:-42px -30px -36px -30px;
+  inset:-30px -30px -36px -30px;
 }
 .toggle.cctv-toggle .toggle-track{
   position:absolute;
@@ -219,7 +219,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
   content:'';
   position:absolute;
   right:-22px;
-  top:-28px;
+  top:-16px;
   bottom:-30px;
   width:176px;
   z-index:4;
@@ -363,7 +363,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.26</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.27</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -807,10 +807,10 @@ function bindChipToggleEvents(){
   const pointInCctvHotZone=(btn,p)=>{
     if(!btn||!p||!btn.classList||!btn.classList.contains('cctv-toggle')) return false;
     const r=btn.getBoundingClientRect();
-    // 시각적 스위치보다 위쪽을 넉넉히 잡음. 손가락이 살짝 위에 닿아도 슬라이더로 시작됨.
+    // 위쪽 확장 인식선을 한 단계 낮춤. 손가락이 살짝 위에 닿는 정도만 슬라이더로 시작됨.
     const padLeft=34;
     const padRight=34;
-    const padTop=48;
+    const padTop=36;
     const padBottom=40;
     return p.x>=r.left-padLeft && p.x<=r.right+padRight &&
            p.y>=r.top-padTop && p.y<=r.bottom+padBottom;
