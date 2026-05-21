@@ -144,13 +144,18 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .toggle:active .toggle-thumb{transform:scale(.96);}
 .toggle.on:active .toggle-thumb{transform:translateX(18px) scale(.96);}
 
-/* CCTV 전용: 슬라이딩 도어처럼 보이는 긴 토글 */
+/* CCTV 전용: 실제로 손가락을 따라 움직이는 긴 슬라이드 토글 */
 .toggle.cctv-toggle{
-  width:96px;
-  height:30px;
+  width:108px;
+  height:32px;
+  --cctv-x:0px;
+  --cctv-max-x:76px;
+}
+.toggle.cctv-toggle.on{
+  --cctv-x:var(--cctv-max-x);
 }
 .toggle.cctv-toggle::before{
-  inset:-16px -18px;
+  inset:-18px -20px;
 }
 .toggle.cctv-toggle .toggle-track{
   border-radius:999px;
@@ -161,8 +166,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .toggle.cctv-toggle .toggle-hint{
   position:absolute;
   top:50%;
-  left:34px;
-  right:10px;
+  left:36px;
+  right:12px;
   transform:translateY(-50%);
   font-size:10px;
   font-weight:800;
@@ -176,24 +181,28 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .toggle.cctv-toggle .toggle-thumb{
   top:4px;
   left:4px;
-  width:22px;
-  height:22px;
+  width:24px;
+  height:24px;
+  transform:translateX(var(--cctv-x));
+  transition:transform .16s cubic-bezier(.4,0,.2,1), background .16s;
+}
+.toggle.cctv-toggle.dragging .toggle-thumb{
+  transition:none;
 }
 .toggle.cctv-toggle.on .toggle-track{
   background:#dbeafe;
   border-color:rgba(37,99,235,.38);
 }
 .toggle.cctv-toggle.on .toggle-thumb{
-  transform:translateX(66px);
   background:var(--blue);
 }
 .toggle.cctv-toggle.on .toggle-hint{
-  left:10px;
-  right:36px;
+  left:12px;
+  right:42px;
   color:rgba(37,99,235,.48);
 }
-.toggle.cctv-toggle:active .toggle-thumb{transform:scale(.96);}
-.toggle.cctv-toggle.on:active .toggle-thumb{transform:translateX(66px) scale(.96);}
+.toggle.cctv-toggle:active .toggle-thumb{transform:translateX(var(--cctv-x)) scale(.96);}
+.toggle.cctv-toggle.on:active .toggle-thumb{transform:translateX(var(--cctv-x)) scale(.96);}
 .chips,.chip-row,.toggle{-webkit-user-select:none;user-select:none;}
 
 
@@ -333,7 +342,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.23</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.24</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -786,6 +795,46 @@ function bindChipToggleEvents(){
     if(row) row.classList.toggle('pressing',!!on);
   };
 
+  const CCTV_SLIDE_MAX=76;
+
+  const isCctvToggle=btn=>btn&&btn.classList&&btn.classList.contains('cctv-toggle');
+
+  const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+
+  const beginCctvSlide=(info)=>{
+    if(!isCctvToggle(info.btn)) return;
+    info.isCctv=true;
+    info.startOn=info.btn.getAttribute('aria-pressed')==='true';
+    info.slideMax=CCTV_SLIDE_MAX;
+    info.currentX=info.startOn?info.slideMax:0;
+    info.btn.classList.add('dragging');
+    info.btn.style.setProperty('--cctv-x',info.currentX+'px');
+  };
+
+  const updateCctvSlide=(info,x)=>{
+    if(!info||!info.isCctv) return;
+    const dx=x-info.x;
+    const base=info.startOn?info.slideMax:0;
+    info.currentX=clamp(base+dx,0,info.slideMax);
+    info.btn.style.setProperty('--cctv-x',info.currentX+'px');
+  };
+
+  const finishCctvSlide=(info,x)=>{
+    if(!info||!info.isCctv) return false;
+    updateCctvSlide(info,x);
+
+    const dx=x-info.x;
+    const next=Math.abs(dx)<8 ? !info.startOn : info.currentX>=info.slideMax/2;
+    setToggleButtonState(info.btn,next);
+    return true;
+  };
+
+  const resetCctvSlideVisual=(btn)=>{
+    if(!isCctvToggle(btn)) return;
+    btn.classList.remove('dragging');
+    btn.style.removeProperty('--cctv-x');
+  };
+
   const runToggle=(btn)=>{
     if(!btn) return;
     const now=Date.now();
@@ -813,6 +862,7 @@ function bindChipToggleEvents(){
         x2:e.clientX,
         y2:e.clientY
       };
+      beginCctvSlide(active);
       setPressing(btn,true);
 
       try{
@@ -825,6 +875,7 @@ function bindChipToggleEvents(){
       stopAll(e);
       active.x2=e.clientX;
       active.y2=e.clientY;
+      updateCctvSlide(active,e.clientX);
     },{passive:false,capture:true});
 
     c.addEventListener('pointerup',e=>{
@@ -834,6 +885,8 @@ function bindChipToggleEvents(){
       const info=active;
       active=null;
       setPressing(info.btn,false);
+
+      if(finishCctvSlide(info,e.clientX)) return;
 
       const dx=e.clientX-info.x;
       const dy=e.clientY-info.y;
@@ -846,6 +899,7 @@ function bindChipToggleEvents(){
 
     c.addEventListener('pointercancel',e=>{
       if(active){
+        resetCctvSlideVisual(active.btn);
         setPressing(active.btn,false);
         active=null;
       }
@@ -865,6 +919,7 @@ function bindChipToggleEvents(){
       x2:e.touches[0].clientX,
       y2:e.touches[0].clientY
     };
+    beginCctvSlide(active);
     setPressing(btn,true);
   },{passive:false,capture:true});
 
@@ -873,6 +928,7 @@ function bindChipToggleEvents(){
     stopAll(e);
     active.x2=e.touches[0].clientX;
     active.y2=e.touches[0].clientY;
+    updateCctvSlide(active,e.touches[0].clientX);
   },{passive:false,capture:true});
 
   c.addEventListener('touchend',e=>{
@@ -886,6 +942,8 @@ function bindChipToggleEvents(){
     const t=e.changedTouches&&e.changedTouches[0];
     const x=t?t.clientX:info.x2;
     const y=t?t.clientY:info.y2;
+    if(finishCctvSlide(info,x)) return;
+
     const dx=x-info.x;
     const dy=y-info.y;
     const dist=Math.sqrt(dx*dx+dy*dy);
@@ -896,6 +954,7 @@ function bindChipToggleEvents(){
 
   c.addEventListener('touchcancel',()=>{
     if(active){
+      resetCctvSlideVisual(active.btn);
       setPressing(active.btn,false);
       active=null;
     }
@@ -919,14 +978,31 @@ function toggleChip(e, btn){
   applyToggleButton(btn);
 }
 
-function applyToggleButton(btn){
-  if(!btn||btn._busy) return;
-  btn._busy=true;
-  setTimeout(()=>{btn._busy=false;},80);
+function resetCctvSlideVisualGlobal(btn){
+  if(btn&&btn.classList&&btn.classList.contains('cctv-toggle')){
+    btn.classList.remove('dragging');
+    btn.style.removeProperty('--cctv-x');
+  }
+}
+
+function setToggleButtonState(btn,next){
+  if(!btn) return;
 
   const kind=btn.dataset.kind;
   const key=btn.dataset.key;
-  const next=btn.getAttribute('aria-pressed')!=='true';
+  const current=btn.getAttribute('aria-pressed')==='true';
+
+  resetCctvSlideVisualGlobal(btn);
+
+  if(current===next){
+    btn.setAttribute('aria-pressed',next?'true':'false');
+    btn.classList.toggle('on',next);
+    return;
+  }
+
+  if(btn._busy) return;
+  btn._busy=true;
+  setTimeout(()=>{btn._busy=false;},80);
 
   console.log('[toggle]',kind,key,next?'ON':'OFF');
   btn.setAttribute('aria-pressed',next?'true':'false');
@@ -940,6 +1016,12 @@ function applyToggleButton(btn){
   if(kind==='wms'){
     setWmsLayerVisible(key,next);
   }
+}
+
+function applyToggleButton(btn){
+  if(!btn) return;
+  const next=btn.getAttribute('aria-pressed')!=='true';
+  setToggleButtonState(btn,next);
 }
 
 function setXmlLayerVisible(key,on){
