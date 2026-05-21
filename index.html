@@ -422,10 +422,10 @@ const WMS_LAYER = {
 };
 
 const GROUP = {
-  child: {label:'아동',  color:'#059669', emoji:'🧒',  xml:['bell','police','child_house','cctv'], wms:['children'], special:'child_house'},
-  youth: {label:'청소년',color:'#db2777', emoji:'🚶‍♀️', xml:['bell','police','child_house','cctv'], wms:['women'], special:null},
-  elder: {label:'노인',  color:'#ea580c', emoji:'👴',  xml:['bell','police','cctv'],        wms:['elder_c'], special:null},
-  cpted: {label:'CPTED', color:'#b45309', emoji:'🏗',  xml:[],                          wms:['cpted'], special:null},
+  child: {label:'아동',  color:'#059669', emoji:'🧒',  xml:['bell','police','child_house'], wms:['children','cctv'], special:'child_house'},
+  youth: {label:'청소년',color:'#db2777', emoji:'🚶‍♀️', xml:['bell','police','child_house'], wms:['women','cctv'], special:null},
+  elder: {label:'노인',  color:'#ea580c', emoji:'👴',  xml:['bell','police'],              wms:['elder_c','cctv'], special:null},
+  cpted: {label:'CPTED', color:'#b45309', emoji:'🏗',  xml:[],                            wms:['cpted'], special:null},
 };
 
 /* ── 상태 ── */
@@ -536,7 +536,7 @@ function buildChips(){
 
   g.wms.forEach(key=>{
     const m=WMS_LAYER[key];
-    const defaultOn = key === 'cpted' ? grp === 'cpted' : key !== 'cctv';
+    const defaultOn = key === 'cpted' ? grp === 'cpted' : true;
     chipOn['w_'+key]=defaultOn;
 
     const row=document.createElement('div');
@@ -913,7 +913,9 @@ const SafemapWMS4326 = L.TileLayer.extend({
 const SafemapWMS3857 = L.TileLayer.extend({
   getTileUrl: function(coords){
     const b = this._tileCoordsToBounds(coords);
-    const bbox = [b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].join(',');
+    const sw = L.CRS.EPSG3857.project(b.getSouthWest());
+    const ne = L.CRS.EPSG3857.project(b.getNorthEast());
+    const bbox = [sw.x, sw.y, ne.x, ne.y].join(',');
     return this._url
       + '?serviceKey=' + API_KEY
       + '&layers=A2SM_CCTV_INFO'
@@ -944,6 +946,8 @@ function addWMS(){
           opacity:0.5,
           tileSize:256,
         });
+      } else if(key==='cctv'){
+        t = new SafemapWMS3857(url, {opacity:0.5, tileSize:256});
       } else {
         t = new SafemapWMS4326(url, {opacity:0.5, tileSize:256});
       }
@@ -1628,6 +1632,18 @@ function updateStats(){
       </div>
     </div>`);
   });
+
+  // CCTV는 WMS 레이어지만 통계 바에 표시
+  if(g.wms.includes('cctv')&&chipOn['w_cctv']){
+    const m=LAYER['cctv'];
+    items.push(`<div class="stat-item">
+      <span class="stat-emoji">${m.emoji}</span>
+      <div class="stat-info">
+        <span class="stat-num" style="color:${m.color}">ON</span>
+        <span class="stat-lbl">${m.label}</span>
+      </div>
+    </div>`);
+  }
 
   bar.style.display=items.length?'flex':'none';
   bar.innerHTML=items.join('');
