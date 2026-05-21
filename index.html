@@ -267,6 +267,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 #map-spinner.show{display:flex;}
 #map-spinner .mspin{width:18px;height:18px;border:2px solid var(--gray2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
 .leaflet-container{touch-action:pan-x pan-y !important;}
+/* 마커 이동/갱신 시 모바일 렌더링 안정화 */
+.leaflet-marker-icon,.leaflet-marker-shadow{will-change:transform;backface-visibility:hidden;}
 </style>
 </head>
 <body>
@@ -279,7 +281,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.19</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.20</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -526,6 +528,17 @@ let mapDomCleanups=[];
 let chipToggleEventsBound=false;
 let fetchRunToken=0;
 
+/* 마커 성능 캐시
+   - 기존 방식처럼 지도 이동 때마다 전체 레이어를 지우지 않음.
+   - 넓은 범위를 미리 받아두고, 화면이 그 범위 안에서 움직이면 API를 다시 호출하지 않음.
+   - 새 데이터가 도착하면 기존 마커를 재사용하고 필요한 마커만 추가/제거함. */
+let markerCache={};
+let markerFetchBounds={};
+let markerFetchZoom={};
+const MARKER_FETCH_PADDING=0.65;
+const MARKER_PRUNE_PADDING=0.9;
+const MARKER_MOVE_DEBOUNCE_MS=850;
+
 /* 길찾기 상태 */
 let routePickMode=false;
 let destinationMark=null;
@@ -595,6 +608,9 @@ function goBack(){
   wmsTiles={};
   chipOn={};
   counts={};
+  markerCache={};
+  markerFetchBounds={};
+  markerFetchZoom={};
 }
 
 /* ── 지도 ── */
@@ -820,17 +836,23 @@ function applyToggleButton(btn){
 
 function setXmlLayerVisible(key,on){
   chipOn[key]=on;
+  ensureMarkerLayer(key);
 
   if(on){
-    if(layers[key]){
-      if(map&&!map.hasLayer(layers[key])) layers[key].addTo(map);
-    }else{
-      fetchLayer(key).then(()=>updateStats());
+    if(map && layers[key] && !map.hasLayer(layers[key])) layers[key].addTo(map);
+
+    // 캐시가 없거나 현재 화면을 커버하지 못할 때만 새로 조회함.
+    if(!isMarkerLayerCacheFresh(key,map.getBounds())){
+      fetchLayer(key,null,true).then(()=>{
+        refreshCachedFacilityState();
+        updateStats();
+      });
     }
   }else{
     if(layers[key]&&map&&map.hasLayer(layers[key])) map.removeLayer(layers[key]);
   }
 
+  refreshCachedFacilityState();
   updateStats();
 }
 
@@ -976,7 +998,7 @@ function onLocated(){
   let moveTimer=null;
   map.on('moveend',()=>{
     clearTimeout(moveTimer);
-    moveTimer=setTimeout(()=>fetchAll(true),500);
+    moveTimer=setTimeout(()=>fetchAll(true),MARKER_MOVE_DEBOUNCE_MS);
   });
 
   async function handleCptedTap(latlng){
@@ -1246,24 +1268,124 @@ function addWMS(){
 }
 
 /* ── XML 데이터 ── */
-async function fetchAll(silent=false){
-  const token=++fetchRunToken;
+function ensureMarkerLayer(key){
+  if(!markerCache[key]){
+    const group=L.layerGroup();
+    markerCache[key]={group,items:new Map()};
+    layers[key]=group;
+  }
+
+  if(!layers[key]) layers[key]=markerCache[key].group;
+
+  if(map && chipOn[key] && !map.hasLayer(layers[key])){
+    layers[key].addTo(map);
+  }
+
+  return markerCache[key];
+}
+
+function isMarkerLayerCacheFresh(key,currentBounds){
+  if(!map || !markerCache[key]) return false;
+  const b=markerFetchBounds[key];
+  if(!b) return false;
+  if(markerFetchZoom[key]!==map.getZoom()) return false;
+  return b.contains(currentBounds);
+}
+
+function parseLayerPoint(it){
+  let lat=parseFloat(it.lat||0);
+  let lng=parseFloat(it.lon||0);
+
+  if(!lat||!lng){
+    const px=parseFloat(it.x||0);
+    const py=parseFloat(it.y||0);
+    if(px&&py){
+      const pt=L.CRS.EPSG3857.unproject(L.point(px,py));
+      lat=pt.lat;
+      lng=pt.lng;
+    }
+  }
+
+  if(!lat||!lng||isNaN(lat)||isNaN(lng)) return null;
+  return {lat,lng};
+}
+
+function getMarkerStableId(key,lat,lng,it){
+  const info=getFacilityInfo(key,it);
+  const name=(info.name||'').replace(/\s+/g,' ').trim();
+  const addr=(info.addr||'').replace(/\s+/g,' ').trim();
+  return [key,lat.toFixed(6),lng.toFixed(6),name,addr].join('|');
+}
+
+function countVisibleMarkers(key){
+  if(!map || !markerCache[key]) return 0;
+  const b=map.getBounds();
+  let cnt=0;
+  markerCache[key].items.forEach(rec=>{
+    if(b.contains([rec.lat,rec.lng])) cnt++;
+  });
+  return cnt;
+}
+
+function refreshCachedFacilityState(){
+  if(!map || !grp) return;
+
+  const nearBounds=map.getBounds().pad(0.45);
   safeFacilityPoints=[];
   safeFacilitySeen=new Set();
 
-  const spinner=document.getElementById('map-spinner');
-  if(spinner) spinner.classList.add('show');
+  GROUP[grp].xml.forEach(key=>{
+    const cache=markerCache[key];
+    counts[key]=cache?countVisibleMarkers(key):0;
+    if(!cache) return;
 
-  try{
-    GROUP[grp].xml.forEach(k=>{
-      if(layers[k]){
-        map.removeLayer(layers[k]);
-        layers[k]=null;
+    cache.items.forEach(rec=>{
+      if(nearBounds.contains([rec.lat,rec.lng])){
+        registerSafeFacility(rec.key,rec.lat,rec.lng,rec.raw);
       }
     });
+  });
+}
 
-    await Promise.allSettled(GROUP[grp].xml.map(k=>fetchLayer(k, token)));
+function pruneMarkerCache(key,keepIds,requestBounds){
+  const cache=markerCache[key];
+  if(!cache) return;
+
+  const pruneBounds=requestBounds.pad(MARKER_PRUNE_PADDING);
+  cache.items.forEach((rec,id)=>{
+    if(keepIds.has(id)) return;
+
+    // 현재 받아온 넓은 범위 밖으로 완전히 나간 마커만 제거함.
+    // 화면 안쪽 마커를 즉시 지우지 않기 때문에 아이콘 깜빡임이 크게 줄어듦.
+    if(!pruneBounds.contains([rec.lat,rec.lng])){
+      cache.group.removeLayer(rec.marker);
+      cache.items.delete(id);
+    }
+  });
+}
+
+async function fetchAll(silent=false, force=false){
+  const token=++fetchRunToken;
+  const keys=GROUP[grp].xml;
+
+  keys.forEach(ensureMarkerLayer);
+
+  // 현재 화면이 이미 캐시된 요청 범위 안에 있으면 API 재호출 없이 기존 마커를 그대로 씀.
+  if(!force && keys.length && keys.every(k=>isMarkerLayerCacheFresh(k,map.getBounds()))){
+    refreshCachedFacilityState();
     updateStats();
+    return;
+  }
+
+  const spinner=document.getElementById('map-spinner');
+  if(spinner && !silent) spinner.classList.add('show');
+
+  try{
+    await Promise.allSettled(keys.map(k=>fetchLayer(k, token, force)));
+    if(token===fetchRunToken){
+      refreshCachedFacilityState();
+      updateStats();
+    }
   }catch(e){
     console.warn('fetchAll 오류:',e);
   }finally{
@@ -1271,22 +1393,30 @@ async function fetchAll(silent=false){
   }
 }
 
-async function fetchLayer(key, token=null){
+async function fetchLayer(key, token=null, force=false){
   const cfg=LAYER_API[key];
   if(!cfg){
     console.warn('['+key+'] LAYER_API 없음');
     return;
   }
 
-  const bounds=map.getBounds();
+  ensureMarkerLayer(key);
+
+  const currentBounds=map.getBounds();
+  if(!force && isMarkerLayerCacheFresh(key,currentBounds)){
+    counts[key]=countVisibleMarkers(key);
+    return;
+  }
+
+  const requestBounds=currentBounds.pad(MARKER_FETCH_PADDING);
 
   const area4326=[
-    bounds.getNorth(),bounds.getSouth(),
-    bounds.getWest(),bounds.getEast()
+    requestBounds.getNorth(),requestBounds.getSouth(),
+    requestBounds.getWest(),requestBounds.getEast()
   ].join(',');
 
-  const nw=L.CRS.EPSG3857.project(bounds.getNorthWest());
-  const se=L.CRS.EPSG3857.project(bounds.getSouthEast());
+  const nw=L.CRS.EPSG3857.project(requestBounds.getNorthWest());
+  const se=L.CRS.EPSG3857.project(requestBounds.getSouthEast());
   const area3857=[nw.y,se.y,nw.x,se.x].join(',');
 
   const params=new URLSearchParams({
@@ -1300,7 +1430,7 @@ async function fetchLayer(key, token=null){
 
   try{
     const ctrl=new AbortController();
-    setTimeout(()=>ctrl.abort(),10000);
+    const abortTimer=setTimeout(()=>ctrl.abort(),10000);
 
     const res=await fetch(MARKER_API,{
       method:'POST',
@@ -1308,52 +1438,49 @@ async function fetchLayer(key, token=null){
       body:params,
       signal:ctrl.signal
     });
+    clearTimeout(abortTimer);
 
     const data=await res.json();
     const items=data.resultList||[];
-
-    if(items.length===0) throw new Error('no items');
 
     if(token!==null && token!==fetchRunToken){
       console.log('['+key+'] 오래된 요청 응답 무시');
       return;
     }
 
-    const lg=L.layerGroup();
-    let cnt=0;
+    const cache=ensureMarkerLayer(key);
+    const keepIds=new Set();
+    let added=0;
 
     items.forEach(it=>{
-      let lat=parseFloat(it.lat||0);
-      let lng=parseFloat(it.lon||0);
+      const p=parseLayerPoint(it);
+      if(!p) return;
 
-      if(!lat||!lng){
-        const px=parseFloat(it.x||0);
-        const py=parseFloat(it.y||0);
-        if(px&&py){
-          const pt=L.CRS.EPSG3857.unproject(L.point(px,py));
-          lat=pt.lat;
-          lng=pt.lng;
-        }
+      const id=getMarkerStableId(key,p.lat,p.lng,it);
+      keepIds.add(id);
+
+      if(!cache.items.has(id)){
+        const marker=mkMarker(key,p.lat,p.lng,it);
+        marker.addTo(cache.group);
+        cache.items.set(id,{id,key,lat:p.lat,lng:p.lng,raw:it,marker});
+        added++;
+      }else{
+        const rec=cache.items.get(id);
+        rec.raw=it;
       }
-
-      if(!lat||!lng||isNaN(lat)||isNaN(lng)) return;
-      registerSafeFacility(key,lat,lng,it);
-      mkMarker(key,lat,lng,it).addTo(lg);
-      cnt++;
     });
 
-    if(layers[key]&&map&&map.hasLayer(layers[key])){
-      map.removeLayer(layers[key]);
-    }
-    layers[key]=lg;
-    counts[key]=cnt;
+    pruneMarkerCache(key,keepIds,requestBounds);
 
-    if(chipOn[key]){
-      lg.addTo(map);
+    markerFetchBounds[key]=requestBounds;
+    markerFetchZoom[key]=map.getZoom();
+    counts[key]=countVisibleMarkers(key);
+
+    if(chipOn[key] && map && layers[key] && !map.hasLayer(layers[key])){
+      layers[key].addTo(map);
     }
 
-    updateStats();
-    console.log('['+key+'] 로드완료:'+cnt+'개');
+    console.log('['+key+'] 캐시갱신: 표시권역 '+counts[key]+'개, 신규 '+added+'개, 캐시 '+cache.items.size+'개');
   }catch(e){
     console.warn('['+key+'] 실패:',e.message);
   }
