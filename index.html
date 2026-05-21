@@ -87,9 +87,9 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 }
 .sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--gray2);margin-bottom:6px;}
 .sheet-label{font-size:11px;font-weight:700;color:var(--gray);letter-spacing:.08em;}
-.sheet-body{padding:0 14px max(28px, env(safe-area-inset-bottom));touch-action:pan-y;max-height:62vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.sheet-body{padding:0 14px max(28px, env(safe-area-inset-bottom));touch-action:pan-y;max-height:62vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
 .chips{display:flex;flex-direction:column;gap:0;}
-.chip-row{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:11px 0;border-bottom:1px solid var(--gray2);touch-action:manipulation;position:relative;cursor:pointer;}
+.chip-row{display:flex;align-items:center;justify-content:space-between;min-height:54px;padding:13px 0;border-bottom:1px solid var(--gray2);touch-action:manipulation;position:relative;cursor:pointer;}
 .chip-row:last-child{border-bottom:none;}
 .chip-left{display:flex;align-items:center;gap:10px;}
 .chip-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
@@ -106,12 +106,17 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
   padding:0;
   background:transparent;
   cursor:pointer;
-  touch-action:manipulation;
+  touch-action:none;
   -webkit-appearance:none;
   appearance:none;
   -webkit-user-select:none;
   user-select:none;
-  z-index:2;
+  z-index:5;
+}
+.toggle::before{
+  content:'';
+  position:absolute;
+  inset:-14px -16px;
 }
 .toggle-track{
   position:absolute;
@@ -138,14 +143,6 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .toggle:active .toggle-thumb{transform:scale(.96);}
 .toggle.on:active .toggle-thumb{transform:translateX(18px) scale(.96);}
 .chips,.chip-row,.toggle{-webkit-user-select:none;user-select:none;}
-/* 모바일에서 마지막 행(CCTV) 터치가 스크롤/드래그로 오인되지 않도록 터치 영역을 확장 */
-.sheet-body{overscroll-behavior:contain;}
-.chip-row{min-height:54px;}
-.toggle::before{
-  content:'';
-  position:absolute;
-  left:-14px; right:-14px; top:-12px; bottom:-12px;
-}
 
 
 .stats-bar{display:flex;gap:8px;overflow-x:auto;padding-top:10px;border-top:1px solid var(--gray2);scrollbar-width:none;}
@@ -163,7 +160,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
   position:fixed;
   left:14px;
   right:14px;
-  bottom:70px;
+  bottom:var(--route-panel-bottom,70px);
   z-index:850;
   display:none;
   background:rgba(255,255,255,.96);
@@ -172,6 +169,10 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
   box-shadow:0 8px 28px rgba(15,23,42,.18);
   backdrop-filter:blur(12px);
   padding:14px;
+  transition:bottom .28s cubic-bezier(.4,0,.2,1);
+  max-height:calc(100vh - 82px - var(--route-panel-bottom,70px));
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
 }
 .route-panel.show{display:block;animation:routeIn .22s ease both;}
 @keyframes routeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
@@ -215,12 +216,44 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
   white-space:nowrap;
 }
 
+.cpted-target-label{
+  background:#fff7ed;
+  border:2px solid #b45309;
+  color:#92400e;
+  border-radius:999px;
+  padding:5px 9px;
+  font-size:10px;
+  font-weight:900;
+  box-shadow:0 3px 10px rgba(0,0,0,.16);
+  white-space:nowrap;
+}
+
 /* POPUP */
 .safepopup .leaflet-popup-content-wrapper{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.15);color:var(--navy);}
-.safepopup .leaflet-popup-content{margin:12px 15px;}
+.safepopup .leaflet-popup-content{margin:16px 18px 14px 16px;padding-right:26px;}
 .safepopup .leaflet-popup-tip{background:#fff;}
-.safepopup .leaflet-popup-close-button{color:var(--gray);}
-.ptitle{font-size:14px;font-weight:700;margin-bottom:5px;}
+/* 모바일에서 팝업 닫기 X를 누르다 지도 클릭으로 오인되는 문제 방지 */
+.safepopup .leaflet-popup-close-button{
+  width:38px !important;
+  height:38px !important;
+  top:4px !important;
+  right:4px !important;
+  display:flex !important;
+  align-items:center;
+  justify-content:center;
+  border-radius:12px;
+  background:rgba(241,245,249,.96);
+  color:#334155 !important;
+  font-size:26px !important;
+  line-height:38px !important;
+  font-weight:900;
+  text-decoration:none;
+  z-index:10;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.safepopup .leaflet-popup-close-button:active{background:#e2e8f0;transform:scale(.96);}
+.ptitle{font-size:14px;font-weight:700;margin-bottom:5px;padding-right:16px;}
 .prow{font-size:12px;color:var(--gray);margin-top:3px;display:flex;align-items:center;gap:5px;}
 .pbadge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;margin-bottom:7px;}
 
@@ -246,7 +279,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.15</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.19</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -331,6 +364,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <script>
 /* ── Bottom Sheet ── */
 let sheetInited = false;
+let routePanelResizeBound = false;
 
 function initSheet(){
   if(sheetInited) return;
@@ -354,6 +388,7 @@ function initSheet(){
     const base=isOpen?0:sheet.offsetHeight-56;
     const newY=Math.max(0, Math.min(sheet.offsetHeight-56, base+dy));
     sheet.style.transform=`translateY(${newY}px)`;
+    updateRoutePanelPosition(sheet.offsetHeight-newY);
   },{passive:true});
 
   handle.addEventListener('touchend',e=>{
@@ -368,12 +403,58 @@ function initSheet(){
       sheet.classList.toggle('open');
     }
     sheet.style.transform='';
+    requestAnimationFrame(()=>updateRoutePanelPosition());
   },{passive:true});
 
   handle.addEventListener('click',()=>{
     sheet.classList.toggle('open');
     sheet.style.transform='';
+    requestAnimationFrame(()=>updateRoutePanelPosition());
   });
+
+  if(!routePanelResizeBound){
+    routePanelResizeBound=true;
+    window.addEventListener('resize',()=>requestAnimationFrame(()=>updateRoutePanelPosition()));
+    window.addEventListener('orientationchange',()=>setTimeout(()=>updateRoutePanelPosition(),250));
+  }
+
+  requestAnimationFrame(()=>updateRoutePanelPosition());
+}
+
+function getSheetVisibleHeight(){
+  const sheet=document.getElementById('sheet');
+  if(!sheet||!sheet.classList.contains('show')) return 0;
+
+  const h=sheet.offsetHeight||0;
+  if(!h) return 0;
+  if(sheet.classList.contains('open')) return h;
+  return Math.min(56,h);
+}
+
+function updateRoutePanelPosition(visibleHeightOverride){
+  const panel=document.getElementById('routePanel');
+  if(!panel) return;
+
+  const baseBottom=70;
+
+  if(!panel.classList.contains('show')){
+    panel.style.setProperty('--route-panel-bottom',baseBottom+'px');
+    return;
+  }
+
+  const visible=Number.isFinite(visibleHeightOverride)
+    ? visibleHeightOverride
+    : getSheetVisibleHeight();
+
+  // 바텀시트가 접힌 상태에서는 기존 위치 유지, 열린 상태에서는 시트 높이만큼 위로 올림.
+  let target=visible>70 ? visible+12 : baseBottom;
+
+  // 너무 작은 화면에서는 상단바를 가리지 않도록 상승 높이를 제한함.
+  const topSafe=76;
+  const maxBottom=Math.max(baseBottom, window.innerHeight-panel.offsetHeight-topSafe);
+  target=Math.max(baseBottom,Math.min(target,maxBottom));
+
+  panel.style.setProperty('--route-panel-bottom',Math.round(target)+'px');
 }
 
 /* ── 설정 ── */
@@ -443,9 +524,7 @@ let layers={}, wmsTiles={}, chipOn={}, counts={};
 let watchId=null;
 let mapDomCleanups=[];
 let chipToggleEventsBound=false;
-let canvasRenderer=null;
-let fetchRunId=0;
-const IS_MOBILE = window.matchMedia('(pointer: coarse)').matches || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+let fetchRunToken=0;
 
 /* 길찾기 상태 */
 let routePickMode=false;
@@ -455,6 +534,14 @@ let waypointMarks=[];
 let fallbackRouteLine=null;
 let safeFacilityPoints=[];
 let safeFacilitySeen=new Set();
+
+/* CPTED 직선 안내 상태 */
+let cptedGuideLine=null;
+let cptedTargetMark=null;
+let cptedTapMark=null;
+let lastCptedDirectTapAt=0;
+let cptedTapRequestToken=0;
+let lastPopupCloseAt=0;
 
 /* ── 인트로 ── */
 function pick(el){
@@ -487,6 +574,8 @@ function goBack(){
   document.getElementById('map-screen').classList.remove('show');
   document.getElementById('sheet').classList.remove('show','open');
   clearRoute();
+  cptedTapRequestToken++;
+  clearCptedGuide(true);
 
   if(watchId){
     navigator.geolocation.clearWatch(watchId);
@@ -506,14 +595,12 @@ function goBack(){
   wmsTiles={};
   chipOn={};
   counts={};
-  canvasRenderer=null;
-  fetchRunId++;
 }
 
 /* ── 지도 ── */
 function initMap(){
   map = L.map('map',{zoomControl:false,attributionControl:false,tap:false,tapTolerance:15}).setView([36.5,127.8],7);
-  canvasRenderer = L.canvas({padding:0.5});
+  bindPopupCloseGuard();
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
     {maxZoom:19,subdomains:'abcd'}).addTo(map);
@@ -534,6 +621,8 @@ function buildChips(){
 
     const row=document.createElement('div');
     row.className='chip-row';
+    row.dataset.kind='xml';
+    row.dataset.key=key;
     row.innerHTML=`
       <div class="chip-left">
         <span class="chip-dot" style="background:${m.color}"></span>
@@ -556,6 +645,8 @@ function buildChips(){
 
     const row=document.createElement('div');
     row.className='chip-row';
+    row.dataset.kind='wms';
+    row.dataset.key=key;
     row.innerHTML=`
       <div class="chip-left">
         <span class="chip-dot" style="background:${m.color}"></span>
@@ -587,104 +678,112 @@ function bindChipToggleEvents(){
   if(!c||chipToggleEventsBound) return;
   chipToggleEventsBound=true;
 
-  let pointerInfo=null;
-  let lastHandledAt=0;
+  let startInfo=null;
+  let lastToggleAt=0;
 
   const findToggle=e=>{
-    const target=e.target;
-    if(!target||!target.closest) return null;
-    const direct=target.closest('.toggle');
-    if(direct&&c.contains(direct)) return direct;
-    const row=target.closest('.chip-row');
-    if(row&&c.contains(row)) return row.querySelector('.toggle');
+    const target=e&&e.target;
+    if(target&&target.closest){
+      const direct=target.closest('.toggle');
+      if(direct&&c.contains(direct)) return direct;
+      const row=target.closest('.chip-row');
+      if(row&&c.contains(row)) return row.querySelector('.toggle');
+    }
     return null;
   };
 
-  const isToggleGesture=info=>{
+  const movedTooMuch=info=>{
     if(!info) return false;
-    const dx=(info.endX??info.x)-info.x;
-    const dy=(info.endY??info.y)-info.y;
-    // CCTV가 항상 마지막 행에 있어 모바일에서 아주 작은 스크롤 보정이 섞이는 경우가 많음.
-    // 실제 스크롤 의도가 명확한 큰 이동만 제외하고, 짧은 탭은 정상 토글로 처리함.
-    return Math.sqrt(dx*dx+dy*dy) <= 28;
+    const dx=(info.x2??info.x)-info.x;
+    const dy=(info.y2??info.y)-info.y;
+    const adx=Math.abs(dx), ady=Math.abs(dy);
+    // CCTV처럼 마지막 행을 누를 때 손가락이 10px 이상 미끄러지는 경우가 많아서
+    // 기존보다 훨씬 느슨하게 판단함. 명확한 세로 스크롤만 토글에서 제외.
+    return ady>34 && ady>adx*1.35;
   };
 
+  const runToggle=(e,btn)=>{
+    if(!btn) return;
+    if(e){
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+    }
+    const now=Date.now();
+    if(now-lastToggleAt<280) return;
+    lastToggleAt=now;
+    applyToggleButton(btn);
+  };
+
+  // 모바일 주 처리: pointer 이벤트가 있는 브라우저에서는 pointerup으로 처리
   if(window.PointerEvent){
     c.addEventListener('pointerdown',e=>{
       const btn=findToggle(e);
       if(!btn) return;
-      pointerInfo={
-        id:e.pointerId,
-        x:e.clientX,
-        y:e.clientY,
-        endX:e.clientX,
-        endY:e.clientY,
-        btn
-      };
-    },{passive:true});
+      startInfo={id:e.pointerId,x:e.clientX,y:e.clientY,x2:e.clientX,y2:e.clientY,btn};
+    },{passive:true,capture:true});
 
     c.addEventListener('pointermove',e=>{
-      if(!pointerInfo||pointerInfo.id!==e.pointerId) return;
-      pointerInfo.endX=e.clientX;
-      pointerInfo.endY=e.clientY;
-    },{passive:true});
+      if(!startInfo||startInfo.id!==e.pointerId) return;
+      startInfo.x2=e.clientX;
+      startInfo.y2=e.clientY;
+    },{passive:true,capture:true});
 
     c.addEventListener('pointerup',e=>{
-      if(!pointerInfo||pointerInfo.id!==e.pointerId) return;
-      pointerInfo.endX=e.clientX;
-      pointerInfo.endY=e.clientY;
+      const btn=findToggle(e)||(startInfo&&startInfo.btn);
+      if(!btn) return;
+      if(startInfo&&startInfo.id===e.pointerId){
+        startInfo.x2=e.clientX;
+        startInfo.y2=e.clientY;
+      }
+      if(movedTooMuch(startInfo)){
+        startInfo=null;
+        return;
+      }
+      startInfo=null;
+      runToggle(e,btn);
+    },{passive:false,capture:true});
 
-      const btn=findToggle(e)||pointerInfo.btn;
-      if(!btn){ pointerInfo=null; return; }
-      if(!isToggleGesture(pointerInfo)){ pointerInfo=null; return; }
-
-      e.preventDefault();
-      e.stopPropagation();
-      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
-
-      lastHandledAt=Date.now();
-      pointerInfo=null;
-      applyToggleButton(btn);
-    },{passive:false});
-
-    c.addEventListener('pointercancel',()=>{ pointerInfo=null; },{passive:true});
-  }else{
-    // 구형 모바일 브라우저 예비 처리
-    c.addEventListener('touchstart',e=>{
-      const btn=findToggle(e);
-      if(!btn||!e.touches||!e.touches[0]) return;
-      pointerInfo={x:e.touches[0].clientX,y:e.touches[0].clientY,endX:e.touches[0].clientX,endY:e.touches[0].clientY,btn};
-    },{passive:true});
-
-    c.addEventListener('touchmove',e=>{
-      if(!pointerInfo||!e.touches||!e.touches[0]) return;
-      pointerInfo.endX=e.touches[0].clientX;
-      pointerInfo.endY=e.touches[0].clientY;
-    },{passive:true});
-
-    c.addEventListener('touchend',e=>{
-      const btn=findToggle(e)||(pointerInfo&&pointerInfo.btn);
-      if(!btn||!isToggleGesture(pointerInfo)){ pointerInfo=null; return; }
-      e.preventDefault();
-      e.stopPropagation();
-      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
-      lastHandledAt=Date.now();
-      pointerInfo=null;
-      applyToggleButton(btn);
-    },{passive:false});
+    c.addEventListener('pointercancel',()=>{startInfo=null;},{passive:true,capture:true});
   }
 
+  // 구형 iOS Safari 보강: PointerEvent가 없을 때만 touchend 사용
+  c.addEventListener('touchstart',e=>{
+    if(window.PointerEvent) return;
+    const btn=findToggle(e);
+    if(!btn||!e.touches||!e.touches[0]) return;
+    startInfo={x:e.touches[0].clientX,y:e.touches[0].clientY,x2:e.touches[0].clientX,y2:e.touches[0].clientY,btn};
+  },{passive:true,capture:true});
+
+  c.addEventListener('touchmove',e=>{
+    if(window.PointerEvent||!startInfo||!e.touches||!e.touches[0]) return;
+    startInfo.x2=e.touches[0].clientX;
+    startInfo.y2=e.touches[0].clientY;
+  },{passive:true,capture:true});
+
+  c.addEventListener('touchend',e=>{
+    if(window.PointerEvent) return;
+    const btn=findToggle(e)||(startInfo&&startInfo.btn);
+    if(!btn) return;
+    if(movedTooMuch(startInfo)){
+      startInfo=null;
+      return;
+    }
+    startInfo=null;
+    runToggle(e,btn);
+  },{passive:false,capture:true});
+
+  // PC 클릭 + 모바일 ghost click 중복 방지
   c.addEventListener('click',e=>{
     const btn=findToggle(e);
     if(!btn) return;
-
-    e.preventDefault();
-    e.stopPropagation();
-    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
-
-    // 모바일에서는 pointerup/touchend 후 click이 한 번 더 발생할 수 있으므로 중복 토글 방지
-    if(Date.now()-lastHandledAt<700) return;
-    applyToggleButton(btn);
+    if(Date.now()-lastToggleAt<550){
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+      return;
+    }
+    runToggle(e,btn);
   },true);
 }
 
@@ -699,25 +798,24 @@ function toggleChip(e, btn){
 function applyToggleButton(btn){
   if(!btn||btn._busy) return;
   btn._busy=true;
-  setTimeout(()=>{btn._busy=false;},180);
+  setTimeout(()=>{btn._busy=false;},80);
 
   const kind=btn.dataset.kind;
   const key=btn.dataset.key;
   const next=btn.getAttribute('aria-pressed')!=='true';
 
-  // UI 상태를 먼저 바꿔 모바일에서 터치가 먹었는지 즉시 보이게 함
+  console.log('[toggle]',kind,key,next?'ON':'OFF');
   btn.setAttribute('aria-pressed',next?'true':'false');
   btn.classList.toggle('on',next);
 
-  requestAnimationFrame(()=>{
-    if(kind==='xml'){
-      setXmlLayerVisible(key,next);
-      return;
-    }
-    if(kind==='wms'){
-      setWmsLayerVisible(key,next);
-    }
-  });
+  if(kind==='xml'){
+    setXmlLayerVisible(key,next);
+    return;
+  }
+
+  if(kind==='wms'){
+    setWmsLayerVisible(key,next);
+  }
 }
 
 function setXmlLayerVisible(key,on){
@@ -746,6 +844,10 @@ function setWmsLayerVisible(key,on){
     if(!map.hasLayer(layer)) layer.addTo(map);
   }else{
     if(map.hasLayer(layer)) map.removeLayer(layer);
+    if(key==='cpted'){
+      cptedTapRequestToken++;
+      clearCptedGuide(true);
+    }
   }
 }
 
@@ -756,6 +858,78 @@ function toggleXML(key){
 
 function toggleWMS(key){
   setWmsLayerVisible(key,!chipOn['w_'+key]);
+}
+
+function clearCptedGuide(closePopup=true){
+  if(cptedGuideLine&&map) map.removeLayer(cptedGuideLine);
+  if(cptedTargetMark&&map) map.removeLayer(cptedTargetMark);
+  if(cptedTapMark&&map) map.removeLayer(cptedTapMark);
+  cptedGuideLine=null;
+  cptedTargetMark=null;
+  cptedTapMark=null;
+  if(closePopup&&map) map.closePopup();
+}
+
+function markPopupCloseTouch(e){
+  lastPopupCloseAt=Date.now();
+  if(e){
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+  }
+}
+
+function bindPopupCloseGuard(){
+  if(!map||map._popupCloseGuardBound) return;
+  map._popupCloseGuardBound=true;
+
+  map.on('popupopen',e=>{
+    const popupEl=e.popup&&e.popup.getElement?e.popup.getElement():null;
+    if(!popupEl) return;
+    const closeBtn=popupEl.querySelector('.leaflet-popup-close-button');
+    if(!closeBtn||closeBtn._safeWalkCloseGuard) return;
+    closeBtn._safeWalkCloseGuard=true;
+
+    ['pointerdown','touchstart','mousedown'].forEach(type=>{
+      closeBtn.addEventListener(type,markPopupCloseTouch,{capture:true,passive:true});
+    });
+
+    closeBtn.addEventListener('click',ev=>{
+      ev.preventDefault();
+      markPopupCloseTouch(ev);
+      if(map) map.closePopup();
+    },{capture:true});
+  });
+}
+
+function drawCptedGuide(fromLatLng,toLatLng){
+  if(!map) return;
+
+  cptedGuideLine=L.polyline(
+    [[fromLatLng.lat,fromLatLng.lng],[toLatLng.lat,toLatLng.lng]],
+    {color:'#b45309',weight:4,opacity:.9,dashArray:'6,8',lineCap:'round',lineJoin:'round'}
+  ).addTo(map);
+
+  cptedTapMark=L.circleMarker([fromLatLng.lat,fromLatLng.lng],{
+    radius:6,
+    color:'#b45309',
+    weight:3,
+    fillColor:'#fff7ed',
+    fillOpacity:1,
+    interactive:false
+  }).addTo(map);
+
+  const icon=L.divIcon({
+    html:'<div class="cpted-target-label">🏗 가장 가까운 CPTED</div>',
+    className:'',
+    iconSize:null,
+    iconAnchor:[20,18]
+  });
+
+  cptedTargetMark=L.marker([toLatLng.lat,toLatLng.lng],{
+    icon,
+    zIndexOffset:920,
+    interactive:false
+  }).addTo(map);
 }
 
 /* ── GPS ── */
@@ -806,16 +980,24 @@ function onLocated(){
   });
 
   async function handleCptedTap(latlng){
+    const now=Date.now();
+    if(now-lastPopupCloseAt<520) return;
+    if(now-lastCptedDirectTapAt<320) return;
+    lastCptedDirectTapAt=now;
+
+    // 지도를 다시 찍으면 기존 CPTED 팝업·직선·표식을 먼저 정리함.
+    clearCptedGuide(true);
+
     if(!chipOn['w_cpted']||!wmsTiles['cpted']) return;
 
     const spinner=document.getElementById('map-spinner');
     if(spinner) spinner.classList.add('show');
 
-    const clickPt=L.CRS.EPSG3857.project(latlng);
+    const requestToken=++cptedTapRequestToken;
 
-    // CPTED는 점 마커가 아니라 구역형 WMS라서, 터치 지점 300m만 조회하면 대표 좌표가 범위 밖으로 빠질 수 있음.
-    // 그래서 현재 화면 범위를 기준으로 CPTED 목록을 가져온 뒤, 터치 지점과 가장 가까운 항목을 골라 팝업으로 표시함.
-    const b=map.getBounds().pad(0.25);
+    // CPTED는 점 마커가 아니라 구역형 WMS라서, 화면 범위 안의 대표 좌표 목록을 가져온 뒤
+    // 사용자가 찍은 좌표와 가장 가까운 대표 좌표를 계산해 직선으로 연결함.
+    const b=map.getBounds().pad(0.35);
     const nw=L.CRS.EPSG3857.project(b.getNorthWest());
     const se=L.CRS.EPSG3857.project(b.getSouthEast());
 
@@ -827,7 +1009,7 @@ function onLocated(){
       layer:'A2SM_CPTED_G',
       style:'A2SM_CPTED_G',
       currentPage:'1',
-      perPage:'200'
+      perPage:'300'
     });
 
     try{
@@ -838,10 +1020,12 @@ function onLocated(){
       });
 
       const data=await res.json();
+      if(requestToken!==cptedTapRequestToken) return;
+
       const items=(data.layerList||[]).filter(it=>it.x&&it.y);
 
       if(items.length===0){
-        L.popup({className:'safepopup',closeButton:true,maxWidth:260})
+        L.popup({className:'safepopup',closeButton:true,maxWidth:260,closeOnClick:true})
           .setLatLng(latlng)
           .setContent(`
             <div class="pbadge" style="background:#b4530918;color:#b45309">🏗 범죄예방환경설계</div>
@@ -852,6 +1036,7 @@ function onLocated(){
       }
 
       let closest=null;
+      let closestLatLng=null;
       let minDist=Infinity;
 
       items.forEach(it=>{
@@ -859,18 +1044,18 @@ function onLocated(){
         const y=parseFloat(it.y);
         if(isNaN(x)||isNaN(y)) return;
 
-        const dx=x-clickPt.x;
-        const dy=y-clickPt.y;
-        const dist=Math.sqrt(dx*dx+dy*dy);
+        const p=L.CRS.EPSG3857.unproject(L.point(x,y));
+        const d=distM(latlng.lat,latlng.lng,p.lat,p.lng);
 
-        if(dist<minDist){
-          minDist=dist;
+        if(d<minDist){
+          minDist=d;
           closest=it;
+          closestLatLng=p;
         }
       });
 
-      if(!closest){
-        L.popup({className:'safepopup',closeButton:true,maxWidth:260})
+      if(!closest||!closestLatLng){
+        L.popup({className:'safepopup',closeButton:true,maxWidth:260,closeOnClick:true})
           .setLatLng(latlng)
           .setContent(`
             <div class="pbadge" style="background:#b4530918;color:#b45309">🏗 범죄예방환경설계</div>
@@ -880,23 +1065,26 @@ function onLocated(){
         return;
       }
 
+      drawCptedGuide(latlng,closestLatLng);
+
       const addr=closest.adres||closest.roadnm_add||closest.jibun_addr||'';
       const district=closest.jurisd_inst_nm||closest.jp_nm||'';
       const distText=minDist<1000?`${Math.round(minDist)}m`:`${(minDist/1000).toFixed(1)}km`;
 
-      L.popup({className:'safepopup',closeButton:true,maxWidth:270})
+      L.popup({className:'safepopup',closeButton:true,maxWidth:285,closeOnClick:true})
         .setLatLng(latlng)
         .setContent(`
           <div class="pbadge" style="background:#b4530918;color:#b45309">🏗 범죄예방환경설계</div>
-          <div class="ptitle">가까운 CPTED 구역</div>
+          <div class="ptitle">가장 가까운 CPTED 구역</div>
           ${addr?`<div class="prow">📍 ${addr}</div>`:''}
           ${district?`<div class="prow">🏢 ${district}</div>`:''}
-          <div class="prow" style="color:#b45309">터치 지점 기준 약 ${distText}</div>
+          <div class="prow" style="color:#b45309">선택 지점에서 직선거리 약 ${distText}</div>
+          <div class="prow">지도에 점선으로 선택 지점과 CPTED 대표 좌표를 연결했습니다.</div>
           ${closest.totcnt?`<div class="prow">현재 화면 내 ${closest.totcnt}개 구역 조회</div>`:''}
         `).openOn(map);
     }catch(err){
       console.warn('CPTED 정보 조회 실패',err);
-      L.popup({className:'safepopup',closeButton:true,maxWidth:260})
+      L.popup({className:'safepopup',closeButton:true,maxWidth:260,closeOnClick:true})
         .setLatLng(latlng)
         .setContent(`
           <div class="pbadge" style="background:#b4530918;color:#b45309">🏗 범죄예방환경설계</div>
@@ -910,6 +1098,7 @@ function onLocated(){
 
   map.on('click', e=>{
     if(routePickMode){
+      clearCptedGuide(true);
       routePickMode=false;
       document.body.classList.remove('map-pick-mode');
       setDestinationAndRoute(e.latlng);
@@ -943,6 +1132,7 @@ function onLocated(){
     const tappedLatLng=map.containerPointToLatLng(pt);
 
     if(routePickMode){
+      clearCptedGuide(true);
       routePickMode=false;
       document.body.classList.remove('map-pick-mode');
       setDestinationAndRoute(tappedLatLng);
@@ -1057,7 +1247,7 @@ function addWMS(){
 
 /* ── XML 데이터 ── */
 async function fetchAll(silent=false){
-  const runId=++fetchRunId;
+  const token=++fetchRunToken;
   safeFacilityPoints=[];
   safeFacilitySeen=new Set();
 
@@ -1072,16 +1262,16 @@ async function fetchAll(silent=false){
       }
     });
 
-    await Promise.allSettled(GROUP[grp].xml.map(k=>fetchLayer(k,runId)));
-    if(runId===fetchRunId) updateStats();
+    await Promise.allSettled(GROUP[grp].xml.map(k=>fetchLayer(k, token)));
+    updateStats();
   }catch(e){
     console.warn('fetchAll 오류:',e);
   }finally{
-    if(runId===fetchRunId && spinner) spinner.classList.remove('show');
+    if(spinner) spinner.classList.remove('show');
   }
 }
 
-async function fetchLayer(key,runId=fetchRunId){
+async function fetchLayer(key, token=null){
   const cfg=LAYER_API[key];
   if(!cfg){
     console.warn('['+key+'] LAYER_API 없음');
@@ -1099,15 +1289,13 @@ async function fetchLayer(key,runId=fetchRunId){
   const se=L.CRS.EPSG3857.project(bounds.getSouthEast());
   const area3857=[nw.y,se.y,nw.x,se.x].join(',');
 
-  const perPage = key==='cctv' && IS_MOBILE ? '350' : '500';
-
   const params=new URLSearchParams({
     layerName:cfg.layer,
     style:cfg.style,
     area4326,
     area3857,
     currentPage:'1',
-    perPage
+    perPage:'500'
   });
 
   try{
@@ -1122,11 +1310,14 @@ async function fetchLayer(key,runId=fetchRunId){
     });
 
     const data=await res.json();
-    if(runId!==fetchRunId || !map) return;
-
     const items=data.resultList||[];
 
     if(items.length===0) throw new Error('no items');
+
+    if(token!==null && token!==fetchRunToken){
+      console.log('['+key+'] 오래된 요청 응답 무시');
+      return;
+    }
 
     const lg=L.layerGroup();
     let cnt=0;
@@ -1222,26 +1413,6 @@ function mkMarker(key,lat,lng,it){
           (jp?`<span style="color:#64748b">📍 ${jp}</span>`:'');
   }
 
-  const popup=L.popup({className:'safepopup',closeButton:true,maxWidth:240}).setContent(`
-    <div class="pbadge" style="background:${m.color}18;color:${m.color}">${m.emoji} ${m.label}</div>
-    <div class="ptitle">${name}</div>
-    ${addr?`<div class="prow">📍 ${addr}</div>`:''}
-    ${extra?`<div class="prow">${extra}</div>`:''}
-  `);
-
-  // CCTV는 데이터 개수가 많아 모바일에서 500개 안팎의 divIcon DOM을 add/remove하면 토글이 멈춘 것처럼 보임.
-  // 모바일에서는 Canvas 기반 circleMarker로 렌더링해 레이어 on/off 반응성을 확보함.
-  if(key==='cctv' && IS_MOBILE && canvasRenderer){
-    return L.circleMarker([lat,lng],{
-      renderer:canvasRenderer,
-      radius:6,
-      color:m.color,
-      weight:2,
-      fillColor:'#ffffff',
-      fillOpacity:0.95
-    }).bindPopup(popup);
-  }
-
   const icon=L.divIcon({
     html:`<div style="width:36px;height:36px;border-radius:50%;background:#fff;border:2.5px solid ${m.color};display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 3px 10px rgba(0,0,0,.18);">${m.emoji}</div>`,
     className:'',
@@ -1249,9 +1420,15 @@ function mkMarker(key,lat,lng,it){
     iconAnchor:[18,18]
   });
 
-  return L.marker([lat,lng],{icon}).bindPopup(popup);
+  return L.marker([lat,lng],{icon}).bindPopup(
+    L.popup({className:'safepopup',closeButton:true,maxWidth:240}).setContent(`
+      <div class="pbadge" style="background:${m.color}18;color:${m.color}">${m.emoji} ${m.label}</div>
+      <div class="ptitle">${name}</div>
+      ${addr?`<div class="prow">📍 ${addr}</div>`:''}
+      ${extra?`<div class="prow">${extra}</div>`:''}
+    `)
+  );
 }
-
 
 
 
@@ -1303,6 +1480,8 @@ function getFacilityInfo(key,it){
 }
 
 function startRoutePick(){
+  cptedTapRequestToken++;
+  clearCptedGuide(true);
   if(!map){
     showRouteToast('지도가 아직 준비되지 않았습니다.');
     return;
@@ -1604,6 +1783,7 @@ function updateRoutePanel(summary,safety,waypoints,isFallback){
 
   if(!panel) return;
   panel.classList.add('show');
+  updateRoutePanelPosition();
   title.textContent=isFallback?'⚠️ 임시 안전 경유 경로':'🧭 실제 지도 기반 빨간색 경로';
   sub.textContent=isFallback?'도로망 API 실패로 안전 경유지 기준 임시 빨간 점선을 표시했습니다.':'실제 보행 가능한 지도 도로망을 따라 경로를 표시했습니다.';
   dist.textContent=formatDistance(summary.distanceM);
@@ -1629,6 +1809,7 @@ function showRoutePanelLoading(dest){
   const panel=document.getElementById('routePanel');
   if(!panel) return;
   panel.classList.add('show');
+  updateRoutePanelPosition();
   document.getElementById('routeTitle').textContent='🧭 실제 지도 경로 계산 중';
   document.getElementById('routeSub').textContent='안전시설 후보를 선별하고 실제 도로망 도보 경로를 호출하고 있습니다.';
   document.getElementById('routeDistance').textContent='계산 중';
@@ -1651,7 +1832,10 @@ function clearRoute(hidePanel=true){
   waypointMarks=[];
   if(hidePanel){
     const panel=document.getElementById('routePanel');
-    if(panel) panel.classList.remove('show');
+    if(panel){
+      panel.classList.remove('show');
+      updateRoutePanelPosition();
+    }
   }
 }
 
