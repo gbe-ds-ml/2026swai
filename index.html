@@ -87,9 +87,9 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 }
 .sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--gray2);margin-bottom:6px;}
 .sheet-label{font-size:11px;font-weight:700;color:var(--gray);letter-spacing:.08em;}
-.sheet-body{padding:0 14px 28px;touch-action:auto;}
+.sheet-body{padding:0 14px max(28px, env(safe-area-inset-bottom));touch-action:pan-y;max-height:62vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .chips{display:flex;flex-direction:column;gap:0;}
-.chip-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--gray2);touch-action:manipulation;}
+.chip-row{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:11px 0;border-bottom:1px solid var(--gray2);touch-action:manipulation;position:relative;cursor:pointer;}
 .chip-row:last-child{border-bottom:none;}
 .chip-left{display:flex;align-items:center;gap:10px;}
 .chip-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
@@ -111,6 +111,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
   appearance:none;
   -webkit-user-select:none;
   user-select:none;
+  z-index:2;
 }
 .toggle-track{
   position:absolute;
@@ -237,7 +238,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.13</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.4.14</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -422,10 +423,10 @@ const WMS_LAYER = {
 };
 
 const GROUP = {
-  child: {label:'아동',  color:'#059669', emoji:'🧒',  xml:['bell','police','child_house'], wms:['children','cctv'], special:'child_house'},
-  youth: {label:'청소년',color:'#db2777', emoji:'🚶‍♀️', xml:['bell','police','child_house'], wms:['women','cctv'], special:null},
-  elder: {label:'노인',  color:'#ea580c', emoji:'👴',  xml:['bell','police'],              wms:['elder_c','cctv'], special:null},
-  cpted: {label:'CPTED', color:'#b45309', emoji:'🏗',  xml:[],                            wms:['cpted'], special:null},
+  child: {label:'아동',  color:'#059669', emoji:'🧒',  xml:['bell','police','child_house','cctv'], wms:['children'], special:'child_house'},
+  youth: {label:'청소년',color:'#db2777', emoji:'🚶‍♀️', xml:['bell','police','child_house','cctv'], wms:['women'], special:null},
+  elder: {label:'노인',  color:'#ea580c', emoji:'👴',  xml:['bell','police','cctv'],        wms:['elder_c'], special:null},
+  cpted: {label:'CPTED', color:'#b45309', emoji:'🏗',  xml:[],                          wms:['cpted'], special:null},
 };
 
 /* ── 상태 ── */
@@ -536,7 +537,7 @@ function buildChips(){
 
   g.wms.forEach(key=>{
     const m=WMS_LAYER[key];
-    const defaultOn = key === 'cpted' ? grp === 'cpted' : true;
+    const defaultOn = key === 'cpted' ? grp === 'cpted' : key !== 'cctv';
     chipOn['w_'+key]=defaultOn;
 
     const row=document.createElement('div');
@@ -572,25 +573,69 @@ function bindChipToggleEvents(){
   if(!c||chipToggleEventsBound) return;
   chipToggleEventsBound=true;
 
-  const handler=e=>{
-    const btn=e.target.closest ? e.target.closest('.toggle') : null;
-    if(!btn||!c.contains(btn)) return;
+  let touchInfo=null;
+  let lastTouchHandledAt=0;
 
-    if(e.type==='click' && btn._lastTouchAt && Date.now()-btn._lastTouchAt<450){
-      e.preventDefault();
-      e.stopPropagation();
+  const findToggle=e=>{
+    const target=e.target;
+    if(!target||!target.closest) return null;
+    const direct=target.closest('.toggle');
+    if(direct&&c.contains(direct)) return direct;
+    const row=target.closest('.chip-row');
+    if(row&&c.contains(row)) return row.querySelector('.toggle');
+    return null;
+  };
+
+  c.addEventListener('touchstart',e=>{
+    const btn=findToggle(e);
+    if(!btn||!e.touches||!e.touches[0]) return;
+    touchInfo={
+      x:e.touches[0].clientX,
+      y:e.touches[0].clientY,
+      t:Date.now(),
+      btn,
+      moved:false
+    };
+  },{passive:true});
+
+  c.addEventListener('touchmove',e=>{
+    if(!touchInfo||!e.touches||!e.touches[0]) return;
+    const dx=e.touches[0].clientX-touchInfo.x;
+    const dy=e.touches[0].clientY-touchInfo.y;
+    if(Math.sqrt(dx*dx+dy*dy)>10) touchInfo.moved=true;
+  },{passive:true});
+
+  c.addEventListener('touchend',e=>{
+    const btn=findToggle(e)||(touchInfo&&touchInfo.btn);
+    if(!btn) return;
+
+    const dt=touchInfo?Date.now()-touchInfo.t:0;
+    if(touchInfo&&touchInfo.moved&&dt>120){
+      touchInfo=null;
       return;
     }
 
     e.preventDefault();
     e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
 
-    if(e.type==='touchend') btn._lastTouchAt=Date.now();
+    lastTouchHandledAt=Date.now();
+    touchInfo=null;
     applyToggleButton(btn);
-  };
+  },{passive:false});
 
-  c.addEventListener('touchend',handler,{passive:false});
-  c.addEventListener('click',handler,false);
+  c.addEventListener('click',e=>{
+    const btn=findToggle(e);
+    if(!btn) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+
+    // iPhone Safari는 touchend 뒤에 click이 한 번 더 들어오는 경우가 있어 중복 실행을 막음.
+    if(Date.now()-lastTouchHandledAt<650) return;
+    applyToggleButton(btn);
+  },true);
 }
 
 function toggleChip(e, btn){
@@ -913,9 +958,7 @@ const SafemapWMS4326 = L.TileLayer.extend({
 const SafemapWMS3857 = L.TileLayer.extend({
   getTileUrl: function(coords){
     const b = this._tileCoordsToBounds(coords);
-    const sw = L.CRS.EPSG3857.project(b.getSouthWest());
-    const ne = L.CRS.EPSG3857.project(b.getNorthEast());
-    const bbox = [sw.x, sw.y, ne.x, ne.y].join(',');
+    const bbox = [b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].join(',');
     return this._url
       + '?serviceKey=' + API_KEY
       + '&layers=A2SM_CCTV_INFO'
@@ -946,8 +989,6 @@ function addWMS(){
           opacity:0.5,
           tileSize:256,
         });
-      } else if(key==='cctv'){
-        t = new SafemapWMS3857(url, {opacity:0.5, tileSize:256});
       } else {
         t = new SafemapWMS4326(url, {opacity:0.5, tileSize:256});
       }
@@ -1632,18 +1673,6 @@ function updateStats(){
       </div>
     </div>`);
   });
-
-  // CCTV는 WMS 레이어지만 통계 바에 표시
-  if(g.wms.includes('cctv')&&chipOn['w_cctv']){
-    const m=LAYER['cctv'];
-    items.push(`<div class="stat-item">
-      <span class="stat-emoji">${m.emoji}</span>
-      <div class="stat-info">
-        <span class="stat-num" style="color:${m.color}">ON</span>
-        <span class="stat-lbl">${m.label}</span>
-      </div>
-    </div>`);
-  }
 
   bar.style.display=items.length?'flex':'none';
   bar.innerHTML=items.join('');
