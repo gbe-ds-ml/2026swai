@@ -99,24 +99,29 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .chip-label{font-size:13px;font-weight:600;color:var(--navy);}
 .chip-sub{font-size:11px;color:var(--gray);margin-top:1px;}
 
-/* 숨긴 체크박스(접근성 유지) + CSS만으로 그리는 시각 토글.
-   드래그·포인터 추적 JS가 전혀 필요 없어 iOS Safari에서 안 깨짐. */
-.sw-in{position:absolute;opacity:0;width:0;height:0;margin:0;pointer-events:none;}
+/* 시각 토글: 상태는 .chip-row.on 클래스로 표현.
+   체크박스 합성클릭(label→input) 의존을 버리고 JS click 한 번으로 직접 토글하므로
+   iOS Safari에서 가장 확실하게 동작함. 토글은 데이터 로딩과 완전히 분리되어 즉시 반응함. */
 .sw-vis{position:relative;width:46px;height:28px;border-radius:14px;background:var(--gray2);flex-shrink:0;transition:background .2s;pointer-events:none;}
 .sw-vis .toggle-thumb{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:transform .2s;}
-.sw-in:checked ~ .sw-vis{background:var(--blue);}
-.sw-in:checked ~ .sw-vis .toggle-thumb{transform:translateX(18px);}
-.sw-in:focus-visible ~ .sw-vis{outline:3px solid rgba(37,99,235,.4);outline-offset:2px;}
+.sw-vis .toggle-thumb .mini-spin{display:none;}
+.chip-row.on .sw-vis{background:var(--blue);}
+.chip-row.on .sw-vis .toggle-thumb{transform:translateX(18px);}
+.chip-row:focus-visible{outline:none;}
+.chip-row:focus-visible .sw-vis{outline:3px solid rgba(37,99,235,.4);outline-offset:2px;}
+/* 데이터 로딩 중: 토글은 이미 ON으로 이동해 있고, 손잡이 안에서 스피너가 돎. */
+.chip-row.loading .sw-vis .toggle-thumb .mini-spin{display:block;position:absolute;inset:4px;border:2px solid rgba(255,255,255,.55);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
 
-/* CCTV: 겉모양은 예전 긴 슬라이드(SLIDE→ON)로 복구. 단, 동작은 네이티브 탭이라 아이폰에서 안 깨짐. */
+/* CCTV: 겉모양은 예전 긴 슬라이드(SLIDE→ON). 동작은 다른 토글과 동일한 탭. */
 .chip-row[data-key="cctv"]{min-height:62px;padding:15px 0;}
 .chip-row[data-key="cctv"] .sw-vis{width:124px;height:40px;border-radius:999px;background:#e2e8f0;border:1px solid rgba(100,116,139,.25);}
 .chip-row[data-key="cctv"] .sw-vis .toggle-thumb{width:24px;height:24px;top:8px;left:8px;}
-.chip-row[data-key="cctv"] .sw-in:checked ~ .sw-vis .toggle-thumb{transform:translateX(84px);}
+.chip-row[data-key="cctv"].on .sw-vis .toggle-thumb{transform:translateX(84px);}
 .chip-row[data-key="cctv"] .sw-vis::after{content:'SLIDE';position:absolute;top:50%;right:14px;transform:translateY(-50%);font-size:10px;font-weight:800;letter-spacing:.08em;color:rgba(100,116,139,.56);pointer-events:none;}
-.chip-row[data-key="cctv"] .sw-in:checked ~ .sw-vis{background:#dbeafe;border-color:rgba(37,99,235,.38);}
-.chip-row[data-key="cctv"] .sw-in:checked ~ .sw-vis .toggle-thumb{background:var(--blue);}
-.chip-row[data-key="cctv"] .sw-in:checked ~ .sw-vis::after{content:'ON';right:auto;left:16px;color:rgba(37,99,235,.48);}
+.chip-row[data-key="cctv"].on .sw-vis{background:#dbeafe;border-color:rgba(37,99,235,.38);}
+.chip-row[data-key="cctv"].on .sw-vis .toggle-thumb{background:var(--blue);}
+.chip-row[data-key="cctv"].on .sw-vis::after{content:'ON';right:auto;left:16px;color:rgba(37,99,235,.48);}
+.chip-row[data-key="cctv"].loading .sw-vis::after{content:'로딩중';right:auto;left:16px;color:rgba(37,99,235,.6);}
 .chips,.chip-row{-webkit-user-select:none;user-select:none;}
 
 
@@ -256,7 +261,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.5.0</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.5.1</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -622,11 +627,14 @@ function buildChips(){
     const m=LAYER[key];
     chipOn[key]=true;
 
-    // 행 자체가 <label> — 행 어디를 탭해도 안의 체크박스가 토글됨.
-    const row=document.createElement('label');
-    row.className='chip-row';
+    // 행은 <div> + role=switch. 클릭은 JS가 직접 처리(아이폰에서 가장 확실). 기본 ON.
+    const row=document.createElement('div');
+    row.className='chip-row on';
     row.dataset.kind='xml';
     row.dataset.key=key;
+    row.setAttribute('role','switch');
+    row.setAttribute('aria-checked','true');
+    row.setAttribute('tabindex','0');
     row.innerHTML=`
       <div class="chip-left">
         <span class="chip-dot" style="background:${m.color}"></span>
@@ -634,8 +642,7 @@ function buildChips(){
           <div class="chip-label">${m.emoji} ${m.label}</div>
         </div>
       </div>
-      <input type="checkbox" class="sw-in" data-kind="xml" data-key="${key}" checked>
-      <span class="sw-vis"><span class="toggle-thumb"></span></span>`;
+      <span class="sw-vis"><span class="toggle-thumb"><span class="mini-spin"></span></span></span>`;
     c.appendChild(row);
   });
 
@@ -644,10 +651,13 @@ function buildChips(){
     const defaultOn = key === 'cpted' ? grp === 'cpted' : key !== 'cctv';
     chipOn['w_'+key]=defaultOn;
 
-    const row=document.createElement('label');
-    row.className='chip-row';
+    const row=document.createElement('div');
+    row.className='chip-row'+(defaultOn?' on':'');
     row.dataset.kind='wms';
     row.dataset.key=key;
+    row.setAttribute('role','switch');
+    row.setAttribute('aria-checked',defaultOn?'true':'false');
+    row.setAttribute('tabindex','0');
     row.innerHTML=`
       <div class="chip-left">
         <span class="chip-dot" style="background:${m.color}"></span>
@@ -655,8 +665,7 @@ function buildChips(){
           <div class="chip-label">🗺 ${m.label}</div>
         </div>
       </div>
-      <input type="checkbox" class="sw-in" data-kind="wms" data-key="${key}" ${defaultOn?'checked':''}>
-      <span class="sw-vis"><span class="toggle-thumb"></span></span>`;
+      <span class="sw-vis"><span class="toggle-thumb"><span class="mini-spin"></span></span></span>`;
     c.appendChild(row);
   });
 
@@ -667,28 +676,31 @@ function buildChips(){
   bindChipToggleEvents();
 }
 
-/* 모바일 Safari 안정형 토글 처리 (v1.5.0)
-   - 직접 touch/pointer 추적·드래그 로직을 모두 제거하고, 네이티브 <label>+<input type=checkbox>에 위임함.
-   - 이벤트는 change 하나만 처리하면 됨. iOS Safari의 ghost click·스크롤 충돌이 구조적으로 사라짐.
+/* 모바일 Safari 안정형 토글 처리 (v1.5.1)
+   - label→checkbox 암묵 토글에 의존하지 않고, div + JS click 한 번으로 직접 상태를 뒤집음.
+     (아이폰 사파리에서 합성 클릭이 안 먹는 경우를 원천 차단)
+   - 토글 슬라이드는 즉시 이동하고, 데이터 로딩은 setXmlLayerVisible 안에서 별도로 돌며 손잡이 스피너로 표시됨.
    - WMS는 display:none이 아니라 Leaflet addLayer/removeLayer로 제어함. */
 function bindChipToggleEvents(){
   const c=document.getElementById('chips');
   if(!c||chipToggleEventsBound) return;
   chipToggleEventsBound=true;
 
-  c.addEventListener('change',e=>{
-    const inp=e.target;
-    if(!inp||!inp.classList||!inp.classList.contains('sw-in')) return;
+  // 상태 변경의 단일 진입점. 클릭/키보드가 모두 여기로 모임.
+  function flipRow(row){
+    if(!row) return;
+    const kind=row.dataset.kind;
+    const key=row.dataset.key;
+    const on=!row.classList.contains('on');
 
-    const kind=inp.dataset.kind;
-    const key=inp.dataset.key;
-    const on=inp.checked;
-
+    // 1) 토글 UI는 데이터와 무관하게 '즉시' 반영(슬라이드 이동).
+    row.classList.toggle('on',on);
+    row.setAttribute('aria-checked',on?'true':'false');
     console.log('[toggle]',kind,key,on?'ON':'OFF');
 
+    // 2) 레이어/데이터 처리는 그 다음.
     if(kind==='xml'){
-      // CCTV는 마커가 많아 add/removeLayer가 모바일 메인 스레드를 잠깐 막을 수 있음.
-      // 토글 UI는 네이티브라 이미 즉시 반영됐으니, 레이어 처리만 다음 프레임으로 미뤄 체감 반응성을 확보함.
+      // CCTV는 마커가 많아 add/removeLayer가 잠깐 메인 스레드를 막을 수 있으니 다음 프레임으로 넘김.
       if(key==='cctv'){
         chipOn[key]=on;
         requestAnimationFrame(()=>setXmlLayerVisible(key,on));
@@ -698,7 +710,29 @@ function bindChipToggleEvents(){
     }else if(kind==='wms'){
       setWmsLayerVisible(key,on);
     }
+  }
+
+  // iOS Safari에서 가장 확실한 단일 click. touch-action:manipulation이라 300ms 지연·더블탭줌 없음.
+  // 스크롤 중에는 click이 발생하지 않으므로 시트 스크롤과 충돌하지 않음.
+  c.addEventListener('click',e=>{
+    const row=e.target.closest('.chip-row');
+    if(row&&c.contains(row)) flipRow(row);
   });
+
+  // 키보드 접근성(스페이스/엔터)
+  c.addEventListener('keydown',e=>{
+    if(e.key!==' '&&e.key!=='Enter') return;
+    const row=e.target.closest('.chip-row');
+    if(!row||!c.contains(row)) return;
+    e.preventDefault();
+    flipRow(row);
+  });
+}
+
+/* 토글 손잡이 안 스피너 on/off — 데이터 로딩 중임을 토글 안에서 직접 표시함. */
+function setRowLoading(key,loading){
+  const row=document.querySelector('.chip-row[data-kind="xml"][data-key="'+key+'"]');
+  if(row) row.classList.toggle('loading',loading);
 }
 
 function setXmlLayerVisible(key,on){
@@ -710,12 +744,16 @@ function setXmlLayerVisible(key,on){
 
     // 캐시가 없거나 현재 화면을 커버하지 못할 때만 새로 조회함.
     if(!isMarkerLayerCacheFresh(key,map.getBounds())){
+      setRowLoading(key,true);   // 토글은 이미 ON, 데이터는 뒤에서 로딩(손잡이 스피너 표시)
       fetchLayer(key,null,true).then(()=>{
         refreshCachedFacilityState();
         updateStats();
+      }).finally(()=>{
+        setRowLoading(key,false);
       });
     }
   }else{
+    setRowLoading(key,false);
     if(layers[key]&&map&&map.hasLayer(layers[key])) map.removeLayer(layers[key]);
   }
 
