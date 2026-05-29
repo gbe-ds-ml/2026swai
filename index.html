@@ -108,13 +108,15 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .sw-in:checked ~ .sw-vis .toggle-thumb{transform:translateX(18px);}
 .sw-in:focus-visible ~ .sw-vis{outline:3px solid rgba(37,99,235,.4);outline-offset:2px;}
 
-/* CCTV: 데이터가 많은 레이어라 토글만 크게 키워 눈에 띄게 함. 동작은 다른 토글과 똑같은 '탭'. */
+/* CCTV: 겉모양은 예전 긴 슬라이드(SLIDE→ON)로 복구. 단, 동작은 네이티브 탭이라 아이폰에서 안 깨짐. */
 .chip-row[data-key="cctv"]{min-height:62px;padding:15px 0;}
-.chip-row[data-key="cctv"] .sw-vis{width:78px;height:38px;border-radius:19px;}
-.chip-row[data-key="cctv"] .sw-vis .toggle-thumb{width:30px;height:30px;top:4px;left:4px;}
-.chip-row[data-key="cctv"] .sw-in:checked ~ .sw-vis .toggle-thumb{transform:translateX(40px);}
-.chip-row[data-key="cctv"] .sw-vis::after{content:'OFF';position:absolute;top:50%;left:12px;transform:translateY(-50%);font-size:10px;font-weight:900;color:rgba(100,116,139,.6);letter-spacing:.05em;pointer-events:none;}
-.chip-row[data-key="cctv"] .sw-in:checked ~ .sw-vis::after{content:'ON';left:auto;right:14px;color:rgba(255,255,255,.95);}
+.chip-row[data-key="cctv"] .sw-vis{width:124px;height:40px;border-radius:999px;background:#e2e8f0;border:1px solid rgba(100,116,139,.25);}
+.chip-row[data-key="cctv"] .sw-vis .toggle-thumb{width:24px;height:24px;top:8px;left:8px;}
+.chip-row[data-key="cctv"] .sw-in:checked ~ .sw-vis .toggle-thumb{transform:translateX(84px);}
+.chip-row[data-key="cctv"] .sw-vis::after{content:'SLIDE';position:absolute;top:50%;right:14px;transform:translateY(-50%);font-size:10px;font-weight:800;letter-spacing:.08em;color:rgba(100,116,139,.56);pointer-events:none;}
+.chip-row[data-key="cctv"] .sw-in:checked ~ .sw-vis{background:#dbeafe;border-color:rgba(37,99,235,.38);}
+.chip-row[data-key="cctv"] .sw-in:checked ~ .sw-vis .toggle-thumb{background:var(--blue);}
+.chip-row[data-key="cctv"] .sw-in:checked ~ .sw-vis::after{content:'ON';right:auto;left:16px;color:rgba(37,99,235,.48);}
 .chips,.chip-row{-webkit-user-select:none;user-select:none;}
 
 
@@ -1220,6 +1222,19 @@ function pruneMarkerCache(key,keepIds,requestBounds){
   });
 }
 
+/* 마커를 프레임 단위로 나눠 추가 — CCTV처럼 수백 개를 한 번에 그릴 때 생기는 화면 멈춤을 방지함.
+   한 프레임에 chunk개씩만 그리고 다음 프레임으로 넘김. 토글·지도 조작이 즉시 반응하게 됨. */
+function addMarkersProgressively(group,markers,chunk=40){
+  let i=0;
+  function step(){
+    if(!group) return;
+    const end=Math.min(i+chunk,markers.length);
+    for(;i<end;i++) group.addLayer(markers[i]);
+    if(i<markers.length) requestAnimationFrame(step);
+  }
+  step();
+}
+
 async function fetchAll(silent=false, force=false){
   const token=++fetchRunToken;
   const keys=GROUP[grp].xml;
@@ -1308,6 +1323,7 @@ async function fetchLayer(key, token=null, force=false){
     const keepIds=new Set();
     let added=0;
 
+    const toAdd=[];
     items.forEach(it=>{
       const p=parseLayerPoint(it);
       if(!p) return;
@@ -1317,14 +1333,24 @@ async function fetchLayer(key, token=null, force=false){
 
       if(!cache.items.has(id)){
         const marker=mkMarker(key,p.lat,p.lng,it);
-        marker.addTo(cache.group);
         cache.items.set(id,{id,key,lat:p.lat,lng:p.lng,raw:it,marker});
+        toAdd.push(marker);
         added++;
       }else{
         const rec=cache.items.get(id);
         rec.raw=it;
       }
     });
+
+    // 신규 마커 추가: CCTV처럼 수가 많으면 한 프레임에 다 그리지 않고 프레임 단위로 나눠 추가해
+    // 메인 스레드 블로킹(토글·스크롤 버벅임)을 막음. 다른 레이어는 기존처럼 한 번에 추가함.
+    if(toAdd.length){
+      if(key==='cctv' && toAdd.length>60){
+        addMarkersProgressively(cache.group,toAdd);
+      }else{
+        toAdd.forEach(m=>cache.group.addLayer(m));
+      }
+    }
 
     pruneMarkerCache(key,keepIds,requestBounds);
 
