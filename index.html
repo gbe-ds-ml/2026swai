@@ -187,8 +187,13 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .route-safe-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
 .route-pill{font-size:10px;font-weight:800;padding:5px 8px;border-radius:999px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;}
 .route-reason{font-size:11px;color:var(--gray);line-height:1.45;margin-top:8px;padding-top:8px;border-top:1px solid var(--gray2);}
-.route-mobile-summary,.route-details-toggle{display:none;}
+.route-mobile-summary{display:none;}
+.route-details-box{display:block;}
+.route-details-toggle{display:none;}
 .route-details{display:block;}
+.route-details-close-label{display:none;}
+.route-details-box[open] .route-details-open-label{display:none;}
+.route-details-box[open] .route-details-close-label{display:inline;}
 
 @media (max-width:768px){
   .route-panel{
@@ -217,19 +222,20 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
     overflow:hidden;
     text-overflow:ellipsis;
   }
+  .route-details-box{display:block;}
   .route-details-toggle{
     display:flex;
     align-items:center;
     justify-content:center;
     width:100%;
-    min-height:38px;
+    min-height:42px;
     margin-top:5px;
     border:0;
     border-radius:10px;
     background:#eff6ff;
     color:#1d4ed8;
     font-family:'Noto Sans KR',sans-serif;
-    font-size:10px;
+    font-size:11px;
     font-weight:800;
     cursor:pointer;
     touch-action:manipulation;
@@ -237,17 +243,20 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
     user-select:none;
     position:relative;
     z-index:2;
+    list-style:none;
   }
-  .route-panel:not(.details-open) .route-details{display:none;}
-  .route-panel.details-open .route-details{display:block;}
-  .route-panel.details-open .route-safe-list{
+  .route-details-toggle::-webkit-details-marker{display:none;}
+  .route-details-toggle::marker{display:none;content:'';}
+  .route-details-box:not([open]) .route-details{display:none;}
+  .route-details-box[open] .route-details{display:block;}
+  .route-details-box[open] .route-safe-list{
     margin-top:7px;
     max-height:92px;
     overflow-y:auto;
     -webkit-overflow-scrolling:touch;
   }
-  .route-panel.details-open .route-pill{font-size:9px;padding:4px 7px;}
-  .route-panel.details-open .route-reason{
+  .route-details-box[open] .route-pill{font-size:9px;padding:4px 7px;}
+  .route-details-box[open] .route-reason{
     font-size:10px;
     line-height:1.4;
     margin-top:7px;
@@ -258,7 +267,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
   .route-panel{max-height:52vh;}
   .route-sub{display:none;}
   .route-mobile-summary,.route-details-toggle{display:flex;}
-  .route-panel:not(.details-open) .route-details{display:none;}
+  .route-details-box:not([open]) .route-details{display:none;}
 }
 
 /* 모바일에서 레이어 설정 시트가 열리거나 드래그되는 동안
@@ -363,7 +372,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.5.4</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.5.5</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -459,12 +468,16 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
     <div class="route-metric"><div class="v" id="routeScore">-</div><div class="k">안전도</div></div>
   </div>
   <div class="route-mobile-summary" id="routeMobileSummary">목적지를 선택하면 요약 정보가 표시됩니다.</div>
-  <button class="route-details-toggle" id="routeDetailsToggle" type="button"
-    aria-expanded="false" aria-controls="routeDetails">상세 점수 보기</button>
-  <div class="route-details" id="routeDetails">
-    <div class="route-safe-list" id="routeSafeList"></div>
-    <div class="route-reason" id="routeReason">최단 보행 경로를 우선 안내하고, 경로 주변 안전시설 접근성을 점수화합니다.</div>
-  </div>
+  <details class="route-details-box" id="routeDetailsBox" open>
+    <summary class="route-details-toggle">
+      <span class="route-details-open-label">상세 점수 보기</span>
+      <span class="route-details-close-label">상세 점수 접기</span>
+    </summary>
+    <div class="route-details" id="routeDetails">
+      <div class="route-safe-list" id="routeSafeList"></div>
+      <div class="route-reason" id="routeReason">최단 보행 경로를 우선 안내하고, 경로 주변 안전시설 접근성을 점수화합니다.</div>
+    </div>
+  </details>
 </div>
 <div id="routeToast" class="route-toast"></div>
 
@@ -473,7 +486,6 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 /* ── Bottom Sheet ── */
 let sheetInited = false;
 let routePanelResizeBound = false;
-let routeDetailsEventsBound = false;
 
 function initSheet(){
   if(sheetInited) return;
@@ -531,7 +543,7 @@ function initSheet(){
   if(!routePanelResizeBound){
     routePanelResizeBound=true;
     window.addEventListener('resize',()=>{
-      if(isCompactRouteLayout()) resetRouteDetails();
+      resetRouteDetails();
       syncRoutePanelWithSheet();
     });
     window.addEventListener('orientationchange',()=>{
@@ -539,7 +551,7 @@ function initSheet(){
     });
   }
 
-  bindRouteDetailsEvents();
+  initNativeRouteDetails();
   syncRoutePanelWithSheet();
 }
 
@@ -561,12 +573,16 @@ function isCompactRouteLayout(){
 
 function setRoutePanelSuppressed(suppressed){
   const shouldSuppress=Boolean(suppressed)&&isCompactRouteLayout();
+  const wasSuppressed=document.body.classList.contains(
+    'route-panel-suppressed'
+  );
+
   document.body.classList.toggle(
     'route-panel-suppressed',
     shouldSuppress
   );
 
-  if(shouldSuppress){
+  if(shouldSuppress&&!wasSuppressed){
     resetRouteDetails();
   }
 }
@@ -585,21 +601,15 @@ function syncRoutePanelWithSheet(){
 }
 
 function setRouteDetailsOpen(open){
+  const box=document.getElementById('routeDetailsBox');
   const panel=document.getElementById('routePanel');
-  const btn=document.getElementById('routeDetailsToggle');
   const details=document.getElementById('routeDetails');
-  if(!panel) return;
+  if(!box) return;
 
-  const next=Boolean(open);
-  panel.classList.toggle('details-open',next);
+  box.open=Boolean(open);
 
-  if(btn){
-    btn.textContent=next?'상세 점수 접기':'상세 점수 보기';
-    btn.setAttribute('aria-expanded',next?'true':'false');
-  }
-
-  if(!next){
-    panel.scrollTop=0;
+  if(!box.open){
+    if(panel) panel.scrollTop=0;
     if(details) details.scrollTop=0;
   }
 
@@ -607,76 +617,30 @@ function setRouteDetailsOpen(open){
 }
 
 function resetRouteDetails(){
-  setRouteDetailsOpen(false);
+  // PC에서는 항상 펼치고, 모바일에서는 기본적으로 접는다.
+  setRouteDetailsOpen(!isCompactRouteLayout());
 }
 
-function toggleRouteDetails(){
-  const panel=document.getElementById('routePanel');
-  if(!panel) return;
+function initNativeRouteDetails(){
+  const box=document.getElementById('routeDetailsBox');
+  if(!box||box.dataset.bound==='1') return;
 
-  setRouteDetailsOpen(
-    !panel.classList.contains('details-open')
-  );
-}
+  box.dataset.bound='1';
 
-function bindRouteDetailsEvents(){
-  const btn=document.getElementById('routeDetailsToggle');
-  if(!btn||routeDetailsEventsBound) return;
-  routeDetailsEventsBound=true;
+  // iOS Safari가 기본 제공하는 details/summary 토글을 그대로 사용한다.
+  box.addEventListener('toggle',()=>{
+    const panel=document.getElementById('routePanel');
+    const details=document.getElementById('routeDetails');
 
-  let pointerStart=null;
-  let suppressClickUntil=0;
-
-  btn.addEventListener('pointerdown',e=>{
-    if(e.pointerType==='mouse') return;
-
-    pointerStart={
-      id:e.pointerId,
-      x:e.clientX,
-      y:e.clientY,
-      time:Date.now()
-    };
-  },{passive:true});
-
-  btn.addEventListener('pointerup',e=>{
-    if(
-      e.pointerType==='mouse'||
-      !pointerStart||
-      pointerStart.id!==e.pointerId
-    ){
-      return;
+    if(!box.open){
+      if(panel) panel.scrollTop=0;
+      if(details) details.scrollTop=0;
     }
 
-    const moved=Math.hypot(
-      e.clientX-pointerStart.x,
-      e.clientY-pointerStart.y
-    );
-    const elapsed=Date.now()-pointerStart.time;
-    pointerStart=null;
-
-    if(moved>14||elapsed>900) return;
-
-    suppressClickUntil=Date.now()+500;
-    e.preventDefault?.();
-    e.stopPropagation?.();
-    toggleRouteDetails();
-  },{passive:false});
-
-  btn.addEventListener('pointercancel',()=>{
-    pointerStart=null;
-  },{passive:true});
-
-  btn.addEventListener('click',e=>{
-    if(Date.now()<suppressClickUntil){
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-
-    e.preventDefault();
-    e.stopPropagation();
-    toggleRouteDetails();
+    requestAnimationFrame(()=>updateRoutePanelPosition());
   });
+
+  resetRouteDetails();
 }
 
 function updateRoutePanelPosition(visibleHeightOverride){
@@ -702,7 +666,9 @@ function updateRoutePanelPosition(visibleHeightOverride){
   );
 
   if(mobileSheetOpen){
-    setRoutePanelSuppressed(true);
+    if(!document.body.classList.contains('route-panel-suppressed')){
+      setRoutePanelSuppressed(true);
+    }
     panel.style.setProperty(
       '--route-panel-bottom',
       baseBottom+'px'
