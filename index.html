@@ -82,7 +82,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 
 /* BOTTOM SHEET */
 #sheet{
-  position:fixed;left:0;right:0;bottom:0;z-index:800;
+  position:fixed;left:0;right:0;bottom:0;z-index:900;
   background:#fff;
   border-radius:20px 20px 0 0;
   box-shadow:0 -4px 24px rgba(0,0,0,.12);
@@ -99,6 +99,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
   cursor:grab;
   user-select:none;
   -webkit-user-select:none;
+  position:relative;
+  z-index:2;
 }
 .sheet-handle-wrap:active{cursor:grabbing;}
 .sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--gray2);margin-bottom:6px;}
@@ -376,7 +378,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.5.7</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.5.8</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -498,11 +500,9 @@ function initSheet(){
   const sheet=document.getElementById('sheet');
   const handle=document.getElementById('sheetHandle');
 
-  let activePointerId=null;
-  let startY=0;
-  let startTime=0;
-  let startOpen=false;
-  let hasDragged=false;
+  let pointerStart=null;
+  let suppressClickUntil=0;
+  let currentDragY=null;
 
   function setSheetOpen(open){
     const next=Boolean(open);
@@ -510,6 +510,7 @@ function initSheet(){
     sheet.classList.toggle('open',next);
     sheet.style.transform='';
     sheet.style.transition='';
+    currentDragY=null;
 
     handle.setAttribute('aria-expanded',next?'true':'false');
 
@@ -527,117 +528,115 @@ function initSheet(){
     setSheetOpen(!sheet.classList.contains('open'));
   }
 
-  function finishPointer(e,cancelled=false){
-    if(activePointerId===null||e.pointerId!==activePointerId) return;
-
-    const dy=e.clientY-startY;
-    const elapsed=Date.now()-startTime;
-    const wasOpen=startOpen;
-
-    if(handle.hasPointerCapture?.(activePointerId)){
-      try{
-        handle.releasePointerCapture(activePointerId);
-      }catch(_){}
-    }
-
-    activePointerId=null;
-    sheet.style.transition='';
-
-    if(cancelled){
-      setSheetOpen(wasOpen);
-      return;
-    }
-
-    // 클릭과 드래그를 분리한다.
-    // 마우스 클릭은 약간 흔들려도 클릭으로 인식되도록 10px까지 허용한다.
-    const isTap=!hasDragged&&Math.abs(dy)<=10&&elapsed<=1000;
-
-    if(isTap){
-      toggleSheet();
-      return;
-    }
-
-    let nextOpen=wasOpen;
-
-    if(!wasOpen){
-      if(dy<-42||(elapsed<320&&dy<-18)){
-        nextOpen=true;
-      }
-    }else{
-      if(dy>42||(elapsed<320&&dy>18)){
-        nextOpen=false;
-      }
-    }
-
-    setSheetOpen(nextOpen);
-  }
-
-  handle.addEventListener('pointerdown',e=>{
-    // 마우스 오른쪽 버튼과 보조 버튼은 무시한다.
-    if(e.pointerType==='mouse'&&e.button!==0) return;
-    if(activePointerId!==null) return;
-
-    activePointerId=e.pointerId;
-    startY=e.clientY;
-    startTime=Date.now();
-    startOpen=sheet.classList.contains('open');
-    hasDragged=false;
-
-    try{
-      handle.setPointerCapture(e.pointerId);
-    }catch(_){}
-
-    sheet.style.transition='none';
-    e.preventDefault();
-  });
-
-  handle.addEventListener('pointermove',e=>{
-    if(activePointerId===null||e.pointerId!==activePointerId) return;
-
-    const dy=e.clientY-startY;
-    if(Math.abs(dy)>6) hasDragged=true;
-
-    if(!hasDragged) return;
-
+  function getDragTranslateY(dy,startOpen){
     const base=startOpen?0:sheet.offsetHeight-56;
-    const newY=Math.max(
+    return Math.max(
       0,
       Math.min(sheet.offsetHeight-56,base+dy)
     );
-    const visibleHeight=sheet.offsetHeight-newY;
+  }
 
-    sheet.style.transform=`translateY(${newY}px)`;
+  function applyDrag(clientY){
+    if(!pointerStart) return;
+
+    const dy=clientY-pointerStart.y;
+    const moved=Math.abs(dy);
+
+    if(moved<=6&&!pointerStart.dragging) return;
+
+    pointerStart.dragging=true;
+    currentDragY=getDragTranslateY(dy,pointerStart.open);
+
+    sheet.style.transition='none';
+    sheet.style.transform=`translateY(${currentDragY}px)`;
+
+    const visibleHeight=sheet.offsetHeight-currentDragY;
 
     if(isCompactRouteLayout()){
       setRoutePanelSuppressed(visibleHeight>82);
     }
 
     updateRoutePanelPosition(visibleHeight);
-    e.preventDefault();
-  });
-
-  handle.addEventListener('pointerup',e=>{
-    e.preventDefault();
-    finishPointer(e,false);
-  });
-
-  handle.addEventListener('pointercancel',e=>{
-    finishPointer(e,true);
-  });
-
-  handle.addEventListener('lostpointercapture',e=>{
-    if(activePointerId!==null&&e.pointerId===activePointerId){
-      finishPointer(e,true);
-    }
-  });
-
-  // Pointer Events를 지원하지 않는 매우 오래된 브라우저만 click으로 보완한다.
-  if(!window.PointerEvent){
-    handle.addEventListener('click',e=>{
-      e.preventDefault();
-      toggleSheet();
-    });
   }
+
+  function finishGesture(clientY,endedAt=Date.now()){
+    if(!pointerStart) return;
+
+    const start=pointerStart;
+    pointerStart=null;
+
+    const dy=clientY-start.y;
+    const elapsed=endedAt-start.time;
+    const isTap=!start.dragging&&Math.abs(dy)<=14&&elapsed<=1000;
+
+    suppressClickUntil=Date.now()+550;
+
+    if(isTap){
+      toggleSheet();
+      return;
+    }
+
+    let nextOpen=start.open;
+
+    if(currentDragY!==null){
+      const maxY=Math.max(1,sheet.offsetHeight-56);
+      const openRatio=1-(currentDragY/maxY);
+      nextOpen=openRatio>=0.5;
+    }else if(!start.open){
+      nextOpen=dy<-42||(elapsed<320&&dy<-18);
+    }else{
+      nextOpen=!(dy>42||(elapsed<320&&dy>18));
+    }
+
+    setSheetOpen(nextOpen);
+  }
+
+  handle.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse'&&e.button!==0) return;
+    if(pointerStart) return;
+
+    pointerStart={
+      id:e.pointerId,
+      y:e.clientY,
+      time:Date.now(),
+      open:sheet.classList.contains('open'),
+      dragging:false
+    };
+
+    currentDragY=null;
+    // touch-action:none이 스크롤을 막으므로 preventDefault를 호출하지 않는다.
+  },{passive:true});
+
+  window.addEventListener('pointermove',e=>{
+    if(!pointerStart||e.pointerId!==pointerStart.id) return;
+    applyDrag(e.clientY);
+  },{passive:true});
+
+  window.addEventListener('pointerup',e=>{
+    if(!pointerStart||e.pointerId!==pointerStart.id) return;
+    finishGesture(e.clientY);
+  },{passive:true});
+
+  window.addEventListener('pointercancel',e=>{
+    if(!pointerStart||e.pointerId!==pointerStart.id) return;
+
+    // 롤백하지 않고 현재 드래그 위치 또는 짧은 탭 판정으로 상태를 확정한다.
+    finishGesture(
+      Number.isFinite(e.clientY)?e.clientY:pointerStart.y
+    );
+  },{passive:true});
+
+  handle.addEventListener('click',e=>{
+    if(Date.now()<suppressClickUntil){
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    toggleSheet();
+  });
 
   handle.setAttribute('role','button');
   handle.setAttribute('tabindex','0');
