@@ -95,8 +95,12 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .sheet-handle-wrap{
   display:flex;flex-direction:column;align-items:center;
   touch-action:none;
-  padding:10px 0 8px;cursor:grab;user-select:none;
+  padding:10px 0 8px;
+  cursor:grab;
+  user-select:none;
+  -webkit-user-select:none;
 }
+.sheet-handle-wrap:active{cursor:grabbing;}
 .sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--gray2);margin-bottom:6px;}
 .sheet-label{font-size:11px;font-weight:700;color:var(--gray);letter-spacing:.08em;}
 .sheet-body{padding:0 14px max(28px, env(safe-area-inset-bottom));touch-action:pan-y;max-height:62vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
@@ -372,7 +376,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.5.5</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.5.7</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -446,7 +450,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="sheet">
   <div class="sheet-handle-wrap" id="sheetHandle">
     <div class="sheet-handle"></div>
-    <div class="sheet-label">레이어 설정</div>
+    <div class="sheet-label" id="sheetLabel">레이어 설정</div>
   </div>
   <div class="sheet-body">
     <div class="chips" id="chips"></div>
@@ -489,25 +493,117 @@ let routePanelResizeBound = false;
 
 function initSheet(){
   if(sheetInited) return;
-  sheetInited = true;
+  sheetInited=true;
 
   const sheet=document.getElementById('sheet');
   const handle=document.getElementById('sheetHandle');
-  let startY=0, startT=0, isDragging=false;
 
-  handle.addEventListener('touchstart',e=>{
-    startY=e.touches[0].clientY;
-    startT=Date.now();
-    isDragging=true;
+  let activePointerId=null;
+  let startY=0;
+  let startTime=0;
+  let startOpen=false;
+  let hasDragged=false;
+
+  function setSheetOpen(open){
+    const next=Boolean(open);
+
+    sheet.classList.toggle('open',next);
+    sheet.style.transform='';
+    sheet.style.transition='';
+
+    handle.setAttribute('aria-expanded',next?'true':'false');
+
+    const label=document.getElementById('sheetLabel');
+    if(label){
+      label.textContent=next
+        ? '레이어 설정 접기'
+        : '레이어 설정';
+    }
+
+    syncRoutePanelWithSheet();
+  }
+
+  function toggleSheet(){
+    setSheetOpen(!sheet.classList.contains('open'));
+  }
+
+  function finishPointer(e,cancelled=false){
+    if(activePointerId===null||e.pointerId!==activePointerId) return;
+
+    const dy=e.clientY-startY;
+    const elapsed=Date.now()-startTime;
+    const wasOpen=startOpen;
+
+    if(handle.hasPointerCapture?.(activePointerId)){
+      try{
+        handle.releasePointerCapture(activePointerId);
+      }catch(_){}
+    }
+
+    activePointerId=null;
+    sheet.style.transition='';
+
+    if(cancelled){
+      setSheetOpen(wasOpen);
+      return;
+    }
+
+    // 클릭과 드래그를 분리한다.
+    // 마우스 클릭은 약간 흔들려도 클릭으로 인식되도록 10px까지 허용한다.
+    const isTap=!hasDragged&&Math.abs(dy)<=10&&elapsed<=1000;
+
+    if(isTap){
+      toggleSheet();
+      return;
+    }
+
+    let nextOpen=wasOpen;
+
+    if(!wasOpen){
+      if(dy<-42||(elapsed<320&&dy<-18)){
+        nextOpen=true;
+      }
+    }else{
+      if(dy>42||(elapsed<320&&dy>18)){
+        nextOpen=false;
+      }
+    }
+
+    setSheetOpen(nextOpen);
+  }
+
+  handle.addEventListener('pointerdown',e=>{
+    // 마우스 오른쪽 버튼과 보조 버튼은 무시한다.
+    if(e.pointerType==='mouse'&&e.button!==0) return;
+    if(activePointerId!==null) return;
+
+    activePointerId=e.pointerId;
+    startY=e.clientY;
+    startTime=Date.now();
+    startOpen=sheet.classList.contains('open');
+    hasDragged=false;
+
+    try{
+      handle.setPointerCapture(e.pointerId);
+    }catch(_){}
+
     sheet.style.transition='none';
-  },{passive:true});
+    e.preventDefault();
+  });
 
-  handle.addEventListener('touchmove',e=>{
-    if(!isDragging) return;
-    const dy=e.touches[0].clientY-startY;
-    const isOpen=sheet.classList.contains('open');
-    const base=isOpen?0:sheet.offsetHeight-56;
-    const newY=Math.max(0, Math.min(sheet.offsetHeight-56, base+dy));
+  handle.addEventListener('pointermove',e=>{
+    if(activePointerId===null||e.pointerId!==activePointerId) return;
+
+    const dy=e.clientY-startY;
+    if(Math.abs(dy)>6) hasDragged=true;
+
+    if(!hasDragged) return;
+
+    const base=startOpen?0:sheet.offsetHeight-56;
+    const newY=Math.max(
+      0,
+      Math.min(sheet.offsetHeight-56,base+dy)
+    );
     const visibleHeight=sheet.offsetHeight-newY;
 
     sheet.style.transform=`translateY(${newY}px)`;
@@ -517,42 +613,61 @@ function initSheet(){
     }
 
     updateRoutePanelPosition(visibleHeight);
-  },{passive:true});
+    e.preventDefault();
+  });
 
-  handle.addEventListener('touchend',e=>{
-    if(!isDragging) return;
-    isDragging=false;
-    sheet.style.transition='';
-    const dy=e.changedTouches[0].clientY-startY;
-    const dt=Date.now()-startT;
-    const isOpen=sheet.classList.contains('open');
+  handle.addEventListener('pointerup',e=>{
+    e.preventDefault();
+    finishPointer(e,false);
+  });
 
-    if((!isOpen && (dy<-50||(dt<300&&dy<-20)))||(isOpen&&dy>50)) {
-      sheet.classList.toggle('open');
+  handle.addEventListener('pointercancel',e=>{
+    finishPointer(e,true);
+  });
+
+  handle.addEventListener('lostpointercapture',e=>{
+    if(activePointerId!==null&&e.pointerId===activePointerId){
+      finishPointer(e,true);
     }
-    sheet.style.transform='';
-    syncRoutePanelWithSheet();
-  },{passive:true});
+  });
 
-  handle.addEventListener('click',()=>{
-    sheet.classList.toggle('open');
-    sheet.style.transform='';
-    syncRoutePanelWithSheet();
+  // Pointer Events를 지원하지 않는 매우 오래된 브라우저만 click으로 보완한다.
+  if(!window.PointerEvent){
+    handle.addEventListener('click',e=>{
+      e.preventDefault();
+      toggleSheet();
+    });
+  }
+
+  handle.setAttribute('role','button');
+  handle.setAttribute('tabindex','0');
+  handle.setAttribute('aria-label','레이어 설정 열기 또는 접기');
+  handle.setAttribute(
+    'aria-expanded',
+    sheet.classList.contains('open')?'true':'false'
+  );
+
+  handle.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'&&e.key!==' ') return;
+    e.preventDefault();
+    toggleSheet();
   });
 
   if(!routePanelResizeBound){
     routePanelResizeBound=true;
+
     window.addEventListener('resize',()=>{
       resetRouteDetails();
       syncRoutePanelWithSheet();
     });
+
     window.addEventListener('orientationchange',()=>{
       setTimeout(syncRoutePanelWithSheet,250);
     });
   }
 
   initNativeRouteDetails();
-  syncRoutePanelWithSheet();
+  setSheetOpen(sheet.classList.contains('open'));
 }
 
 function getSheetVisibleHeight(){
@@ -842,6 +957,10 @@ function goBack(){
   document.getElementById('intro').classList.remove('out');
   document.getElementById('map-screen').classList.remove('show');
   document.getElementById('sheet').classList.remove('show','open');
+
+  const sheetLabel=document.getElementById('sheetLabel');
+  if(sheetLabel) sheetLabel.textContent='레이어 설정';
+
   clearRoute();
   cptedTapRequestToken++;
   clearCptedGuide(true);
