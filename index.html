@@ -43,6 +43,18 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .start-btn{width:100%;padding:16px;border-radius:14px;border:none;background:var(--blue);color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;opacity:.35;pointer-events:none;font-family:'Noto Sans KR',sans-serif;}
 .start-btn.on{opacity:1;pointer-events:auto;}
 .start-btn.on:hover{background:#1d4ed8;transform:translateY(-1px);}
+.route-guide{width:100%;margin-top:12px;border:1px solid rgba(37,99,235,.18);border-radius:16px;background:rgba(255,255,255,.72);overflow:hidden;}
+.route-guide-summary{padding:13px 14px;display:grid;gap:8px;}
+.route-guide-title{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;font-weight:900;color:var(--navy);}
+.route-guide-badge{font-size:9px;font-weight:800;color:#1d4ed8;background:#dbeafe;border-radius:999px;padding:3px 7px;white-space:nowrap;}
+.route-guide-row{display:flex;align-items:flex-start;gap:8px;font-size:10px;color:var(--gray);line-height:1.45;}
+.route-guide-row .num{width:18px;height:18px;border-radius:7px;background:#eff6ff;color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;flex-shrink:0;}
+.route-guide-more{width:100%;border:0;border-top:1px solid rgba(37,99,235,.12);background:rgba(239,246,255,.55);padding:9px 12px;font-family:'Noto Sans KR',sans-serif;font-size:10px;font-weight:800;color:#1d4ed8;cursor:pointer;}
+.route-guide-detail{display:none;padding:11px 14px 13px;border-top:1px solid rgba(37,99,235,.12);font-size:10px;color:var(--gray);line-height:1.55;background:rgba(255,255,255,.72);}
+.route-guide.open .route-guide-detail{display:block;}
+.route-guide-detail strong{color:var(--navy);font-weight:800;}
+.route-guide-note{margin-top:7px;padding-top:7px;border-top:1px dashed var(--gray2);font-size:9px;color:#94a3b8;}
+
 .cpted-entry{width:100%;margin-top:12px;padding-top:14px;border-top:1px solid rgba(100,116,139,.18);}
 .cpted-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 15px;border-radius:16px;border:1.5px solid rgba(180,83,9,.25);background:rgba(255,251,235,.82);cursor:pointer;font-family:'Noto Sans KR',sans-serif;box-shadow:0 4px 14px rgba(180,83,9,.08);touch-action:manipulation;transition:all .2s;}
 .cpted-btn:active{transform:scale(.985);background:#fef3c7;}
@@ -175,6 +187,75 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .route-safe-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
 .route-pill{font-size:10px;font-weight:800;padding:5px 8px;border-radius:999px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;}
 .route-reason{font-size:11px;color:var(--gray);line-height:1.45;margin-top:8px;padding-top:8px;border-top:1px solid var(--gray2);}
+.route-mobile-summary,.route-details-toggle{display:none;}
+.route-details{display:block;}
+
+@media (max-width:768px){
+  .route-panel{
+    left:8px;
+    right:8px;
+    padding:10px;
+    border-radius:16px;
+    max-height:min(48vh,390px);
+  }
+  .route-head{align-items:center;margin-bottom:6px;}
+  .route-title{font-size:13px;line-height:1.2;}
+  .route-sub{display:none;}
+  .route-close{width:34px;height:34px;font-size:18px;flex-shrink:0;}
+  .route-grid{gap:6px;margin:6px 0;}
+  .route-metric{padding:7px 8px;border-radius:10px;}
+  .route-metric .v{font-size:15px;}
+  .route-metric .k{font-size:8px;margin-top:2px;}
+  .route-mobile-summary{
+    display:block;
+    min-height:18px;
+    margin-top:5px;
+    color:var(--gray);
+    font-size:10px;
+    line-height:1.35;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .route-details-toggle{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    min-height:32px;
+    margin-top:5px;
+    border:0;
+    border-radius:10px;
+    background:#eff6ff;
+    color:#1d4ed8;
+    font-family:'Noto Sans KR',sans-serif;
+    font-size:10px;
+    font-weight:800;
+    cursor:pointer;
+    touch-action:manipulation;
+  }
+  .route-panel:not(.details-open) .route-details{display:none;}
+  .route-panel.details-open .route-details{display:block;}
+  .route-panel.details-open .route-safe-list{
+    margin-top:7px;
+    max-height:92px;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .route-panel.details-open .route-pill{font-size:9px;padding:4px 7px;}
+  .route-panel.details-open .route-reason{
+    font-size:10px;
+    line-height:1.4;
+    margin-top:7px;
+    padding-top:7px;
+  }
+}
+@media (max-height:560px) and (max-width:1024px){
+  .route-panel{max-height:52vh;}
+  .route-sub{display:none;}
+  .route-mobile-summary,.route-details-toggle{display:flex;}
+  .route-panel:not(.details-open) .route-details{display:none;}
+}
 .route-toast{
   position:fixed;
   top:62px;
@@ -269,7 +350,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.5.2</div>
+    <div style="font-size:10px;color:var(--gray);margin-top:-20px;margin-bottom:28px;letter-spacing:.05em;">v.1.5.3</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
@@ -291,6 +372,25 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
       </div>
     </div>
     <button class="start-btn" id="startBtn" onclick="start()">📍 내 주변 안전지도 보기</button>
+
+    <div class="route-guide" id="routeGuide">
+      <div class="route-guide-summary">
+        <div class="route-guide-title">
+          <span>🧭 경로·점수 산정 기준</span>
+          <span class="route-guide-badge">경로 API 1회 호출</span>
+        </div>
+        <div class="route-guide-row"><span class="num">1</span><span>안전시설을 억지로 경유하지 않고 <strong>최단 보행 경로</strong>를 우선 안내합니다.</span></div>
+        <div class="route-guide-row"><span class="num">2</span><span>경로 주변 치안시설·비상벨·지킴이집·CCTV를 거리별로 점수화합니다.</span></div>
+        <div class="route-guide-row"><span class="num">3</span><span>짧은 길은 시설 부족 감점을 완화하고, 목적지에서 멀어지는 후진 구간은 감점합니다.</span></div>
+      </div>
+      <button type="button" class="route-guide-more" onclick="toggleRouteGuide()">점수 계산 자세히 보기</button>
+      <div class="route-guide-detail">
+        <div><strong>시설 근접도</strong>: 30m 이내 100% · 60m 75% · 100m 40% · 150m 15%</div>
+        <div><strong>종류별 최대점수</strong>: 치안시설 12점 · 지킴이집 10점 · 비상벨 10점 · CCTV 8점</div>
+        <div><strong>종합점수</strong>: 기본 45점 + 시설 최대 40점 + 짧은 길 보정 최대 15점 − 후진 감점 최대 15점</div>
+        <div class="route-guide-note">공공데이터 기반 참고 지표이며 실제 안전을 보장하지 않습니다. 범죄주의 WMS는 현재 점수에 직접 반영하지 않습니다.</div>
+      </div>
+    </div>
 
     <div class="cpted-entry">
       <button type="button" class="cpted-btn" onclick="startCpted()">
@@ -335,8 +435,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="routePanel" class="route-panel">
   <div class="route-head">
     <div>
-      <div class="route-title" id="routeTitle">🧭 안전 우선 경로</div>
-      <div class="route-sub" id="routeSub">목적지를 선택하면 실제 도보 경로를 계산합니다.</div>
+      <div class="route-title" id="routeTitle">🚶 최단 보행 경로 · 안전도 평가</div>
+      <div class="route-sub" id="routeSub">목적지를 선택하면 최단 보행 경로와 안전도를 계산합니다.</div>
     </div>
     <button class="route-close" type="button" onclick="clearRoute()">×</button>
   </div>
@@ -345,8 +445,12 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
     <div class="route-metric"><div class="v" id="routeDuration">-</div><div class="k">예상 시간</div></div>
     <div class="route-metric"><div class="v" id="routeScore">-</div><div class="k">안전도</div></div>
   </div>
-  <div class="route-safe-list" id="routeSafeList"></div>
-  <div class="route-reason" id="routeReason">치안시설·아동안전지킴이집 등 안전시설 접근성을 우선 반영합니다.</div>
+  <div class="route-mobile-summary" id="routeMobileSummary">목적지를 선택하면 요약 정보가 표시됩니다.</div>
+  <button class="route-details-toggle" id="routeDetailsToggle" type="button" onclick="toggleRouteDetails()">상세 점수 보기</button>
+  <div class="route-details" id="routeDetails">
+    <div class="route-safe-list" id="routeSafeList"></div>
+    <div class="route-reason" id="routeReason">최단 보행 경로를 우선 안내하고, 경로 주변 안전시설 접근성을 점수화합니다.</div>
+  </div>
 </div>
 <div id="routeToast" class="route-toast"></div>
 
@@ -404,7 +508,10 @@ function initSheet(){
 
   if(!routePanelResizeBound){
     routePanelResizeBound=true;
-    window.addEventListener('resize',()=>requestAnimationFrame(()=>updateRoutePanelPosition()));
+    window.addEventListener('resize',()=>{
+      if(isCompactRouteLayout()) resetRouteDetails();
+      requestAnimationFrame(()=>updateRoutePanelPosition());
+    });
     window.addEventListener('orientationchange',()=>setTimeout(()=>updateRoutePanelPosition(),250));
   }
 
@@ -419,6 +526,33 @@ function getSheetVisibleHeight(){
   if(!h) return 0;
   if(sheet.classList.contains('open')) return h;
   return Math.min(56,h);
+}
+
+function isCompactRouteLayout(){
+  return window.matchMedia(
+    '(max-width:768px), (max-height:560px) and (max-width:1024px)'
+  ).matches;
+}
+
+function resetRouteDetails(){
+  const panel=document.getElementById('routePanel');
+  const btn=document.getElementById('routeDetailsToggle');
+  if(!panel) return;
+
+  panel.classList.remove('details-open');
+  if(btn) btn.textContent='상세 점수 보기';
+}
+
+function toggleRouteDetails(){
+  const panel=document.getElementById('routePanel');
+  const btn=document.getElementById('routeDetailsToggle');
+  if(!panel) return;
+
+  const open=!panel.classList.contains('details-open');
+  panel.classList.toggle('details-open',open);
+  if(btn) btn.textContent=open?'상세 점수 접기':'상세 점수 보기';
+
+  requestAnimationFrame(()=>updateRoutePanelPosition());
 }
 
 function updateRoutePanelPosition(visibleHeightOverride){
@@ -462,7 +596,8 @@ const R_KM = 1.0;
 
 /* 길찾기 API 설정: 기본은 키가 필요 없는 Valhalla 공개 라우팅 서버 사용.
    나중에 Cloudflare Worker를 만들면 ROUTE_PROXY_URL에 Worker 주소만 넣으면 됨. */
-const ROUTE_PROXY_URL = '';
+const ROUTE_PROXY_URL =
+  'https://safewalk-route.ds-ml.workers.dev';
 const VALHALLA_ROUTE_URLS = [
   'https://valhalla1.openstreetmap.de/route',
   'https://valhalla.openstreetmap.de/route'
@@ -476,7 +611,7 @@ const OSRM_FOOT_ROUTE_URLS = [
 ];
 const ROUTE_COLOR = '#ef4444';
 const ROUTE_HALO_COLOR = '#ffffff';
-const ROUTE_FACILITY_RADIUS_M = 80;
+const ROUTE_FACILITY_RADIUS_M = 150;
 
 const MARKER_API = 'https://safemap.go.kr/layer/getMarkerLayerPost.json';
 const LAYER_API = {
@@ -554,6 +689,19 @@ let cptedTapRequestToken=0;
 let lastPopupCloseAt=0;
 
 /* ── 인트로 ── */
+function toggleRouteGuide(){
+  const guide=document.getElementById('routeGuide');
+  if(!guide) return;
+
+  guide.classList.toggle('open');
+  const btn=guide.querySelector('.route-guide-more');
+  if(btn){
+    btn.textContent=guide.classList.contains('open')
+      ? '점수 계산 접기'
+      : '점수 계산 자세히 보기';
+  }
+}
+
 function pick(el){
   document.querySelectorAll('.age-card').forEach(c=>c.classList.remove('selected'));
   el.classList.add('selected');
@@ -1537,13 +1685,21 @@ function mkMarker(key,lat,lng,it){
 
 
 
-/* ── 안전 우선 실제 도보 길찾기 ── */
-const FACILITY_WEIGHT={
-  police:120,
-  child_house:105,
-  bell:75,
-  cctv:38
+/* ── 최단 보행 경로 + 안전도 평가 ── */
+const FACILITY_SCORE_CONFIG={
+  police:     {unit:8, cap:12},
+  child_house:{unit:7, cap:10},
+  bell:       {unit:6, cap:10},
+  cctv:       {unit:2, cap:8}
 };
+
+function facilityProximityRate(distanceM){
+  if(distanceM<=30) return 1.00;
+  if(distanceM<=60) return 0.75;
+  if(distanceM<=100) return 0.40;
+  if(distanceM<=150) return 0.15;
+  return 0;
+}
 
 const FACILITY_ROUTE_LABEL={
   police:'🚔 치안시설',
@@ -1562,7 +1718,7 @@ function registerSafeFacility(key,lat,lng,it){
     id,key,lat,lng,
     name:info.name||LAYER[key]?.label||key,
     addr:info.addr||'',
-    weight:FACILITY_WEIGHT[key]||30
+    weight:FACILITY_SCORE_CONFIG[key]?.unit||1
   });
 }
 
@@ -1602,7 +1758,7 @@ function startRoutePick(){
   }
   routePickMode=true;
   document.body.classList.add('map-pick-mode');
-  showRouteToast('🧭 목적지를 지도에서 한 번 터치하세요. 실제 지도 도로망을 따라 빨간색 경로를 표시합니다.');
+  showRouteToast('🧭 목적지를 한 번 터치하세요. 안전시설을 강제 경유하지 않는 최단 보행 경로를 안내합니다.');
 }
 
 async function setDestinationAndRoute(latlng){
@@ -1611,101 +1767,72 @@ async function setDestinationAndRoute(latlng){
   clearRoute(false);
 
   destinationMark=L.marker([latlng.lat,latlng.lng],{zIndexOffset:900}).addTo(map)
-    .bindPopup(L.popup({className:'safepopup',closeButton:true,maxWidth:240}).setContent(`
+    .bindPopup(L.popup({className:'safepopup',closeButton:true,maxWidth:250}).setContent(`
       <div class="pbadge" style="background:#2563eb18;color:#2563eb">🎯 목적지</div>
       <div class="ptitle">선택한 목적지</div>
-      <div class="prow">실제 지도 도로망 기반의 빨간색 도보 경로를 계산합니다.</div>
+      <div class="prow">안전시설을 강제 경유하지 않고 최단 보행 경로를 계산합니다.</div>
     `));
 
   const spinner=document.getElementById('map-spinner');
   if(spinner) spinner.classList.add('show');
   showRoutePanelLoading(latlng);
 
+  // 호출량을 늘리지 않기 위해 출발지와 목적지만 넣어 경로 API를 1회 호출한다.
+  const locations=[
+    {lat:myLat,lon:myLng},
+    {lat:latlng.lat,lon:latlng.lng}
+  ];
+
   try{
-    const waypoints=selectSafeWaypoints({lat:latlng.lat,lng:latlng.lng});
-    drawWaypointMarks(waypoints);
-
-    const locations=[
-      {lat:myLat,lon:myLng},
-      ...waypoints.map(p=>({lat:p.lat,lon:p.lng})),
-      {lat:latlng.lat,lon:latlng.lng}
-    ];
-
     const routeData=await requestWalkingRoute(locations);
     const routeLatLngs=drawApiRoute(routeData);
-    await fetchAll(true); // 경로가 화면에 맞춰진 뒤, 경로 주변 시설 데이터로 다시 계산
+
+    // 경로 화면 범위의 시설을 다시 받아 점수를 계산한다.
+    await fetchAll(true);
+
     const summary=getRouteSummary(routeData,routeLatLngs);
-    const safety=evaluateRouteSafety(routeLatLngs,waypoints);
-    updateRoutePanel(summary,safety,waypoints,false);
-    showRouteToast('✅ 실제 지도 도로망 기반 경로 계산 완료. 빨간색 경로로 표시했습니다.');
+    const safety=evaluateRouteSafety(routeLatLngs,[]);
+    updateRoutePanel(summary,safety,[],false);
+
+    showRouteToast('✅ 최단 보행 경로 계산 완료. 경로 주변 안전시설을 바탕으로 점수를 산정했습니다.');
   }catch(err){
     console.warn('실제 경로 API 실패:',err);
-    const waypoints=selectSafeWaypoints({lat:latlng.lat,lng:latlng.lng});
-    drawWaypointMarks(waypoints);
-    const points=[[myLat,myLng],...waypoints.map(p=>[p.lat,p.lng]),[latlng.lat,latlng.lng]];
-    fallbackRouteLine=L.polyline(points,{color:ROUTE_COLOR,weight:5,opacity:.85,dashArray:'8,8',lineCap:'round',lineJoin:'round'}).addTo(map);
+
+    const points=[[myLat,myLng],[latlng.lat,latlng.lng]];
+    fallbackRouteLine=L.polyline(points,{
+      color:ROUTE_COLOR,
+      weight:5,
+      opacity:.85,
+      dashArray:'8,8',
+      lineCap:'round',
+      lineJoin:'round'
+    }).addTo(map);
+
     map.fitBounds(fallbackRouteLine.getBounds(),{padding:[50,50]});
+
     const fallbackLatLngs=points.map(p=>({lat:p[0],lng:p[1]}));
-    await fetchAll(true); // 임시 경로도 현재 경로 화면 기준 시설 수로 다시 계산
-    const summary={distanceM:pathDistanceMeters(fallbackLatLngs),durationSec:pathDistanceMeters(fallbackLatLngs)/1.1};
-    const safety=evaluateRouteSafety(fallbackLatLngs,waypoints);
-    updateRoutePanel(summary,safety,waypoints,true);
-    showRouteToast('⚠️ 도로망 경로 API 호출에 실패해 임시 경유지 선을 빨간색 점선으로 표시했습니다.');
+    await fetchAll(true);
+
+    const fallbackDistance=pathDistanceMeters(fallbackLatLngs);
+    const summary={
+      distanceM:fallbackDistance,
+      durationSec:fallbackDistance/1.1
+    };
+    const safety=evaluateRouteSafety(fallbackLatLngs,[]);
+    updateRoutePanel(summary,safety,[],true);
+
+    showRouteToast('⚠️ 경로 API 호출에 실패해 목적지까지의 직선 안내를 임시로 표시했습니다.');
   }finally{
     if(spinner) spinner.classList.remove('show');
   }
 }
 
 function selectSafeWaypoints(dest){
-  const direct=distM(myLat,myLng,dest.lat,dest.lng);
-  if(!safeFacilityPoints.length||direct<120) return [];
-
-  const candidates=safeFacilityPoints.map(p=>{
-    const d1=distM(myLat,myLng,p.lat,p.lng);
-    const d2=distM(p.lat,p.lng,dest.lat,dest.lng);
-    const detour=(d1+d2)-direct;
-    const ratio=(d1+d2)/Math.max(direct,1);
-    const lineD=distancePointToSegmentMeters(p,{lat:myLat,lng:myLng},dest);
-    const density=densityBonus(p);
-    let groupBonus=0;
-    if(grp==='child'&&p.key==='child_house') groupBonus+=45;
-    if(grp==='child'&&p.key==='police') groupBonus+=20;
-    if(grp==='youth'&&p.key==='police') groupBonus+=28;
-    if(grp==='youth'&&p.key==='cctv') groupBonus+=10;
-    if(grp==='elder'&&p.key==='bell') groupBonus+=28;
-    if(grp==='elder'&&p.key==='police') groupBonus+=18;
-
-    const score=p.weight+groupBonus+density-(detour/18)-(lineD/16);
-    return {...p,d1,d2,detour,ratio,lineD,score};
-  }).filter(p=>{
-    if(p.d1<45) return false;
-    if(p.d2<45) return false;
-    if(p.ratio>1.45) return false;
-    if(p.lineD>Math.max(250,direct*.45)) return false;
-    return true;
-  }).sort((a,b)=>b.score-a.score);
-
-  const selected=[];
-  const maxCount=direct>900?2:1;
-  for(const c of candidates){
-    if(selected.length>=maxCount) break;
-    if(selected.some(s=>distM(s.lat,s.lng,c.lat,c.lng)<180)) continue;
-    selected.push(c);
-  }
-
-  selected.sort((a,b)=>a.d1-b.d1);
-  return selected;
+  return [];
 }
 
 function densityBonus(p){
-  let bonus=0;
-  for(const q of safeFacilityPoints){
-    const d=distM(p.lat,p.lng,q.lat,q.lng);
-    if(d<=150){
-      bonus+=(FACILITY_WEIGHT[q.key]||30)*0.14;
-    }
-  }
-  return Math.min(80,bonus);
+  return 0;
 }
 
 async function requestWalkingRoute(locations){
@@ -1851,35 +1978,88 @@ function drawWaypointMarks(waypoints){
   });
 }
 
-function evaluateRouteSafety(routeLatLngs,waypoints){
-  const countsByKey={police:0,child_house:0,bell:0,cctv:0};
-  const seen=new Set();
-  let weighted=0;
+function calculateBacktrackMeters(path){
+  if(!path||path.length<3) return 0;
 
-  // 패널 숫자는 화면 전체 시설 수가 아니라 빨간 경로 주변 ROUTE_FACILITY_RADIUS_M m 안에 들어오는 시설만 계산함.
-  for(const p of safeFacilityPoints){
-    const nearRoute=minDistanceToPathMeters(p,routeLatLngs)<=ROUTE_FACILITY_RADIUS_M;
-    if(!nearRoute) continue;
-    if(seen.has(p.id)) continue;
-    seen.add(p.id);
-    countsByKey[p.key]=(countsByKey[p.key]||0)+1;
-    weighted+=(FACILITY_WEIGHT[p.key]||30);
+  const dest=path[path.length-1];
+  let total=0;
+
+  for(let i=1;i<path.length;i++){
+    const prevD=distM(path[i-1].lat,path[i-1].lng,dest.lat,dest.lng);
+    const currD=distM(path[i].lat,path[i].lng,dest.lat,dest.lng);
+    const increase=currD-prevD;
+
+    // 교차로와 도로 굴곡에서 생기는 2m 이하 변화는 후진으로 보지 않는다.
+    if(increase>2) total+=increase;
   }
 
-  // 안전 경유지로 직접 선택된 시설도 실제 경로 주변에 있으면 누락 없이 반영함.
-  waypoints.forEach(w=>{
-    const nearRoute=minDistanceToPathMeters(w,routeLatLngs)<=ROUTE_FACILITY_RADIUS_M;
-    if(!nearRoute||seen.has(w.id)) return;
-    seen.add(w.id);
-    countsByKey[w.key]=(countsByKey[w.key]||0)+1;
-    weighted+=(FACILITY_WEIGHT[w.key]||30)+40;
+  return total;
+}
+
+function shortRouteBonus(distanceM){
+  if(distanceM<=300) return 15;
+  if(distanceM>=1200) return 0;
+  return Math.round(15*(1200-distanceM)/900);
+}
+
+function evaluateRouteSafety(routeLatLngs,waypoints){
+  const countsByKey={police:0,child_house:0,bell:0,cctv:0};
+  const rawByKey={police:0,child_house:0,bell:0,cctv:0};
+  const seen=new Set();
+
+  for(const p of safeFacilityPoints){
+    const cfg=FACILITY_SCORE_CONFIG[p.key];
+    if(!cfg) continue;
+
+    const distance=minDistanceToPathMeters(p,routeLatLngs);
+    const rate=facilityProximityRate(distance);
+    if(rate<=0||seen.has(p.id)) continue;
+
+    seen.add(p.id);
+    countsByKey[p.key]=(countsByKey[p.key]||0)+1;
+    rawByKey[p.key]+=rate*cfg.unit;
+  }
+
+  const scoreByKey={};
+  let facilityScore=0;
+
+  Object.keys(FACILITY_SCORE_CONFIG).forEach(key=>{
+    const cfg=FACILITY_SCORE_CONFIG[key];
+    scoreByKey[key]=Math.min(cfg.cap,rawByKey[key]||0);
+    facilityScore+=scoreByKey[key];
   });
 
-  const routeKm=Math.max(pathDistanceMeters(routeLatLngs)/1000,.2);
-  const densityScore=Math.min(45,weighted/(routeKm*18));
-  const waypointScore=Math.min(20,waypoints.length*10);
-  const score=Math.max(35,Math.min(100,Math.round(45+densityScore+waypointScore)));
-  return {countsByKey,score,total:seen.size,radiusM:ROUTE_FACILITY_RADIUS_M};
+  facilityScore=Math.round(facilityScore);
+
+  const routeDistance=pathDistanceMeters(routeLatLngs);
+  const shortBonus=shortRouteBonus(routeDistance);
+  const backtrackM=calculateBacktrackMeters(routeLatLngs);
+
+  // 누적 20m 이하는 자연스러운 도로 굴곡으로 보고 감점하지 않는다.
+  const backtrackPenalty=Math.min(
+    15,
+    Math.max(0,Math.round((backtrackM-20)/12))
+  );
+
+  const score=Math.max(
+    35,
+    Math.min(
+      100,
+      Math.round(45+facilityScore+shortBonus-backtrackPenalty)
+    )
+  );
+
+  return {
+    countsByKey,
+    scoreByKey,
+    facilityScore,
+    shortBonus,
+    backtrackM:Math.round(backtrackM),
+    backtrackPenalty,
+    score,
+    total:seen.size,
+    radiusM:ROUTE_FACILITY_RADIUS_M
+  };
 }
 
 function updateRoutePanel(summary,safety,waypoints,isFallback){
@@ -1893,41 +2073,90 @@ function updateRoutePanel(summary,safety,waypoints,isFallback){
   const reason=document.getElementById('routeReason');
 
   if(!panel) return;
+
   panel.classList.add('show');
+  resetRouteDetails();
   updateRoutePanelPosition();
-  title.textContent=isFallback?'⚠️ 임시 안전 경유 경로':'🧭 실제 지도 기반 빨간색 경로';
-  sub.textContent=isFallback?'도로망 API 실패로 안전 경유지 기준 임시 빨간 점선을 표시했습니다.':'실제 보행 가능한 지도 도로망을 따라 경로를 표시했습니다.';
+
+  title.textContent=isFallback
+    ? '⚠️ 임시 직선 안내'
+    : '🚶 최단 보행 경로 · 안전도 평가';
+
+  sub.textContent=isFallback
+    ? '도로망 경로 호출 실패로 목적지까지 직선 안내를 표시했습니다.'
+    : '안전시설을 강제 경유하지 않고 최단거리 우선 경로를 안내합니다.';
+
   dist.textContent=formatDistance(summary.distanceM);
   dur.textContent=formatDuration(summary.durationSec);
   score.textContent=safety.score+'점';
 
   const chips=[];
-  ['police','child_house','bell','cctv'].forEach(k=>{
-    const n=safety.countsByKey[k]||0;
-    chips.push(`<span class="route-pill">${FACILITY_ROUTE_LABEL[k]} ${n}개</span>`);
+
+  ['police','child_house','bell','cctv'].forEach(key=>{
+    const count=safety.countsByKey[key]||0;
+    const itemScore=Math.round(safety.scoreByKey[key]||0);
+    chips.push(
+      `<span class="route-pill">${FACILITY_ROUTE_LABEL[key]} ${count}개 · ${itemScore}점</span>`
+    );
   });
+
+  chips.push(
+    `<span class="route-pill">📏 짧은 길 보정 +${safety.shortBonus}점</span>`
+  );
+
+  if(safety.backtrackPenalty>0){
+    chips.push(
+      `<span class="route-pill">↩ 후진 감점 -${safety.backtrackPenalty}점</span>`
+    );
+  }else{
+    chips.push(
+      `<span class="route-pill">➡ 후진 감점 없음</span>`
+    );
+  }
+
   list.innerHTML=chips.join('');
 
-  if(waypoints.length){
-    const names=waypoints.map(w=>`${FACILITY_ROUTE_LABEL[w.key]||'안전시설'}(${w.name})`).join(' → ');
-    reason.innerHTML=`우선 경유지: ${names}<br>위 숫자는 전체 표시 시설이 아니라 빨간 경로 주변 ${safety.radiusM}m 이내 시설만 계산한 값입니다.`;
-  }else{
-    reason.innerHTML=`현재 화면 주변에서 적절한 안전 경유지를 찾지 못해 목적지까지의 실제 도보 경로를 우선 표시했습니다.<br>위 숫자는 전체 표시 시설이 아니라 빨간 경로 주변 ${safety.radiusM}m 이내 시설만 계산한 값입니다.`;
+  const mobileSummary=document.getElementById('routeMobileSummary');
+  if(mobileSummary){
+    if(isFallback){
+      mobileSummary.textContent='경로 API 실패 · 임시 직선 안내';
+    }else{
+      const backtrackText=safety.backtrackPenalty>0
+        ? `후진 -${safety.backtrackPenalty}점`
+        : '후진 감점 없음';
+
+      mobileSummary.textContent=
+        `시설 ${safety.total}개 · 시설 +${safety.facilityScore}점 · 짧은 길 +${safety.shortBonus}점 · ${backtrackText}`;
+    }
   }
+
+  reason.innerHTML=
+    `기본 45점 + 안전시설 접근성 ${safety.facilityScore}점 + 짧은 길 보정 ${safety.shortBonus}점 − 후진 감점 ${safety.backtrackPenalty}점`
+    +`<br>시설은 경로 30m·60m·100m·150m 이내에 따라 차등 반영하며, CCTV는 최대 8점까지만 반영합니다.`
+    +`<br>목적지에서 멀어지는 누적 구간: 약 ${safety.backtrackM}m`
+    +`<br><span style="color:#94a3b8">공공데이터 기반 참고 점수이며 실제 안전을 보장하지 않습니다.</span>`;
 }
 
 function showRoutePanelLoading(dest){
   const panel=document.getElementById('routePanel');
   if(!panel) return;
+
   panel.classList.add('show');
+  resetRouteDetails();
   updateRoutePanelPosition();
-  document.getElementById('routeTitle').textContent='🧭 실제 지도 경로 계산 중';
-  document.getElementById('routeSub').textContent='안전시설 후보를 선별하고 실제 도로망 도보 경로를 호출하고 있습니다.';
+
+  document.getElementById('routeTitle').textContent='🧭 경로 계산 중';
+  document.getElementById('routeSub').textContent='최단 보행 경로를 한 번 호출한 뒤 경로 주변 안전시설을 분석합니다.';
   document.getElementById('routeDistance').textContent='계산 중';
   document.getElementById('routeDuration').textContent='계산 중';
   document.getElementById('routeScore').textContent='-';
   document.getElementById('routeSafeList').innerHTML='';
-  document.getElementById('routeReason').textContent='경로 계산 후에는 빨간 경로 주변 시설만 집계합니다.';
+  document.getElementById('routeReason').textContent='안전시설을 강제 경유하지 않으며, 완성된 최단 경로 주변 시설만 점수화합니다.';
+
+  const mobileSummary=document.getElementById('routeMobileSummary');
+  if(mobileSummary){
+    mobileSummary.textContent='최단 경로와 안전시설을 분석하고 있습니다.';
+  }
 }
 
 function clearRoute(hidePanel=true){
@@ -1941,6 +2170,14 @@ function clearRoute(hidePanel=true){
   apiRouteLayer=null;
   fallbackRouteLine=null;
   waypointMarks=[];
+
+  resetRouteDetails();
+
+  const mobileSummary=document.getElementById('routeMobileSummary');
+  if(mobileSummary){
+    mobileSummary.textContent='목적지를 선택하면 요약 정보가 표시됩니다.';
+  }
+
   if(hidePanel){
     const panel=document.getElementById('routePanel');
     if(panel){
