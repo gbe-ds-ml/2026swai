@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>SafeWalk · 내 주변 안전지도</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -12,15 +12,17 @@
 :root{
   --bg:#f0f4fa; --white:#ffffff; --navy:#1a2540; --blue:#2563eb;
   --cyan:#0891b2; --green:#059669; --orange:#ea580c; --pink:#db2777;
-  --gray:#64748b; --gray2:#e2e8f0; --card:rgba(255,255,255,0.92);
+  --gray:#64748b; --gray2:#e2e8f0; --card:rgba(255,255,255,0.97);
   --route-red:#ef4444; --route-red-dark:#dc2626;
+  --vv-top:0px; --vv-bottom:0px; --app-vh:100vh;
+  --chrome-top:0px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--navy);}
 /* INTRO */
-#intro{position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#e8f0fe 0%,#f0f9ff 50%,#fef3c7 100%);transition:opacity .5s,transform .5s;overflow-y:auto;}
+#intro{position:fixed;top:0;left:0;right:0;height:var(--app-vh,100%);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#e8f0fe 0%,#f0f9ff 50%,#fef3c7 100%);transition:opacity .5s,transform .5s;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 #intro.out{opacity:0;transform:scale(1.05);pointer-events:none;}
-.intro-content{display:flex;flex-direction:column;align-items:center;padding:32px 28px;width:100%;max-width:420px;animation:fadeup .7s ease both;}
+.intro-content{display:flex;flex-direction:column;align-items:center;padding:32px 28px calc(32px + env(safe-area-inset-bottom,0px));width:100%;max-width:420px;animation:fadeup .7s ease both;}
 @keyframes fadeup{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
 .badge{display:inline-flex;align-items:center;gap:6px;background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.2);border-radius:100px;padding:5px 14px;font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.08em;margin-bottom:6px;}
 .badge-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);animation:blink 1.4s infinite;}
@@ -30,15 +32,15 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .app-name span{color:var(--blue);}
 .app-sub{font-size:14px;color:var(--gray);margin-bottom:44px;}
 .section-lbl{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--gray);text-transform:uppercase;margin-bottom:14px;align-self:flex-start;}
-.age-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;margin-bottom:24px;}
-.age-card{display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px 8px;border-radius:18px;border:2px solid var(--gray2);background:var(--white);cursor:pointer;transition:all .2s;position:relative;overflow:hidden;touch-action:manipulation;font-family:'Noto Sans KR',sans-serif;text-align:center;}
+.age-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;margin-bottom:24px;align-items:stretch;}
+.age-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px 6px;border-radius:18px;border:2px solid var(--gray2);background:var(--white);cursor:pointer;transition:all .2s;position:relative;overflow:hidden;touch-action:manipulation;font-family:'Noto Sans KR',sans-serif;text-align:center;}
 .age-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.1);}
 .age-card.selected{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.15);}
 .age-card.selected[data-group="child"]{border-color:var(--green);}
 .age-card.selected[data-group="youth"]{border-color:var(--pink);}
 .age-card.selected[data-group="elder"]{border-color:var(--orange);}
 .age-icon{font-size:30px;}
-.age-name{font-size:13px;font-weight:700;color:var(--navy);}
+.age-name{font-size:12.5px;font-weight:700;color:var(--navy);word-break:keep-all;line-height:1.25;}
 .age-desc{font-size:10px;color:var(--gray);text-align:center;line-height:1.4;}
 .start-btn{width:100%;padding:16px;border-radius:14px;border:none;background:var(--blue);color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;opacity:.35;pointer-events:none;font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;}
 .start-btn.on{opacity:1;pointer-events:auto;}
@@ -63,33 +65,54 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .cpted-desc{font-size:10px;color:#92400e99;margin-top:3px;}
 .cpted-arr{font-size:18px;color:#92400e;font-weight:900;}
 /* MAP SCREEN */
-#map-screen{position:fixed;inset:0;display:none;flex-direction:column;}
+#map-screen{position:fixed;top:0;left:0;right:0;height:var(--app-vh,100%);display:none;flex-direction:column;}
 #map-screen.show{display:flex;}
 #map{flex:1;width:100%;min-height:0;}
-.topbar{position:absolute;top:0;left:0;right:0;z-index:9999;padding:12px 14px 0;display:flex;gap:8px;align-items:center;}
-.icon-btn{width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--gray2);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;font-size:17px;backdrop-filter:blur(10px);box-shadow:0 2px 8px rgba(0,0,0,.1);transition:background .2s;touch-action:manipulation;font-family:'Noto Sans KR',sans-serif;-webkit-appearance:none;appearance:none;flex-shrink:0;}
+/* 상단바: fixed + 자체 레이어로 승격하여 iOS Safari에서 사라지는 현상 방지 */
+.topbar{
+  position:fixed;
+  top:calc(var(--vv-top,0px) + env(safe-area-inset-top,0px));
+  left:0;right:0;z-index:9200;
+  padding:12px 14px 0;display:none;gap:8px;align-items:center;
+  transform:translateZ(0);-webkit-transform:translateZ(0);
+  will-change:transform;pointer-events:none;
+}
+#map-screen.show ~ .topbar,.topbar.show{display:flex;}
+.topbar>*{pointer-events:auto;}
+.icon-btn{width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--gray2);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;font-size:17px;box-shadow:0 2px 8px rgba(0,0,0,.14);transition:background .2s;touch-action:manipulation;font-family:'Noto Sans KR',sans-serif;-webkit-appearance:none;appearance:none;flex-shrink:0;}
 .icon-btn:active{background:#dbeafe;}
 .icon-btn:focus-visible{outline:3px solid rgba(37,99,235,.4);outline-offset:2px;}
-.topbar-info{flex:1;min-width:0;background:var(--card);border:1px solid var(--gray2);border-radius:13px;padding:8px 13px;backdrop-filter:blur(10px);box-shadow:0 2px 8px rgba(0,0,0,.1);display:flex;align-items:center;gap:8px;}
-.group-tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;flex-shrink:0;}
+.topbar-info{flex:1;min-width:0;background:var(--card);border:1px solid var(--gray2);border-radius:13px;padding:8px 13px;box-shadow:0 2px 8px rgba(0,0,0,.14);display:flex;align-items:center;gap:8px;}
+.group-tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;flex-shrink:0;white-space:nowrap;}
 .group-tag.child{background:#d1fae5;color:#065f46;}
 .group-tag.youth{background:#fce7f3;color:#9d174d;}
 .group-tag.elder{background:#ffedd5;color:#9a3412;}
 .group-tag.cpted{background:#fef3c7;color:#92400e;}
 .topbar-loc{font-size:12px;color:var(--gray);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* ZOOM NOTICE */
+.zoom-notice{
+  position:fixed;left:14px;right:14px;
+  top:calc(var(--vv-top,0px) + env(safe-area-inset-top,0px) + 64px);
+  z-index:8600;display:none;background:rgba(26,37,64,.9);color:#fff;
+  border-radius:12px;padding:9px 12px;font-size:11.5px;line-height:1.45;
+  text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.2);
+  transform:translateZ(0);-webkit-transform:translateZ(0);
+}
+.zoom-notice.show{display:block;}
 /* BOTTOM SHEET */
 #sheet{
-  position:fixed;left:0;right:0;bottom:0;z-index:1100;
+  position:fixed;left:0;right:0;bottom:var(--vv-bottom,0px);z-index:9100;
   background:#fff;
   border-radius:20px 20px 0 0;
   box-shadow:0 -4px 24px rgba(0,0,0,.12);
-  transform:translateY(calc(100% - 56px));
+  transform:translate3d(0,calc(100% - 56px),0);
   transition:transform .3s cubic-bezier(.4,0,.2,1);
   display:none;
+  will-change:transform;
 }
 #sheet.show{display:block;}
-#sheet[data-sheet-state="closed"]{transform:translateY(calc(100% - 56px));}
-#sheet.open,#sheet[data-sheet-state="open"]{transform:translateY(0);}
+#sheet[data-sheet-state="closed"]{transform:translate3d(0,calc(100% - 56px),0);}
+#sheet.open,#sheet[data-sheet-state="open"]{transform:translate3d(0,0,0);}
 .sheet-handle-wrap{display:block;position:relative;z-index:2;}
 .sheet-toggle-btn{
   width:100%;min-height:56px;border:0;background:#fff;
@@ -97,6 +120,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
   gap:5px;padding:8px 48px 7px;cursor:pointer;
   font-family:'Noto Sans KR',sans-serif;touch-action:manipulation;
   -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;position:relative;
+  border-radius:20px 20px 0 0;
 }
 .sheet-toggle-btn:focus-visible{outline:3px solid rgba(37,99,235,.35);outline-offset:-3px;}
 .sheet-toggle-btn:active{background:#f8fafc;}
@@ -112,6 +136,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .chip-left{display:flex;align-items:center;gap:10px;pointer-events:none;}
 .chip-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 .chip-label{font-size:13px;font-weight:600;color:var(--navy);}
+.chip-hint{display:none;font-size:10px;font-weight:700;color:#b45309;margin-top:2px;letter-spacing:-.01em;}
 .sw-vis{position:relative;width:46px;height:28px;border-radius:14px;background:var(--gray2);flex-shrink:0;transition:background .2s;pointer-events:none;}
 .sw-vis .toggle-thumb{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:transform .2s;}
 .sw-vis .toggle-thumb .mini-spin{display:none;}
@@ -131,12 +156,13 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .stat-lbl{font-size:9px;color:var(--gray);font-weight:500;white-space:nowrap;}
 /* ROUTE PANEL */
 .route-panel{
-  position:fixed;left:14px;right:14px;bottom:var(--route-panel-bottom,70px);
-  z-index:850;display:none;
-  background:rgba(255,255,255,.96);border:1px solid var(--gray2);border-radius:18px;
-  box-shadow:0 8px 28px rgba(15,23,42,.18);backdrop-filter:blur(12px);padding:14px;
+  position:fixed;left:14px;right:14px;
+  bottom:calc(var(--route-panel-bottom,70px) + var(--vv-bottom,0px));
+  z-index:8500;display:none;
+  background:rgba(255,255,255,.97);border:1px solid var(--gray2);border-radius:18px;
+  box-shadow:0 8px 28px rgba(15,23,42,.18);padding:14px;
   transition:bottom .28s cubic-bezier(.4,0,.2,1);
-  max-height:calc(100vh - 82px - var(--route-panel-bottom,70px));
+  max-height:calc(var(--app-vh,100vh) - 92px - var(--route-panel-bottom,70px));
   overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 .route-panel.show{display:block;animation:routeIn .22s ease both;}
@@ -157,8 +183,8 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .route-details-toggle{display:none;}
 .route-details{display:block;}
 .route-details-close-label{display:none;}
-.route-details-box[open] .route-details-open-label{display:none;}
-.route-details-box[open] .route-details-close-label{display:inline;}
+.route-details-box.open .route-details-open-label{display:none;}
+.route-details-box.open .route-details-close-label{display:inline;}
 @media (max-width:768px){
   .route-panel{left:8px;right:8px;padding:10px;border-radius:16px;max-height:min(48vh,390px);}
   .route-head{align-items:center;margin-bottom:6px;}
@@ -172,30 +198,33 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
   .route-mobile-summary{display:block;min-height:18px;margin-top:5px;color:var(--gray);font-size:10px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .route-details-box{display:block;}
   .route-details-toggle{
-    display:flex;align-items:center;justify-content:center;width:100%;min-height:42px;margin-top:5px;
+    display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;margin-top:6px;
     border:0;border-radius:10px;background:#eff6ff;color:#1d4ed8;
     font-family:'Noto Sans KR',sans-serif;font-size:11px;font-weight:800;cursor:pointer;
-    touch-action:manipulation;-webkit-user-select:none;user-select:none;position:relative;z-index:2;list-style:none;
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;position:relative;z-index:3;
+    -webkit-appearance:none;appearance:none;
   }
-  .route-details-toggle::-webkit-details-marker{display:none;}
-  .route-details-toggle::marker{display:none;content:'';}
-  .route-details-box:not([open]) .route-details{display:none;}
-  .route-details-box[open] .route-details{display:block;}
-  .route-details-box[open] .route-safe-list{margin-top:7px;max-height:92px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-  .route-details-box[open] .route-pill{font-size:9px;padding:4px 7px;}
-  .route-details-box[open] .route-reason{font-size:10px;line-height:1.4;margin-top:7px;padding-top:7px;}
+  .route-details-toggle:active{background:#dbeafe;}
+  .route-details-box:not(.open) .route-details{display:none;}
+  .route-details-box.open .route-details{display:block;}
+  .route-details-box.open .route-safe-list{margin-top:7px;max-height:96px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .route-details-box.open .route-pill{font-size:9px;padding:4px 7px;}
+  .route-details-box.open .route-reason{font-size:10px;line-height:1.4;margin-top:7px;padding-top:7px;}
 }
 @media (max-height:560px) and (max-width:1024px){
   .route-panel{max-height:52vh;}
   .route-sub{display:none;}
-  .route-mobile-summary,.route-details-toggle{display:flex;}
-  .route-details-box:not([open]) .route-details{display:none;}
+  .route-mobile-summary{display:block;}
+  .route-details-toggle{display:flex;}
+  .route-details-box:not(.open) .route-details{display:none;}
 }
 @media (max-width:768px), (max-height:560px) and (max-width:1024px){
   body.route-panel-suppressed .route-panel.show{display:none !important;}
 }
 .route-toast{
-  position:fixed;top:62px;left:14px;right:14px;z-index:10000;display:none;
+  position:fixed;
+  top:calc(var(--vv-top,0px) + env(safe-area-inset-top,0px) + 64px);
+  left:14px;right:14px;z-index:9800;display:none;
   background:rgba(26,37,64,.92);color:#fff;border-radius:14px;padding:11px 13px;
   box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:12px;line-height:1.45;
 }
@@ -221,16 +250,19 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 .prow{font-size:12px;color:var(--gray);margin-top:3px;display:flex;align-items:center;gap:5px;}
 .pbadge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;margin-bottom:7px;}
 /* LOADING */
-#loading{position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .4s;}
+#loading{position:fixed;inset:0;z-index:9900;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .4s;}
 #loading.hide{opacity:0;pointer-events:none;}
 .spin{width:44px;height:44px;border:3px solid var(--gray2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .load-txt{font-size:13px;color:var(--gray);font-weight:500;}
-#map-spinner{position:fixed;bottom:80px;right:14px;z-index:600;background:var(--card);border:1px solid var(--gray2);border-radius:50%;width:36px;height:36px;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.1);}
+#map-spinner{position:fixed;bottom:calc(80px + var(--vv-bottom,0px));right:14px;z-index:8400;background:var(--card);border:1px solid var(--gray2);border-radius:50%;width:36px;height:36px;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.1);}
 #map-spinner.show{display:flex;}
 #map-spinner .mspin{width:18px;height:18px;border:2px solid var(--gray2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
 .leaflet-container{touch-action:pan-x pan-y !important;}
 .leaflet-marker-icon,.leaflet-marker-shadow{will-change:transform;backface-visibility:hidden;}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important;}
+}
 </style>
 </head>
 <body>
@@ -241,25 +273,25 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 <div id="intro">
   <div class="intro-content">
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
-    <div class="version-tag">v.1.6.0</div>
+    <div class="version-tag">v.1.7.1</div>
     <div class="app-name">Safe<span>Walk</span></div>
     <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
     <div class="section-lbl">나는 누구인가요?</div>
     <div class="age-cards">
       <button type="button" class="age-card" data-group="child" onclick="pick(this)">
         <span class="age-icon">🧒</span>
-        <span class="age-name">아동</span>
-        <span class="age-desc">초등학생<br>이하</span>
+        <span class="age-name">어린이</span>
+        <span class="age-desc">만 13세<br>미만</span>
       </button>
       <button type="button" class="age-card" data-group="youth" onclick="pick(this)">
         <span class="age-icon">🚶‍♀️</span>
-        <span class="age-name">청소년</span>
-        <span class="age-desc">중·고등<br>학생</span>
+        <span class="age-name">여성·청소년</span>
+        <span class="age-desc" aria-hidden="true">&nbsp;<br>&nbsp;</span>
       </button>
       <button type="button" class="age-card" data-group="elder" onclick="pick(this)">
         <span class="age-icon">👴</span>
         <span class="age-name">노인</span>
-        <span class="age-desc">65세<br>이상</span>
+        <span class="age-desc">만 65세<br>이상</span>
       </button>
     </div>
     <button class="start-btn" id="startBtn" onclick="start()">📍 내 주변 안전지도 보기</button>
@@ -270,14 +302,14 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
           <span class="route-guide-badge">경로 API 1회 호출</span>
         </div>
         <div class="route-guide-row"><span class="num">1</span><span>안전시설을 억지로 경유하지 않고 <strong>최단 보행 경로</strong>를 우선 안내합니다.</span></div>
-        <div class="route-guide-row"><span class="num">2</span><span>경로 주변 치안시설·비상벨·지킴이집·CCTV를 거리별로 점수화합니다.</span></div>
-        <div class="route-guide-row"><span class="num">3</span><span>짧은 길은 시설 부족 감점을 완화하고, 목적지에서 멀어지는 후진 구간은 감점합니다.</span></div>
+        <div class="route-guide-row"><span class="num">2</span><span>경로 주변 시설을 <strong>치안시설(1순위) → CCTV·안전비상벨(2순위) → 어린이안전지킴이집(3순위)</strong> 순으로 가중 반영합니다.</span></div>
+        <div class="route-guide-row"><span class="num">3</span><span>짧은 길은 시설 수가 적어 생기는 불리함을 보정합니다.</span></div>
       </div>
       <button type="button" class="route-guide-more" onclick="toggleRouteGuide()">점수 계산 자세히 보기</button>
       <div class="route-guide-detail">
         <div><strong>시설 근접도</strong>: 30m 이내 100% · 60m 75% · 100m 40% · 150m 15%</div>
-        <div><strong>종류별 최대점수</strong>: 치안시설 12점 · 지킴이집 10점 · 비상벨 10점 · CCTV 8점</div>
-        <div><strong>종합점수</strong>: 기본 45점 + 시설 최대 40점 + 짧은 길 보정 최대 15점 − 후진 감점 최대 15점</div>
+        <div><strong>우선순위별 최대점수</strong>: 1순위 치안시설 17점 · 2순위 CCTV 11점 / 안전비상벨 11점 · 3순위 어린이안전지킴이집 6점 (합계 45점)</div>
+        <div><strong>종합점수</strong>: 기본 40점 + 시설 최대 45점 + 짧은 길 보정 최대 15점 = 최대 100점</div>
         <div class="route-guide-note">점수는 레이어 표시 여부와 무관하게 조회된 시설 전체를 기준으로 계산합니다. 공공데이터 기반 참고 지표이며 실제 안전을 보장하지 않습니다. 범죄주의 WMS는 현재 점수에 직접 반영하지 않습니다.</div>
       </div>
     </div>
@@ -297,17 +329,18 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 </div>
 <div id="map-screen">
   <div id="map"></div>
-  <div id="map-spinner"><div class="mspin"></div></div>
-  <div class="topbar">
-    <button type="button" class="icon-btn" onclick="goBack()" aria-label="처음 화면으로 돌아가기">←</button>
-    <div class="topbar-info">
-      <span class="group-tag" id="gTag"></span>
-      <span class="topbar-loc" id="locTxt">위치 확인 중...</span>
-    </div>
-    <button type="button" class="icon-btn" id="routeBtn" onclick="startRoutePick()" aria-label="안전 길찾기" title="안전 길찾기">🧭</button>
-    <button type="button" class="icon-btn" onclick="flyHome()" aria-label="내 위치로 이동" title="내 위치로">📍</button>
-  </div>
 </div>
+<div id="map-spinner"><div class="mspin"></div></div>
+<div class="topbar" id="topbar">
+  <button type="button" class="icon-btn" onclick="goBack()" aria-label="처음 화면으로 돌아가기">←</button>
+  <div class="topbar-info">
+    <span class="group-tag" id="gTag"></span>
+    <span class="topbar-loc" id="locTxt">위치 확인 중...</span>
+  </div>
+  <button type="button" class="icon-btn" id="routeBtn" onclick="startRoutePick()" aria-label="안전 길찾기" title="안전 길찾기">🧭</button>
+  <button type="button" class="icon-btn" onclick="flyHome()" aria-label="내 위치로 이동" title="내 위치로">📍</button>
+</div>
+<div id="zoomNotice" class="zoom-notice">🔍 지도를 조금 더 확대하면 안전시설이 표시됩니다</div>
 <div id="sheet">
   <div class="sheet-handle-wrap" id="sheetHandle">
     <button type="button" class="sheet-toggle-btn" id="sheetToggleBtn" aria-expanded="false" aria-controls="sheetBody" onclick="return toggleLayerSheet(event)">
@@ -335,30 +368,83 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
     <div class="route-metric"><div class="v" id="routeScore">-</div><div class="k">안전도</div></div>
   </div>
   <div class="route-mobile-summary" id="routeMobileSummary">목적지를 선택하면 요약 정보가 표시됩니다.</div>
-  <details class="route-details-box" id="routeDetailsBox" open>
-    <summary class="route-details-toggle">
+  <div class="route-details-box open" id="routeDetailsBox">
+    <button type="button" class="route-details-toggle" id="routeDetailsToggle" aria-expanded="true" aria-controls="routeDetails">
       <span class="route-details-open-label">상세 점수 보기</span>
       <span class="route-details-close-label">상세 점수 접기</span>
-    </summary>
+    </button>
     <div class="route-details" id="routeDetails">
       <div class="route-safe-list" id="routeSafeList"></div>
       <div class="route-reason" id="routeReason">최단 보행 경로를 우선 안내하고, 경로 주변 안전시설 접근성을 점수화합니다.</div>
     </div>
-  </details>
+  </div>
 </div>
 <div id="routeToast" class="route-toast"></div>
 <script>
 /* ============================================================
-   SafeWalk v1.6.0
-   주요 변경점
-   1) 경로 API 폴백 복구: 프록시 실패 시 OSRM → Valhalla 순으로 자동 대체
-   2) 프록시 요청에 format/shape_format 명시 + encoded polyline 디코더 추가
-   3) 통계바는 레이어 표시 여부를 반영, 안전도 점수는 전체 시설 기준 유지
-   4) 내 위치 팝업 문구를 실제 동작(화면 범위 기준)에 맞게 수정
-   5) 500건 상한 초과 시 통계바에 '+' 표기
-   6) 확대 시에는 캐시 유지, 축소·데이터 잘림 시에만 재조회
-   7) 미사용 코드 정리 / 접근성(button, aria-label) 보강
+   SafeWalk v1.7.1
+   변경 요약
+   A) 모바일 '상세 접기' 미작동 수정
+      - <details>/<summary> 구조를 button + div 로 교체 (iOS Safari에서
+        summary에 display:flex 지정 시 토글이 동작하지 않는 문제 회피)
+   1) 줌 게이트: MIN_DATA_ZOOM 미만으로 축소하면 API 호출/레이어 표시를
+      전면 중단하고 베이스맵만 노출, 다시 확대하면 자동 복원
+   2) 상단바·하단 시트 상시 노출
+      - topbar를 #map-screen 밖으로 분리해 position:fixed 로 전환
+      - backdrop-filter 제거(iOS 레이어 소실 원인) + translateZ(0) 승격
+      - visualViewport 연동(--vv-top/--vv-bottom/--app-vh)으로 주소창
+        높이 변화에도 위치 고정
+   3) 인트로 명칭 변경: 아동→어린이(만 13세 미만), 청소년→여성·청소년
+   4) 안전도 점수 재편성: 후진 감점 삭제, 치안시설 1순위 /
+      CCTV·비상벨 2순위 / 어린이안전지킴이집 3순위
+   5) [v1.7.1] 밀도 적응형 줌 임계값
+      - 500건 상한(MARKER_PAGE_SIZE)에 걸린 레이어는 데이터가 잘린
+        상태이며, isMarkerLayerCacheFresh()가 줌 변경 시마다 캐시를
+        버리므로 조작할 때마다 재조회가 발생한다(밀도 높은 지역일수록 심함)
+      - 상한 도달을 감지하면 해당 레이어의 최소 줌을 1단계 올리고,
+        상한에 걸리지 않으면 다시 낮춘다(MIN_DATA_ZOOM ~ MAX_ADAPTIVE_ZOOM)
+      - 지역명을 하드코딩하지 않고 실제 응답으로 자동 보정되므로
+        서울 등 고밀도 지역은 더 확대해야 표시되고 포항은 기존과 동일
    ============================================================ */
+
+/* ── 뷰포트 동기화 (모바일 상단/하단 UI 상시 노출) ── */
+let invalidateTimer=null;
+function syncViewportChrome(){
+  const root=document.documentElement;
+  const vv=window.visualViewport;
+  let top=0,bottom=0,h=window.innerHeight;
+  if(vv){
+    h=vv.height;
+    top=Math.max(0,vv.offsetTop||0);
+    bottom=Math.max(0,window.innerHeight-vv.height-(vv.offsetTop||0));
+  }
+  root.style.setProperty('--vv-top',Math.round(top)+'px');
+  root.style.setProperty('--vv-bottom',Math.round(bottom)+'px');
+  root.style.setProperty('--app-vh',Math.round(h)+'px');
+  clearTimeout(invalidateTimer);
+  invalidateTimer=setTimeout(()=>{ if(map) map.invalidateSize({animate:false}); },160);
+  updateRoutePanelPosition();
+}
+function bindViewportSync(){
+  if(window.__swViewportBound) return;
+  window.__swViewportBound=true;
+  window.addEventListener('resize',syncViewportChrome);
+  window.addEventListener('orientationchange',()=>setTimeout(syncViewportChrome,260));
+  window.addEventListener('pageshow',syncViewportChrome);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',syncViewportChrome);
+    window.visualViewport.addEventListener('scroll',syncViewportChrome);
+  }
+  syncViewportChrome();
+}
+function setChromeVisible(on){
+  const bar=document.getElementById('topbar');
+  if(bar) bar.classList.toggle('show',Boolean(on));
+  const sheet=document.getElementById('sheet');
+  if(sheet) sheet.classList.toggle('show',Boolean(on));
+  if(!on) updateZoomNotice(false);
+  syncViewportChrome();
+}
 
 /* ── Bottom Sheet ── */
 let sheetInited=false;
@@ -402,7 +488,7 @@ function initSheet(){
     window.addEventListener('resize',()=>{ resetRouteDetails(); syncRoutePanelWithSheet(); });
     window.addEventListener('orientationchange',()=>{ setTimeout(syncRoutePanelWithSheet,250); });
   }
-  initNativeRouteDetails();
+  initRouteDetailsToggle();
   applyLayerSheetState(false,false);
 }
 function getSheetVisibleHeight(){
@@ -431,34 +517,49 @@ function syncRoutePanelWithSheet(){
   setRoutePanelSuppressed(suppress);
   requestAnimationFrame(()=>updateRoutePanelPosition());
 }
+
+/* ── 경로 상세 접기/펼치기 (details → button 구조로 교체) ── */
 function setRouteDetailsOpen(open){
   const box=document.getElementById('routeDetailsBox');
+  const btn=document.getElementById('routeDetailsToggle');
   const panel=document.getElementById('routePanel');
   const details=document.getElementById('routeDetails');
   if(!box) return;
-  box.open=Boolean(open);
-  if(!box.open){
+  const next=Boolean(open);
+  box.classList.toggle('open',next);
+  if(btn) btn.setAttribute('aria-expanded',next?'true':'false');
+  if(!next){
     if(panel) panel.scrollTop=0;
     if(details) details.scrollTop=0;
   }
   requestAnimationFrame(()=>updateRoutePanelPosition());
 }
-function resetRouteDetails(){ setRouteDetailsOpen(!isCompactRouteLayout()); }
-function initNativeRouteDetails(){
+function toggleRouteDetails(event){
+  if(event){ event.preventDefault(); event.stopPropagation(); }
   const box=document.getElementById('routeDetailsBox');
-  if(!box||box.dataset.bound==='1') return;
-  box.dataset.bound='1';
-  box.addEventListener('toggle',()=>{
-    const panel=document.getElementById('routePanel');
-    const details=document.getElementById('routeDetails');
-    if(!box.open){
-      if(panel) panel.scrollTop=0;
-      if(details) details.scrollTop=0;
-    }
-    requestAnimationFrame(()=>updateRoutePanelPosition());
+  if(!box) return false;
+  setRouteDetailsOpen(!box.classList.contains('open'));
+  return false;
+}
+function resetRouteDetails(){ setRouteDetailsOpen(!isCompactRouteLayout()); }
+function initRouteDetailsToggle(){
+  const btn=document.getElementById('routeDetailsToggle');
+  if(!btn||btn.dataset.bound==='1') return;
+  btn.dataset.bound='1';
+  /* click 만으로 충분하나, 일부 iOS 버전의 click 유실에 대비해 pointerup 백업 */
+  let handledAt=0;
+  btn.addEventListener('click',e=>{
+    if(Date.now()-handledAt<400){ e.preventDefault(); return; }
+    toggleRouteDetails(e);
+  });
+  btn.addEventListener('pointerup',e=>{
+    if(e.pointerType==='mouse') return;
+    handledAt=Date.now();
+    toggleRouteDetails(e);
   });
   resetRouteDetails();
 }
+
 function updateRoutePanelPosition(visibleHeightOverride){
   const panel=document.getElementById('routePanel');
   if(!panel) return;
@@ -476,8 +577,9 @@ function updateRoutePanelPosition(visibleHeightOverride){
     return;
   }
   let target=visible>70?visible+12:baseBottom;
-  const topSafe=76;
-  const maxBottom=Math.max(baseBottom,window.innerHeight-panel.offsetHeight-topSafe);
+  const topSafe=88;
+  const vh=window.visualViewport?window.visualViewport.height:window.innerHeight;
+  const maxBottom=Math.max(baseBottom,vh-panel.offsetHeight-topSafe);
   target=Math.max(baseBottom,Math.min(target,maxBottom));
   panel.style.setProperty('--route-panel-bottom',Math.round(target)+'px');
 }
@@ -491,6 +593,16 @@ function updateRouteButtonVisibility(){
 /* 주의: 이 키는 클라이언트에 노출됩니다.
    safemap 오픈API 신청 시 등록한 사용 URL 제한이 적용되는지 확인하세요. */
 const API_KEY='EYQ7ZKD8-EYQ7-EYQ7-EYQ7-EYQ7ZKD8HA';
+
+/* [요청1] 이 줌 레벨 미만으로 축소하면 API 호출을 멈추고 베이스맵만 표시한다.
+   값을 낮추면 더 넓게 봐도 데이터를 불러오지만 API 호출량이 급증한다. */
+const MIN_DATA_ZOOM=14;
+
+/* [요청1-보강] 밀도 적응형 상한.
+   서울 도심처럼 시설이 많은 지역은 z14~16에서도 500건 상한에 걸려
+   줌을 건드릴 때마다 재조회가 반복된다. 상한 도달이 감지되면 해당
+   레이어의 최소 줌을 이 값까지 자동으로 끌어올린다. */
+const MAX_ADAPTIVE_ZOOM=16;
 
 /* 경로 API: 프록시 우선, 실패 시 공개 라우팅 서버로 자동 대체 */
 const ROUTE_PROXY_URL='https://safewalk-route.ds-ml.workers.dev';
@@ -520,10 +632,10 @@ const WMS_API={
   cpted:   'https://www.safemap.go.kr/geoserver_pos/safemap/wms',
 };
 const LAYER={
-  bell:       {label:'안전비상벨',      color:'#0891b2',emoji:'🔔'},
-  police:     {label:'치안시설',        color:'#7c3aed',emoji:'🚔'},
-  child_house:{label:'아동안전지킴이집',color:'#059669',emoji:'🏠'},
-  cctv:       {label:'CCTV',           color:'#2563eb',emoji:'📷'},
+  bell:       {label:'안전비상벨',        color:'#0891b2',emoji:'🔔'},
+  police:     {label:'치안시설',          color:'#7c3aed',emoji:'🚔'},
+  child_house:{label:'어린이안전지킴이집',color:'#059669',emoji:'🏠'},
+  cctv:       {label:'CCTV',             color:'#2563eb',emoji:'📷'},
 };
 const WMS_LAYER={
   women:   {label:'여성밤길안전',   color:'#db2777'},
@@ -531,11 +643,12 @@ const WMS_LAYER={
   children:{label:'어린이범죄주의', color:'#ca8a04'},
   cpted:   {label:'범죄예방환경설계',color:'#b45309'},
 };
+/* [요청3] 아동 → 어린이 / 청소년 → 여성·청소년 */
 const GROUP={
-  child:{label:'아동', color:'#059669',emoji:'🧒', xml:['bell','police','child_house','cctv'],wms:['children'],special:'child_house'},
-  youth:{label:'청소년',color:'#db2777',emoji:'🚶‍♀️',xml:['bell','police','child_house','cctv'],wms:['women'],  special:null},
-  elder:{label:'노인', color:'#ea580c',emoji:'👴', xml:['bell','police','cctv'],             wms:['elder_c'],special:null},
-  cpted:{label:'CPTED',color:'#b45309',emoji:'🏗', xml:[],                                   wms:['cpted'],  special:null},
+  child:{label:'어린이',     color:'#059669',emoji:'🧒', xml:['bell','police','child_house','cctv'],wms:['children'],special:'child_house'},
+  youth:{label:'여성·청소년',color:'#db2777',emoji:'🚶‍♀️',xml:['bell','police','child_house','cctv'],wms:['women'],  special:null},
+  elder:{label:'노인',       color:'#ea580c',emoji:'👴', xml:['bell','police','cctv'],             wms:['elder_c'],special:null},
+  cpted:{label:'CPTED',      color:'#b45309',emoji:'🏗', xml:[],                                   wms:['cpted'],  special:null},
 };
 
 /* ── 상태 ── */
@@ -546,6 +659,9 @@ let mapDomCleanups=[];
 let chipToggleEventsBound=false;
 let fetchRunToken=0;
 let suppressMoveFetch=false;
+let zoomBlocked=false;
+/* 레이어별 적응형 최소 줌 (기본 MIN_DATA_ZOOM, 상한 도달 시 자동 상승) */
+let layerMinZoom={};
 
 /* 마커 캐시 */
 let markerCache={};
@@ -590,7 +706,7 @@ function start(){
   if(!grp) return;
   document.getElementById('intro').classList.add('out');
   document.getElementById('map-screen').classList.add('show');
-  document.getElementById('sheet').classList.add('show');
+  setChromeVisible(true);
   updateRouteButtonVisibility();
   initMap();
 }
@@ -600,7 +716,7 @@ function startCpted(){
   document.getElementById('startBtn').classList.remove('on');
   document.getElementById('intro').classList.add('out');
   document.getElementById('map-screen').classList.add('show');
-  document.getElementById('sheet').classList.add('show');
+  setChromeVisible(true);
   updateRouteButtonVisibility();
   clearRoute();
   initMap();
@@ -610,7 +726,8 @@ function goBack(){
   document.getElementById('intro').classList.remove('out');
   document.getElementById('map-screen').classList.remove('show');
   const sheet=document.getElementById('sheet');
-  if(sheet){ sheet.classList.remove('show'); applyLayerSheetState(false,false); }
+  if(sheet) applyLayerSheetState(false,false);
+  setChromeVisible(false);
   clearRoute();
   cptedTapRequestToken++;
   clearCptedGuide(true);
@@ -621,8 +738,10 @@ function goBack(){
   myMark=null;
   layers={}; wmsTiles={}; chipOn={}; counts={};
   markerCache={}; markerFetchBounds={}; markerFetchZoom={}; markerFetchTruncated={};
+  layerMinZoom={};
   safeFacilityPoints=[]; safeFacilitySeen=new Set();
   suppressMoveFetch=false;
+  zoomBlocked=false;
 }
 
 /* ── 지도 ── */
@@ -633,7 +752,133 @@ function initMap(){
     {maxZoom:19,subdomains:'abcd'}).addTo(map);
   buildChips();
   initSheet();
+  syncViewportChrome();
   getGPS();
+}
+
+/* ── [요청1] 줌 게이트 ── */
+/* 레이어별 적응형 최소 줌 조회/갱신 */
+function getLayerMinZoom(key){
+  const v=layerMinZoom[key];
+  return Number.isFinite(v)?v:MIN_DATA_ZOOM;
+}
+/* 조회 결과가 500건 상한에 걸리면 최소 줌을 1단계 올리고,
+   걸리지 않으면 현재 줌까지 다시 낮춘다(지역 이동 시 자동 복구). */
+function updateLayerMinZoom(key,truncated,zoom){
+  const before=getLayerMinZoom(key);
+  let next=before;
+  if(truncated) next=Math.min(MAX_ADAPTIVE_ZOOM,Math.max(before,zoom+1));
+  else next=Math.max(MIN_DATA_ZOOM,Math.min(before,zoom));
+  if(next!==before){
+    layerMinZoom[key]=next;
+    console.log('[density] '+key+' 최소줌 '+before+' → '+next+(truncated?' (상한 도달)':' (여유)'));
+  }else{
+    layerMinZoom[key]=next;
+  }
+}
+/* 전역 줌 게이트는 통과했으나 해당 레이어만 밀도 때문에 보류된 상태 */
+function isLayerDensitySuppressed(key){
+  if(!map) return false;
+  if(!LAYER_API[key]) return false;
+  return map.getZoom()<getLayerMinZoom(key);
+}
+function getDensitySuppressedKeys(){
+  if(!map||!grp||zoomBlocked) return [];
+  return GROUP[grp].xml.filter(k=>chipOn[k]&&isLayerDensitySuppressed(k));
+}
+/* 밀도 보류된 레이어는 지도에서 내리고 개수를 0으로 만든다 */
+function applyDensitySuppression(){
+  if(!map||!grp) return;
+  GROUP[grp].xml.forEach(key=>{
+    if(isLayerDensitySuppressed(key)&&layers[key]&&map.hasLayer(layers[key])){
+      map.removeLayer(layers[key]);
+      counts[key]=0;
+    }else if(!isLayerDensitySuppressed(key)&&chipOn[key]&&!zoomBlocked&&
+             layers[key]&&!map.hasLayer(layers[key])){
+      layers[key].addTo(map);
+    }
+  });
+  updateChipDensityHints();
+}
+/* 레이어 목록에 '확대 필요' 힌트 표시 */
+function updateChipDensityHints(){
+  if(!grp) return;
+  GROUP[grp].xml.forEach(key=>{
+    const el=document.querySelector('.chip-hint[data-key="'+key+'"]');
+    if(!el) return;
+    const need=getLayerMinZoom(key);
+    if(!zoomBlocked&&isLayerDensitySuppressed(key)){
+      el.textContent='시설 밀집 · 확대 필요 (zoom '+need+'↑)';
+      el.style.display='block';
+    }else{
+      el.textContent='';
+      el.style.display='none';
+    }
+  });
+}
+function updateZoomNotice(blocked){
+  const el=document.getElementById('zoomNotice');
+  const screen=document.getElementById('map-screen');
+  if(!el) return;
+  const onMap=Boolean(screen&&screen.classList.contains('show'));
+  if(!onMap){ el.classList.remove('show'); return; }
+  if(blocked){
+    el.textContent='🔍 지도를 조금 더 확대하면 안전시설이 표시됩니다 (현재 축소 상태)';
+    el.classList.add('show');
+    return;
+  }
+  const sup=getDensitySuppressedKeys();
+  if(sup.length){
+    const names=sup.map(k=>LAYER[k]?LAYER[k].label:k).join('·');
+    const need=Math.min.apply(null,sup.map(getLayerMinZoom));
+    el.textContent='🔍 이 지역은 시설이 밀집해 '+names+'은(는) zoom '+need+' 이상에서 표시됩니다';
+    el.classList.add('show');
+    return;
+  }
+  el.classList.remove('show');
+}
+function hideAllOverlays(){
+  if(!map) return;
+  Object.keys(layers).forEach(k=>{
+    if(layers[k]&&map.hasLayer(layers[k])) map.removeLayer(layers[k]);
+  });
+  Object.keys(wmsTiles).forEach(k=>{
+    if(wmsTiles[k]&&map.hasLayer(wmsTiles[k])) map.removeLayer(wmsTiles[k]);
+  });
+  cptedTapRequestToken++;
+  clearCptedGuide(true);
+  Object.keys(counts).forEach(k=>{ counts[k]=0; });
+  safeFacilityPoints=[];
+  safeFacilitySeen=new Set();
+  updateStats();
+}
+function restoreOverlays(){
+  if(!map) return;
+  Object.keys(layers).forEach(k=>{
+    if(chipOn[k]&&layers[k]&&!map.hasLayer(layers[k])) layers[k].addTo(map);
+  });
+  Object.keys(wmsTiles).forEach(k=>{
+    if(chipOn['w_'+k]&&wmsTiles[k]&&!map.hasLayer(wmsTiles[k])) wmsTiles[k].addTo(map);
+  });
+}
+/* 반환값: true = 데이터 차단(축소 상태) */
+function applyZoomGate(){
+  if(!map||!grp){ updateZoomNotice(false); return false; }
+  const blocked=map.getZoom()<MIN_DATA_ZOOM;
+  if(blocked!==zoomBlocked){
+    zoomBlocked=blocked;
+    if(blocked){
+      console.log('[zoom-gate] 축소 감지 → API 호출 중단 (zoom '+map.getZoom()+' < '+MIN_DATA_ZOOM+')');
+      hideAllOverlays();
+    }else{
+      console.log('[zoom-gate] 확대 복귀 → 레이어 복원 (zoom '+map.getZoom()+')');
+      restoreOverlays();
+    }
+  }
+  if(!blocked) applyDensitySuppression();
+  else updateChipDensityHints();
+  updateZoomNotice(blocked);
+  return blocked;
 }
 
 function buildChips(){
@@ -654,7 +899,10 @@ function buildChips(){
     row.innerHTML=
       '<div class="chip-left">'+
         '<span class="chip-dot" style="background:'+m.color+'"></span>'+
-        '<div><div class="chip-label">'+m.emoji+' '+m.label+'</div></div>'+
+        '<div>'+
+          '<div class="chip-label">'+m.emoji+' '+m.label+'</div>'+
+          '<div class="chip-hint" data-key="'+key+'"></div>'+
+        '</div>'+
       '</div>'+
       '<span class="sw-vis"><span class="toggle-thumb"><span class="mini-spin"></span></span></span>';
     c.appendChild(row);
@@ -752,6 +1000,23 @@ function setRowLoading(key,loading){
 function setXmlLayerVisible(key,on){
   chipOn[key]=on;
   ensureMarkerLayer(key);
+  /* 축소 상태에서는 상태만 기억하고 호출/표시하지 않는다. */
+  if(zoomBlocked){
+    if(layers[key]&&map&&map.hasLayer(layers[key])) map.removeLayer(layers[key]);
+    updateStats();
+    if(on) showRouteToast('지도를 확대하면 선택한 레이어가 표시됩니다.');
+    return;
+  }
+  if(on&&isLayerDensitySuppressed(key)){
+    if(layers[key]&&map&&map.hasLayer(layers[key])) map.removeLayer(layers[key]);
+    counts[key]=0;
+    updateChipDensityHints();
+    updateZoomNotice(false);
+    updateStats();
+    showRouteToast('이 지역은 '+(LAYER[key]?LAYER[key].label:key)+
+      ' 시설이 밀집해 zoom '+getLayerMinZoom(key)+' 이상에서 표시됩니다.');
+    return;
+  }
   if(on){
     if(map&&layers[key]&&!map.hasLayer(layers[key])) layers[key].addTo(map);
     if(!isMarkerLayerCacheFresh(key,map.getBounds())){
@@ -770,6 +1035,8 @@ function setXmlLayerVisible(key,on){
     if(layers[key]&&map&&map.hasLayer(layers[key])) map.removeLayer(layers[key]);
   }
   refreshCachedFacilityState();
+  updateChipDensityHints();
+  updateZoomNotice(zoomBlocked);
   updateStats();
 }
 
@@ -777,6 +1044,11 @@ function setWmsLayerVisible(key,on){
   chipOn['w_'+key]=on;
   const layer=wmsTiles[key];
   if(!layer||!map) return;
+  if(zoomBlocked){
+    if(map.hasLayer(layer)) map.removeLayer(layer);
+    if(on) showRouteToast('지도를 확대하면 선택한 레이어가 표시됩니다.');
+    return;
+  }
   if(on){
     layer.setOpacity(0.5);
     if(!map.hasLayer(layer)) layer.addTo(map);
@@ -859,9 +1131,12 @@ function onLocated(){
   drawMe();
   revGeo();
   addWMS();
+  applyZoomGate();
   fetchAll();
 
   let moveTimer=null;
+  /* 줌 변화는 즉시 반영해 축소 시 불필요한 호출을 곧바로 차단한다. */
+  map.on('zoomend',()=>{ applyZoomGate(); });
   map.on('moveend',()=>{
     if(suppressMoveFetch) return;
     clearTimeout(moveTimer);
@@ -874,6 +1149,7 @@ function onLocated(){
     if(now-lastCptedDirectTapAt<320) return;
     lastCptedDirectTapAt=now;
     clearCptedGuide(true);
+    if(zoomBlocked) return;
     if(!chipOn['w_cpted']||!wmsTiles['cpted']) return;
     const spinner=document.getElementById('map-spinner');
     if(spinner) spinner.classList.add('show');
@@ -1010,7 +1286,15 @@ function drawMe(){
     '<div class="prow">현재 지도 화면 범위의 안전시설을 표시합니다</div>'
   );
 }
-function flyHome(){ if(myLat&&myLng&&map) map.flyTo([myLat,myLng],15,{duration:1}); }
+function flyHome(){
+  if(myLat&&myLng&&map){
+    const need=grp&&GROUP[grp].xml.length
+      ?Math.max.apply(null,GROUP[grp].xml.filter(k=>chipOn[k]).map(getLayerMinZoom).concat([MIN_DATA_ZOOM]))
+      :MIN_DATA_ZOOM;
+    const z=Math.max(map.getZoom(),Math.min(need,MAX_ADAPTIVE_ZOOM));
+    map.flyTo([myLat,myLng],z,{duration:1});
+  }
+}
 
 function revGeo(){
   fetch('https://nominatim.openstreetmap.org/reverse?lat='+myLat+'&lon='+myLng+'&format=json&accept-language=ko')
@@ -1046,7 +1330,7 @@ function addWMS(){
         t=new SafemapWMS4326(url,{opacity:0.5,tileSize:256});
       }
       wmsTiles[key]=t;
-      if(chipOn['w_'+key]) t.addTo(map);
+      if(chipOn['w_'+key]&&!zoomBlocked) t.addTo(map);
     }catch(e){ console.warn('WMS 오류',key,e); }
   });
 }
@@ -1059,7 +1343,8 @@ function ensureMarkerLayer(key){
     layers[key]=group;
   }
   if(!layers[key]) layers[key]=markerCache[key].group;
-  if(map&&chipOn[key]&&!map.hasLayer(layers[key])) layers[key].addTo(map);
+  if(map&&chipOn[key]&&!zoomBlocked&&!isLayerDensitySuppressed(key)&&
+     !map.hasLayer(layers[key])) layers[key].addTo(map);
   return markerCache[key];
 }
 function isMarkerLayerCacheFresh(key,currentBounds){
@@ -1099,7 +1384,7 @@ function countVisibleMarkers(key){
   markerCache[key].items.forEach(rec=>{ if(b.contains([rec.lat,rec.lng])) cnt++; });
   return cnt;
 }
-/* 통계바는 '지금 지도에 보이는 것' 기준(꺼진 레이어는 0),
+/* 통계바는 '지금 지도에 보이는 것' 기준(꺼진 레이어·축소 상태는 0),
    안전도 점수는 표시 여부와 무관하게 조회된 시설 전체를 기준으로 계산한다. */
 function refreshCachedFacilityState(){
   if(!map||!grp) return;
@@ -1108,7 +1393,8 @@ function refreshCachedFacilityState(){
   safeFacilitySeen=new Set();
   GROUP[grp].xml.forEach(key=>{
     const cache=markerCache[key];
-    counts[key]=(cache&&chipOn[key])?countVisibleMarkers(key):0;
+    counts[key]=(cache&&chipOn[key]&&!zoomBlocked&&!isLayerDensitySuppressed(key))
+      ?countVisibleMarkers(key):0;
     if(!cache) return;
     cache.items.forEach(rec=>{
       if(nearBounds.contains([rec.lat,rec.lng])){
@@ -1140,13 +1426,27 @@ function addMarkersProgressively(group,markers,chunk=40){
   step();
 }
 
-async function fetchAll(silent=false,force=false){
+async function fetchAll(silent=false,force=false,bypassZoomGate=false){
   if(!map||!grp) return;
-  const keys=GROUP[grp].xml;
+  const blocked=applyZoomGate();
+  /* [요청1] 축소 상태에서는 어떤 API도 호출하지 않는다.
+     단, 길찾기 점수 산정처럼 반드시 필요한 경우만 bypassZoomGate 로 예외 처리 */
+  if(blocked&&!bypassZoomGate){ updateStats(); return; }
+  const allKeys=GROUP[grp].xml;
   // CPTED 전용 화면처럼 마커 레이어가 없으면 스피너 없이 즉시 종료
-  if(!keys.length){ updateStats(); return; }
+  if(!allKeys.length){ updateStats(); return; }
+  allKeys.forEach(ensureMarkerLayer);
+  /* [v1.7.1] 밀도 보류 레이어는 조회하지 않는다.
+     길찾기 점수 산정(bypassZoomGate)은 예외로 전부 조회한다. */
+  const keys=bypassZoomGate?allKeys:allKeys.filter(k=>!isLayerDensitySuppressed(k));
+  applyDensitySuppression();
+  if(!keys.length){
+    refreshCachedFacilityState();
+    updateStats();
+    updateZoomNotice(false);
+    return;
+  }
   const token=++fetchRunToken;
-  keys.forEach(ensureMarkerLayer);
   if(!force&&keys.every(k=>isMarkerLayerCacheFresh(k,map.getBounds()))){
     refreshCachedFacilityState();
     updateStats();
@@ -1157,8 +1457,10 @@ async function fetchAll(silent=false,force=false){
   try{
     await Promise.allSettled(keys.map(k=>fetchLayer(k,token,force)));
     if(token===fetchRunToken){
+      applyDensitySuppression();
       refreshCachedFacilityState();
       updateStats();
+      updateZoomNotice(zoomBlocked);
     }
   }catch(e){
     console.warn('fetchAll 오류:',e);
@@ -1174,7 +1476,8 @@ async function fetchLayer(key,token=null,force=false){
   ensureMarkerLayer(key);
   const currentBounds=map.getBounds();
   if(!force&&isMarkerLayerCacheFresh(key,currentBounds)){
-    counts[key]=chipOn[key]?countVisibleMarkers(key):0;
+    counts[key]=(chipOn[key]&&!zoomBlocked&&!isLayerDensitySuppressed(key))
+      ?countVisibleMarkers(key):0;
     return;
   }
   const requestBounds=currentBounds.pad(MARKER_FETCH_PADDING);
@@ -1233,8 +1536,12 @@ async function fetchLayer(key,token=null,force=false){
     markerFetchZoom[key]=map.getZoom();
     // 서버 상한(500건)에 도달했다면 데이터가 잘렸을 수 있음을 표시
     markerFetchTruncated[key]=items.length>=MARKER_PAGE_SIZE;
-    counts[key]=chipOn[key]?countVisibleMarkers(key):0;
-    if(chipOn[key]&&map&&layers[key]&&!map.hasLayer(layers[key])) layers[key].addTo(map);
+    /* [v1.7.1] 상한 도달 여부로 이 레이어의 최소 줌을 자동 보정 */
+    updateLayerMinZoom(key,markerFetchTruncated[key],map.getZoom());
+    counts[key]=(chipOn[key]&&!zoomBlocked&&!isLayerDensitySuppressed(key))
+      ?countVisibleMarkers(key):0;
+    if(chipOn[key]&&!zoomBlocked&&!isLayerDensitySuppressed(key)&&
+       map&&layers[key]&&!map.hasLayer(layers[key])) layers[key].addTo(map);
     console.log('['+key+'] 캐시갱신: 화면 '+counts[key]+'개, 신규 '+added+
       '개, 캐시 '+cache.items.size+'개'+(markerFetchTruncated[key]?' (상한 도달)':''));
   }catch(e){
@@ -1274,10 +1581,10 @@ function mkMarker(key,lat,lng,it){
           (cnt?'<span style="color:#64748b">📷 '+cnt+'대</span> ':'')+
           (tel?'<span style="color:#64748b">📞 '+tel+'</span>':'');
   }else if(key==='child_house'){
-    name=xv(it,'fclty_nm')||'아동안전지킴이집';
+    name=xv(it,'fclty_nm')||'어린이안전지킴이집';
     addr=xv(it,'rn_adres')||xv(it,'adres')||'';
     const tel=xv(it,'telno')||'';
-    extra='<span style="color:#059669">🏠 아동 보호</span>'+
+    extra='<span style="color:#059669">🏠 어린이 보호</span>'+
           (tel?' <span style="color:#64748b">📞 '+tel+'</span>':'');
   }
   const icon=L.divIcon({
@@ -1296,18 +1603,31 @@ function mkMarker(key,lat,lng,it){
   );
 }
 
-/* ── 안전도 평가 설정 ── */
+/* ============================================================
+   [요청4] 안전도 평가 재편성
+   - 후진(backtrack) 감점 항목 완전 삭제
+   - 우선순위: 1순위 치안시설 / 2순위 CCTV·안전비상벨 / 3순위 어린이안전지킴이집
+   - 총점 = 기본 40점 + 시설 최대 45점 + 짧은 길 보정 최대 15점 = 100점
+     · unit : 시설 1개가 경로 30m 이내에 있을 때의 기여 점수
+     · cap  : 해당 종류가 받을 수 있는 최대 점수(= 우선순위 서열)
+     · CCTV와 비상벨은 cap(11점)이 동일한 2순위이며,
+       CCTV는 설치 밀도가 높아 개당 unit을 낮게 두어 과대반영을 방지한다.
+   ============================================================ */
 const FACILITY_SCORE_CONFIG={
-  police:     {unit:8,cap:12},
-  child_house:{unit:7,cap:10},
-  bell:       {unit:6,cap:10},
-  cctv:       {unit:2,cap:8}
+  police:     {unit:9,cap:17,rank:1},   // 1순위
+  cctv:       {unit:2,cap:11,rank:2},   // 2순위
+  bell:       {unit:5,cap:11,rank:2},   // 2순위
+  child_house:{unit:3,cap:6, rank:3}    // 3순위
 };
+const FACILITY_SCORE_ORDER=['police','cctv','bell','child_house'];
+const FACILITY_TOTAL_CAP=FACILITY_SCORE_ORDER
+  .reduce((s,k)=>s+FACILITY_SCORE_CONFIG[k].cap,0); // 45
+const SCORE_BASE=40;
 const FACILITY_ROUTE_LABEL={
-  police:'🚔 치안시설',
-  child_house:'🏠 아동안전지킴이집',
-  bell:'🔔 안전비상벨',
-  cctv:'📷 CCTV'
+  police:'🚔 치안시설 1순위',
+  cctv:'📷 CCTV 2순위',
+  bell:'🔔 안전비상벨 2순위',
+  child_house:'🏠 어린이안전지킴이집 3순위'
 };
 function facilityProximityRate(distanceM){
   if(distanceM<=30) return 1.00;
@@ -1328,7 +1648,7 @@ function getFacilityInfo(key,it){
     name=xv(it,'TITLE')||xv(it,'title')||'CCTV';
     addr=xv(it,'lctn_rona_addr')||xv(it,'lctn_lotno_addr')||'';
   }else if(key==='child_house'){
-    name=xv(it,'fclty_nm')||'아동안전지킴이집';
+    name=xv(it,'fclty_nm')||'어린이안전지킴이집';
     addr=xv(it,'rn_adres')||xv(it,'adres')||'';
   }
   return {name,addr};
@@ -1381,7 +1701,9 @@ async function setDestinationAndRoute(latlng){
   try{
     const routeData=await requestWalkingRoute(locations);
     const routeLatLngs=drawApiRoute(routeData);
-    await fetchAll(true,true);
+    /* 경로가 길어 지도 축소가 발생해도 점수 산정용 시설은 반드시 조회한다. */
+    await fetchAll(true,true,true);
+    refreshCachedFacilityState();
     const summary=getRouteSummary(routeData,routeLatLngs);
     const safety=evaluateRouteSafety(routeLatLngs);
     updateRoutePanel(summary,safety,false);
@@ -1394,7 +1716,8 @@ async function setDestinationAndRoute(latlng){
     }).addTo(map);
     map.fitBounds(fallbackRouteLine.getBounds(),{padding:[50,50]});
     const fallbackLatLngs=points.map(p=>({lat:p[0],lng:p[1]}));
-    await fetchAll(true,true);
+    await fetchAll(true,true,true);
+    refreshCachedFacilityState();
     const fallbackDistance=pathDistanceMeters(fallbackLatLngs);
     const summary={distanceM:fallbackDistance,durationSec:fallbackDistance/1.1};
     const safety=evaluateRouteSafety(fallbackLatLngs);
@@ -1555,26 +1878,14 @@ function getRouteSummary(data,latLngs){
   return {distanceM,durationSec,provider:data._routeProvider||'routing'};
 }
 
-function calculateBacktrackMeters(path){
-  if(!path||path.length<3) return 0;
-  const dest=path[path.length-1];
-  let total=0;
-  for(let i=1;i<path.length;i++){
-    const prevD=distM(path[i-1].lat,path[i-1].lng,dest.lat,dest.lng);
-    const currD=distM(path[i].lat,path[i].lng,dest.lat,dest.lng);
-    const increase=currD-prevD;
-    if(increase>2) total+=increase;
-  }
-  return total;
-}
 function shortRouteBonus(distanceM){
   if(distanceM<=300) return 15;
   if(distanceM>=1200) return 0;
   return Math.round(15*(1200-distanceM)/900);
 }
 function evaluateRouteSafety(routeLatLngs){
-  const countsByKey={police:0,child_house:0,bell:0,cctv:0};
-  const rawByKey={police:0,child_house:0,bell:0,cctv:0};
+  const countsByKey={police:0,cctv:0,bell:0,child_house:0};
+  const rawByKey={police:0,cctv:0,bell:0,child_house:0};
   const seen=new Set();
   for(let i=0;i<safeFacilityPoints.length;i++){
     const p=safeFacilityPoints[i];
@@ -1589,7 +1900,7 @@ function evaluateRouteSafety(routeLatLngs){
   }
   const scoreByKey={};
   let facilityScore=0;
-  Object.keys(FACILITY_SCORE_CONFIG).forEach(key=>{
+  FACILITY_SCORE_ORDER.forEach(key=>{
     const cfg=FACILITY_SCORE_CONFIG[key];
     scoreByKey[key]=Math.min(cfg.cap,rawByKey[key]||0);
     facilityScore+=scoreByKey[key];
@@ -1597,12 +1908,9 @@ function evaluateRouteSafety(routeLatLngs){
   facilityScore=Math.round(facilityScore);
   const routeDistance=pathDistanceMeters(routeLatLngs);
   const shortBonus=shortRouteBonus(routeDistance);
-  const backtrackM=calculateBacktrackMeters(routeLatLngs);
-  const backtrackPenalty=Math.min(15,Math.max(0,Math.round((backtrackM-20)/12)));
-  const score=Math.max(35,Math.min(100,Math.round(45+facilityScore+shortBonus-backtrackPenalty)));
+  const score=Math.max(0,Math.min(100,Math.round(SCORE_BASE+facilityScore+shortBonus)));
   return {
     countsByKey,scoreByKey,facilityScore,shortBonus,
-    backtrackM:Math.round(backtrackM),backtrackPenalty,
     score,total:seen.size,radiusM:ROUTE_FACILITY_RADIUS_M
   };
 }
@@ -1624,15 +1932,13 @@ function updateRoutePanel(summary,safety,isFallback){
   document.getElementById('routeScore').textContent=safety.score+'점';
 
   const chips=[];
-  ['police','child_house','bell','cctv'].forEach(key=>{
+  FACILITY_SCORE_ORDER.forEach(key=>{
     const count=safety.countsByKey[key]||0;
     const itemScore=Math.round(safety.scoreByKey[key]||0);
-    chips.push('<span class="route-pill">'+FACILITY_ROUTE_LABEL[key]+' '+count+'개 · '+itemScore+'점</span>');
+    const cap=FACILITY_SCORE_CONFIG[key].cap;
+    chips.push('<span class="route-pill">'+FACILITY_ROUTE_LABEL[key]+' · '+count+'개 · '+itemScore+'/'+cap+'점</span>');
   });
   chips.push('<span class="route-pill">📏 짧은 길 보정 +'+safety.shortBonus+'점</span>');
-  chips.push(safety.backtrackPenalty>0
-    ?'<span class="route-pill">↩ 후진 감점 -'+safety.backtrackPenalty+'점</span>'
-    :'<span class="route-pill">➡ 후진 감점 없음</span>');
   document.getElementById('routeSafeList').innerHTML=chips.join('');
 
   const mobileSummary=document.getElementById('routeMobileSummary');
@@ -1640,20 +1946,17 @@ function updateRoutePanel(summary,safety,isFallback){
     if(isFallback){
       mobileSummary.textContent='경로 API 실패 · 임시 직선 안내';
     }else{
-      const backtrackText=safety.backtrackPenalty>0
-        ?'후진 -'+safety.backtrackPenalty+'점'
-        :'후진 감점 없음';
       mobileSummary.textContent='시설 '+safety.total+'개 · 시설 +'+safety.facilityScore+
-        '점 · 짧은 길 +'+safety.shortBonus+'점 · '+backtrackText;
+        '/'+FACILITY_TOTAL_CAP+'점 · 짧은 길 +'+safety.shortBonus+'점';
     }
   }
 
   document.getElementById('routeReason').innerHTML=
-    '기본 45점 + 안전시설 접근성 '+safety.facilityScore+'점 + 짧은 길 보정 '+safety.shortBonus+
-    '점 − 후진 감점 '+safety.backtrackPenalty+'점'+
-    '<br>시설은 경로 30m·60m·100m·150m 이내에 따라 차등 반영하며, CCTV는 최대 8점까지만 반영합니다.'+
+    '기본 '+SCORE_BASE+'점 + 안전시설 접근성 '+safety.facilityScore+'점(최대 '+FACILITY_TOTAL_CAP+'점)'+
+    ' + 짧은 길 보정 '+safety.shortBonus+'점(최대 15점)'+
+    '<br>우선순위별 상한: 치안시설 17점(1순위) · CCTV 11점 / 안전비상벨 11점(2순위) · 어린이안전지킴이집 6점(3순위)'+
+    '<br>시설은 경로에서 30m·60m·100m·150m 이내에 따라 100%·75%·40%·15%로 차등 반영합니다.'+
     '<br>점수는 레이어 표시 여부와 무관하게 조회된 시설 전체를 기준으로 계산합니다.'+
-    '<br>목적지에서 멀어지는 누적 구간: 약 '+safety.backtrackM+'m'+
     '<br><span style="color:#94a3b8">공공데이터 기반 참고 점수이며 실제 안전을 보장하지 않습니다.</span>';
 }
 
@@ -1766,7 +2069,7 @@ function updateStats(){
   g.xml.forEach(key=>{
     const m=LAYER[key];
     if(!m) return;
-    const on=Boolean(chipOn[key]);
+    const on=Boolean(chipOn[key])&&!zoomBlocked&&!isLayerDensitySuppressed(key);
     const cnt=counts[key]||0;
     // 서버 상한(500건)에 도달했으면 실제로는 더 있을 수 있으므로 '+' 표기
     const suffix=(on&&markerFetchTruncated[key])?'+':'';
@@ -1785,6 +2088,7 @@ function updateStats(){
 }
 
 window.onload=function(){
+  bindViewportSync();
   if(typeof L==='undefined'){
     document.getElementById('loadTxt').textContent='지도 라이브러리 로드 실패. 인터넷 연결 확인 후 새로고침하세요.';
     return;
