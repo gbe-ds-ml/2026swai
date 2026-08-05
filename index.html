@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>SafeWalk · 내 주변 안전지도</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
   --chrome-top:0px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--navy);}
+html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none;font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--navy);}
 
 /* INTRO */
 #intro{position:fixed;top:0;left:0;right:0;height:var(--app-vh,100%);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#e8f0fe 0%,#f0f9ff 50%,#fef3c7 100%);transition:opacity .5s,transform .5s;overflow-y:auto;-webkit-overflow-scrolling:touch;}
@@ -311,7 +311,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:'Noto Sans KR',sans
 #map-spinner{position:fixed;bottom:calc(80px + var(--vv-bottom,0px));right:14px;z-index:8400;background:var(--card);border:1px solid var(--gray2);border-radius:50%;width:36px;height:36px;display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.1);transition:right .2s,bottom .2s;}
 #map-spinner.show{display:flex;}
 #map-spinner .mspin{width:18px;height:18px;border:2px solid var(--gray2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
-.leaflet-container{touch-action:pan-x pan-y !important;}
+.leaflet-container{touch-action:none !important;overscroll-behavior:none;}
 .leaflet-marker-icon,.leaflet-marker-shadow{will-change:transform;backface-visibility:hidden;}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important;}}
 
@@ -896,6 +896,7 @@ body.chat-open #chatBackdrop{display:block;}
 /* ── 뷰포트 동기화 ── */
 let invalidateTimer=null;
 let stableVisualViewportHeight=0;
+let lastViewportChromeSignature='';
 
 function isTextEntryElement(el){
   if(!el||!el.tagName)return false;
@@ -917,35 +918,87 @@ function dismissMobileKeyboard(){
 function syncViewportChrome(){
   const root=document.documentElement;
   const vv=window.visualViewport;
-  let top=0,bottom=0,h=window.innerHeight;
-
-  if(vv){
-    h=vv.height;
-    top=Math.max(0,vv.offsetTop||0);
-    bottom=Math.max(0,window.innerHeight-vv.height-(vv.offsetTop||0));
-  }
-
+  const layoutHeight=Math.max(1,window.innerHeight);
   const activeIsInput=isTextEntryElement(document.activeElement);
 
-  /* 키보드가 닫힌 상태의 최대 높이를 기준값으로 보관한다. */
-  if(!activeIsInput||stableVisualViewportHeight===0){
-    stableVisualViewportHeight=Math.max(stableVisualViewportHeight,h);
+  let top=0;
+  let bottom=0;
+  let h=layoutHeight;
+  let keyboardOpen=false;
+
+  if(vv){
+    const visibleHeight=Math.max(1,vv.height);
+    const viewportScale=Number(vv.scale)||1;
+    const pageZoomed=Math.abs(viewportScale-1)>0.02;
+
+    /*
+      브라우저 전체 화면 확대가 아니라 키보드가 열린 경우에만
+      visualViewport 크기를 UI 배치에 반영한다.
+
+      지도 핀치 확대·축소 중에는 위·아래 UI와 앱 높이를 건드리지
+      않으므로 Leaflet 지도 영역만 확대·축소된다.
+    */
+    if(!activeIsInput&&!pageZoomed){
+      stableVisualViewportHeight=Math.max(
+        stableVisualViewportHeight,
+        visibleHeight,
+        layoutHeight
+      );
+    }else if(stableVisualViewportHeight===0){
+      stableVisualViewportHeight=Math.max(visibleHeight,layoutHeight);
+    }
+
+    const keyboardLoss=Math.max(
+      0,
+      stableVisualViewportHeight-visibleHeight
+    );
+
+    keyboardOpen=Boolean(
+      activeIsInput &&
+      !pageZoomed &&
+      keyboardLoss>120
+    );
+
+    if(keyboardOpen){
+      h=visibleHeight;
+      top=Math.max(0,vv.offsetTop||0);
+      bottom=Math.max(
+        0,
+        layoutHeight-visibleHeight-(vv.offsetTop||0)
+      );
+    }
   }
 
-  const keyboardLoss=Math.max(0,stableVisualViewportHeight-h);
-  const keyboardOpen=Boolean(vv&&activeIsInput&&keyboardLoss>120);
+  const roundedTop=Math.round(top);
+  const roundedBottom=Math.round(bottom);
+  const roundedHeight=Math.round(h);
+  const signature=[
+    roundedTop,
+    roundedBottom,
+    roundedHeight,
+    keyboardOpen?'1':'0'
+  ].join('|');
 
-  root.style.setProperty('--vv-top',Math.round(top)+'px');
-  root.style.setProperty('--vv-bottom',Math.round(bottom)+'px');
-  root.style.setProperty('--app-vh',Math.round(h)+'px');
+  root.style.setProperty('--vv-top',roundedTop+'px');
+  root.style.setProperty('--vv-bottom',roundedBottom+'px');
+  root.style.setProperty('--app-vh',roundedHeight+'px');
 
   if(document.body){
     document.body.classList.toggle('keyboard-open',keyboardOpen);
   }
 
-  clearTimeout(invalidateTimer);
-  invalidateTimer=setTimeout(()=>{if(map)map.invalidateSize({animate:false});},160);
-  updateRoutePanelPosition();
+  /*
+    실제 화면 높이나 키보드 상태가 바뀐 경우에만 Leaflet 크기를
+    다시 계산한다. 지도 확대 제스처마다 UI 재배치가 발생하지 않는다.
+  */
+  if(signature!==lastViewportChromeSignature){
+    lastViewportChromeSignature=signature;
+    clearTimeout(invalidateTimer);
+    invalidateTimer=setTimeout(()=>{
+      if(map)map.invalidateSize({animate:false});
+    },160);
+    updateRoutePanelPosition();
+  }
 }
 
 function bindViewportSync(){
@@ -1142,7 +1195,7 @@ const ROUTE_FACILITY_RADIUS_M=150;
 /* 여기에 본인의 VWorld API 키를 입력 */
 const VWORLD_API_KEY='30093378-543F-3458-B837-16DCF7D945AB';
 
-const VWORLD_SERVICE_DOMAIN='https://gbe-ds-ml.github.io/2026swai/';
+const VWORLD_SERVICE_DOMAIN='https://gbe-ds-ml.github.io/ssa/';
 const VWORLD_SEARCH_URL='https://api.vworld.kr/req/search';
 const SEARCH_PAGE_SIZE=8;
 
