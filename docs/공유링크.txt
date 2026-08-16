@@ -1,0 +1,14 @@
+SafeWalk 문서 — 팀 공유용 링크
+====================================
+
+1) SafeWalk 코드 지도 (v2.1 개발 가이드: 파일 구조·코드 흐름·수정 가이드)
+   링크: https://claude.ai/code/artifact/82fe440c-1402-4b46-8537-e9892454fb8c
+   로컬: v2\docs\architecture.html
+
+2) SafeWalk 벤치마킹 노트 (국내외 안전 서비스 8종 비교 + 반영/제외 기능)
+   링크: https://claude.ai/code/artifact/6d2b4c62-b4c8-4d3f-b118-412509f05531
+   로컬: v2\docs\benchmarking.html
+
+- 링크는 기본 비공개 상태입니다. 팀원에게 보여주려면 링크를 연 뒤
+  페이지의 공유(share) 메뉴에서 공유를 켜고 전달하세요.
+- 로컬 파일은 더블클릭으로 브라우저에서 열립니다.

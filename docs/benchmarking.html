@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeWalk 벤치마킹 노트</title>
+<style>
+:root{
+  --paper:#f4f6fb;
+  --card:#ffffff;
+  --ink:#1a2540;
+  --sub:#5b6b85;
+  --line:#dde4f0;
+  --blue:#2563eb;
+  --blue-soft:#e8efff;
+  --green:#059669;
+  --green-soft:#e2f6ee;
+  --amber:#b45309;
+  --amber-soft:#fdf3e3;
+  --red:#dc2626;
+  --red-soft:#fdeaea;
+  --mono:'Cascadia Code','D2Coding',Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0f1626; --card:#1a2338; --ink:#e7edf9; --sub:#9fb0cc; --line:#2c3a57;
+    --blue:#6d9bff; --blue-soft:#1d2c4d; --green:#34d399; --green-soft:#12362b;
+    --amber:#f0a35c; --amber-soft:#3a2a14; --red:#f87171; --red-soft:#3d1a1a;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f1626; --card:#1a2338; --ink:#e7edf9; --sub:#9fb0cc; --line:#2c3a57;
+  --blue:#6d9bff; --blue-soft:#1d2c4d; --green:#34d399; --green-soft:#12362b;
+  --amber:#f0a35c; --amber-soft:#3a2a14; --red:#f87171; --red-soft:#3d1a1a;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:var(--paper);color:var(--ink);
+  font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+  line-height:1.65;padding:48px 20px 80px;
+}
+.wrap{max-width:880px;margin:0 auto;}
+.eyebrow{
+  display:inline-block;font-size:11px;font-weight:800;letter-spacing:.14em;
+  color:var(--blue);text-transform:uppercase;border:1px solid var(--blue);
+  border-radius:999px;padding:3px 12px;margin-bottom:14px;
+}
+h1{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.25;text-wrap:balance;}
+.lede{color:var(--sub);font-size:15px;margin-top:10px;max-width:62ch;}
+h2{font-size:20px;font-weight:800;letter-spacing:-.01em;margin:56px 0 6px;padding-top:24px;border-top:1px solid var(--line);}
+h2 .no{color:var(--blue);font-variant-numeric:tabular-nums;margin-right:8px;}
+.h2-sub{color:var(--sub);font-size:13px;margin-bottom:18px;max-width:70ch;}
+code{font-family:var(--mono);font-size:.86em;background:var(--blue-soft);color:var(--blue);border-radius:6px;padding:1px 6px;white-space:nowrap;}
+a{color:var(--blue);}
+
+/* 포지셔닝 맵 */
+.pos{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;}
+.pos-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 15px;border-top:3px solid var(--line);}
+.pos-card.us{border-top-color:var(--blue);background:var(--blue-soft);}
+.pos-card .t{font-size:13.5px;font-weight:800;}
+.pos-card .d{font-size:12px;color:var(--sub);margin-top:4px;}
+.pos-card .ex{font-size:11px;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line);}
+
+/* 표 */
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card);}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:640px;}
+th{text-align:left;font-size:11px;letter-spacing:.06em;color:var(--sub);padding:10px 14px;border-bottom:1.5px solid var(--line);white-space:nowrap;}
+td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+td:first-child{white-space:nowrap;font-weight:700;}
+
+/* 반영 기능 카드 */
+.adopt{display:grid;gap:10px;}
+.acard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 15px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;}
+.tag{font-size:10.5px;font-weight:800;border-radius:6px;padding:3px 8px;white-space:nowrap;margin-top:2px;}
+.tag.done{background:var(--green-soft);color:var(--green);}
+.tag.ready{background:var(--amber-soft);color:var(--amber);}
+.acard .t{font-size:13.5px;font-weight:700;}
+.acard .from{font-size:11px;color:var(--blue);font-weight:700;margin-top:1px;}
+.acard .d{font-size:12.5px;color:var(--sub);margin-top:4px;}
+.acard .where{font-size:11.5px;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);}
+
+.warn{border-left:3px solid var(--amber);background:var(--amber-soft);border-radius:0 10px 10px 0;padding:11px 14px;font-size:13px;margin-top:14px;}
+.warn b{color:var(--amber);}
+.no-card{background:var(--red-soft);border:1px solid var(--line);border-radius:12px;padding:13px 15px;font-size:13px;margin-top:10px;}
+.no-card b{color:var(--red);}
+.src{font-size:12px;color:var(--sub);line-height:1.9;}
+footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--sub);}
+@media (max-width:600px){body{padding:32px 14px 60px;}h1{font-size:26px;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<span class="eyebrow">SafeWalk · 경쟁·유사 서비스 조사</span>
+<h1>SafeWalk 벤치마킹 노트</h1>
+<p class="lede">국내외 안전지도·안심귀가 서비스 8종을 조사해 각각의 특이점을 정리하고,
+SafeWalk에 실제로 가져온 기능과 <b>의도적으로 가져오지 않은 기능</b>을 기록합니다.
+발표·보고서에서 "우리는 무엇이 다른가"를 설명할 때 이 문서를 근거로 쓰세요.</p>
+
+<h2><span class="no">1</span>안전 서비스의 세 가지 유형</h2>
+<p class="h2-sub">조사한 서비스는 세 유형으로 나뉩니다. SafeWalk는 셋 중 가장 비어 있는
+"사전 예방형" 자리에 서 있습니다 — 이것이 핵심 차별점입니다.</p>
+<div class="pos">
+  <div class="pos-card us">
+    <div class="t">🗺 사전 예방형 — SafeWalk의 자리</div>
+    <div class="d">나가기 전에 경로와 주변 안전 인프라를 확인하고 계획한다.</div>
+    <div class="ex">SafeWalk, SafetiPin, WalkSafe(일부), 생활안전지도</div>
+  </div>
+  <div class="pos-card">
+    <div class="t">🚨 사후 대응형</div>
+    <div class="d">사고 순간에 SOS를 보내고 증거를 남긴다.</div>
+    <div class="ex">bSafe, Noonlight, HollieGuard, 지자체 안심귀가 앱</div>
+  </div>
+  <div class="pos-card">
+    <div class="t">👁 모니터링형</div>
+    <div class="d">이동하는 동안 사람(관제사·보호자)이 지켜본다.</div>
+    <div class="ex">서울 안심이, 카카오맵 위치공유, Life360</div>
+  </div>
+</div>
+
+<h2><span class="no">2</span>국내 플랫폼</h2>
+<div class="tblwrap"><table>
+  <tr><th>플랫폼</th><th>특이점</th><th>SafeWalk와의 관계</th></tr>
+  <tr><td>서울 안심이</td>
+    <td>서울 전역 11만 대 CCTV를 관제센터와 연계. 귀가 모니터링(관제사가 실시간으로 지켜봄), 흔들기 긴급신고 → 경찰 출동, 폰 영상을 관제센터로 보내는 "안심영상"</td>
+    <td>사람+기관 인프라가 본질이라 개인 프로젝트가 재현 불가. "우리는 사전 예방을 한다"는 선 긋기의 기준점</td></tr>
+  <tr><td>경기 안전귀가 등<br>지자체 앱</td>
+    <td>흔들기 SOS 시 관제센터+보호자에게 위치 전송, 지정 경로 이탈 감지</td>
+    <td>지자체별 파편화(경기도도 11개 시·군 미참여)가 한계. SafeWalk는 전국 공공데이터 기반이 역차별점</td></tr>
+  <tr><td>생활안전지도<br>(행안부)</td>
+    <td>9대 분야 120여 종 주제도, 1~10등급 히트맵, 실시간 정보. SafeWalk의 데이터 원천</td>
+    <td>데이터는 압도적이지만 일반인에게 무겁다. SafeWalk의 "이용자 유형별 큐레이션 + 경로 점수화"가 이 틈새</td></tr>
+  <tr><td>카카오맵<br>톡친구 위치공유</td>
+    <td>카톡 친구에게 실시간 위치·이동 경로 공유. 별도 앱 설치 불필요</td>
+    <td>"설치 장벽 없는 공유"가 배울 점 → SafeWalk도 링크·문자 기반 공유 채택</td></tr>
+</table></div>
+
+<h2><span class="no">3</span>해외 플랫폼</h2>
+<div class="tblwrap"><table>
+  <tr><th>플랫폼</th><th>특이점</th><th>주목할 점</th></tr>
+  <tr><td>SafetiPin (인도)</td>
+    <td>시민이 지점을 9개 지표(조명·개방성·가시성·인적 밀도·보안·보도 상태·대중교통 접근·성별 이용·주관적 느낌)로 0~3점 평가하는 "안전 감사". 610만 건 누적 → 지역 안전점수·안전 경로 생성, 시 정부의 가로등 개선으로 연결</td>
+    <td><b>시설 데이터가 아니라 사람의 평가를 데이터로 만든 것</b>이 핵심. SafeWalk의 "시민 안전 평가"의 원형</td></tr>
+  <tr><td>WalkSafe (영국)</td>
+    <td>범죄 신고 히트맵 회피 경로. <b>HomeSafe</b>: 예정 시각까지 미도착 시 보호자 자동 알림. 경찰·지자체가 인증한 "안전 공간"(Ask for Angela 참여 매장, 택시 승강장) 지도 표시</td>
+    <td>안심 타이머와 안심 편의점 레이어의 원형</td></tr>
+  <tr><td>bSafe (노르웨이)</td>
+    <td>음성 SOS, 라이브 영상 스트리밍, Follow Me GPS 트레일, 가짜 전화</td>
+    <td>사후 대응 특화. UX 아이디어만 참고</td></tr>
+  <tr><td>Noonlight (미국)</td>
+    <td>버튼을 누르고 있다가 놓은 뒤 PIN 미입력 시 자동으로 911 디스패치</td>
+    <td>기관 연동 없이는 재현 불가·재현 금지 영역</td></tr>
+  <tr><td>HollieGuard (영국)</td>
+    <td>흔들면 보호자 알림 + 주변 증거 녹화, 한 번 더 흔들면 고음 사이렌 + 플래시</td>
+    <td>사이렌+점멸은 웹만으로 구현 가능 → SafeWalk 긴급 버튼에 채택</td></tr>
+  <tr><td>Citizen (미국)</td>
+    <td>주변 사건·사고 실시간 알림 피드</td>
+    <td>실시간 신고 데이터가 없어 재현 불가</td></tr>
+</table></div>
+
+<h2><span class="no">4</span>SafeWalk v2.1에 반영한 기능</h2>
+<p class="h2-sub">전부 구현되어 있습니다. 초록 배지는 바로 동작, 주황 배지는 Worker 배포 후 완전체.</p>
+<div class="adopt">
+  <div class="acard"><span class="tag done">구현 완료</span><div>
+    <div class="t">🕒 안심 타이머 (도착 확인)</div>
+    <div class="from">← WalkSafe "HomeSafe"</div>
+    <div class="d">길찾기 후 "예상 시간+10분" 타이머 제안 → 카운트다운 → 시간 내 도착 확인이 없으면 경고 화면(보호자 문자·112·사이렌). 문자·전화는 항상 사용자가 버튼을 눌러야 전송 — 자동 발송하지 않음.</div>
+    <div class="where">코드: <code>js/timer.js</code> · 원본과 차이: 서버 없이 localStorage로 동작, 탭 종료 시 알림 불가(한계를 UI에 명시)</div></div></div>
+  <div class="acard"><span class="tag done">구현 완료</span><div>
+    <div class="t">🚨 긴급 버튼 (사이렌+점멸)</div>
+    <div class="from">← HollieGuard, bSafe</div>
+    <div class="d">상단바 긴급 버튼 → 112/119 전화, 보호자 문자(현재 좌표+지도 링크 자동 포함), 위치 복사, Web Audio 사이렌 + 화면 점멸.</div>
+    <div class="where">코드: <code>js/emergency.js</code> · 보호자 번호는 이 기기 localStorage에만 저장</div></div></div>
+  <div class="acard"><span class="tag ready">로컬 모드 동작 · Worker 배포 시 공유</span><div>
+    <div class="t">⭐ 시민 안전 평가</div>
+    <div class="from">← SafetiPin "Safety Audit"</div>
+    <div class="d">지도에서 지점을 찍고 조명·주변 시야·체감 안심 3개 지표를 좋음/보통/부족으로 평가 → 색깔 별점 마커로 표시. 공공데이터(시설 개수)가 못 담는 체감 안전을 시민이 보완한다는 개념.</div>
+    <div class="where">코드: <code>js/audit.js</code> · 공유 모드 서버: <code>worker/audit-worker.js</code> (배포법: <code>worker/README.md</code>) · SafetiPin의 9개 지표를 학생 사용성에 맞게 3개로 압축</div></div></div>
+  <div class="acard"><span class="tag done">구현 완료</span><div>
+    <div class="t">🏪 안심 편의점 레이어</div>
+    <div class="from">← WalkSafe "Safe Haven(안전 공간)"</div>
+    <div class="d">위급할 때 들어가 도움을 요청할 "불이 켜진 대피처"로 편의점을 표시. OpenStreetMap Overpass API(무료·키 불필요)에서 화면 범위만 조회, 24시간 운영 표시는 초록 배지.</div>
+    <div class="where">코드: <code>js/havens.js</code> · 레이어 기본 꺼짐(외부 API 절약) · OSM 데이터라 실제와 다를 수 있음을 팝업에 명시</div></div></div>
+</div>
+
+<h2><span class="no">5</span>의도적으로 가져오지 않은 것</h2>
+<p class="h2-sub">발표에서 "안 한 것"을 먼저 말하면 신뢰가 생깁니다.
+작동하는 척하는 안전 기능이 최악이기 때문입니다.</p>
+<div class="no-card"><b>관제센터 연계·자동 신고·911식 디스패치</b> (안심이, Noonlight) —
+기관 인프라 없이 흉내 내면 "누군가 지켜보고 있다"는 거짓 안심을 만든다.
+SafeWalk의 모든 연락은 사용자가 직접 버튼을 눌러 실행된다.</div>
+<div class="no-card"><b>실시간 사건 알림</b> (Citizen) — 한국에 공개된 실시간 신고
+데이터가 없다. 추측성 알림은 불안만 키운다.</div>
+<div class="no-card"><b>자동 영상 녹화·증거 수집</b> (bSafe, HollieGuard) — 촬영·저장은
+개인정보 문제가 따르고, 웹 앱이 백그라운드에서 안정적으로 할 수도 없다.</div>
+
+<div class="warn"><b>시민 안전 평가의 한계도 미리 적어두기:</b> 로그인이 없어 중복 평가가
+가능하고, 평가는 주관적이다. 그래서 안전도 점수에 직접 합산하지 않고
+<b>참고용 지도 표시</b>로만 쓴다. 평가가 충분히 쌓이면 점수 반영(예: 최대 ±3점)을
+다음 단계로 검토한다 — SafetiPin도 610만 건이 쌓인 뒤에야 경로 추천에 쓴다.</div>
+
+<h2><span class="no">6</span>출처</h2>
+<p class="src">
+서울 안심이: <a href="https://news.seoul.go.kr/welfare/archives/517373">서울시 안심귀가 지원</a> · <a href="https://news.seoul.go.kr/welfare/archives/568849">안심영상 서비스</a><br>
+경기 안전귀가: <a href="https://www.kyeongin.com/article/1660232">경인일보 — 참여 지자체 한계 보도</a><br>
+생활안전지도: <a href="https://www.mois.go.kr/frt/sub/a06/b10/safemap/screen.do">행정안전부 안내</a> · <a href="https://www.safemap.go.kr/">safemap.go.kr</a><br>
+SafetiPin: <a href="https://safetipin.com/my-safetipin-app/">My Safetipin App</a> · <a href="https://safetipin.com/what-is-a-safety-audit/">Safety Audit 설명</a><br>
+WalkSafe: <a href="https://walksafe.io/">walksafe.io</a> · <a href="https://walksafe.io/walksafe-safety-map/">Safety Map</a> · <a href="https://cumberlandcsp.org.uk/walksafe-app">Cumberland CSP 안내</a><br>
+개인 안전 앱: <a href="https://response-technologies.com/comprehensive-guide-to-the-best-safety-apps/">2025 안전 앱 가이드</a> · <a href="https://ynotaspire.org.uk/safety-apps-for-walking-home-alone/">HollieGuard 등 안내</a><br>
+카카오맵: <a href="https://www.kakaocorp.com/page/detail/10935?lang=ENG">톡친구 위치공유 소개</a>
+</p>
+
+<footer>SafeWalk 벤치마킹 노트 · 조사일 2026-08 · 문서 위치: <code>v2/docs/benchmarking.html</code> ·
+구조 문서: <code>v2/docs/architecture.html</code></footer>
+
+</div>
+</body>
+</html>
