@@ -1104,7 +1104,9 @@ function customizeFavoritePanel(){
 }
 
 /* ── 레이어 설정 칩 변경 ── */
+/* ── 레이어 설정 추가 기능 변경 ── */
 function wrapExtraChipBuilder(){
+
   if(
     typeof appendExtraChips!=='function' ||
     appendExtraChips._favoriteWrapped
@@ -1115,61 +1117,139 @@ function wrapExtraChipBuilder(){
   const base=
     appendExtraChips;
 
-  const wrapped=
-    function(container){
 
-      base(container);
+  const wrapped=function(container){
 
-      const row=
-        container.querySelector(
-          '.chip-row[data-kind="audit"]'
-        );
+    /*
+      기존 havens.js가
+      - 안심 편의점(OSM)
+      - 시민 안전 평가
 
-      if(row){
-        row.setAttribute(
-          'aria-label',
-          '즐겨찾는 장소'
-        );
+      두 항목을 만든 뒤,
+      여기서 OSM 항목은 완전히 제거하고
+      시민 안전 평가만 즐겨찾기로 변경한다.
+    */
+    base(container);
 
-        const dot=
-          row.querySelector(
-            '.chip-dot'
+
+    /* ========================================================
+       OSM 안심 편의점 레이어 제거
+       ======================================================== */
+
+    const havenRow=
+      container.querySelector(
+        '.chip-row[data-kind="haven"]'
+      );
+
+    if(havenRow){
+      havenRow.remove();
+    }
+
+
+    /*
+      혹시 과거 상태에서 OSM 레이어가 켜져 있었다면
+      강제로 비활성화한다.
+    */
+    if(
+      typeof havenChipOn!=='undefined'
+    ){
+      havenChipOn=false;
+    }
+
+
+    if(
+      typeof havenLayer!=='undefined' &&
+      havenLayer &&
+      typeof map!=='undefined' &&
+      map
+    ){
+      try{
+
+        if(
+          map.hasLayer(
+            havenLayer
+          )
+        ){
+          map.removeLayer(
+            havenLayer
           );
-
-        if(dot){
-          dot.style.background=
-            '#2563eb';
         }
 
-        const label=
-          row.querySelector(
-            '.chip-label'
-          );
+      }catch(e){}
+    }
 
-        if(label){
-          label.textContent=
-            '⭐ 즐겨찾는 장소';
-        }
-      }
 
-      const addBtn=
-        container.querySelector(
-          '#auditAddBtn'
+    /* ========================================================
+       시민 안전 평가 → 즐겨찾는 장소
+       ======================================================== */
+
+    const row=
+      container.querySelector(
+        '.chip-row[data-kind="audit"]'
+      );
+
+
+    if(row){
+
+      row.setAttribute(
+        'aria-label',
+        '즐겨찾는 장소'
+      );
+
+
+      const dot=
+        row.querySelector(
+          '.chip-dot'
         );
 
-      if(addBtn){
-        addBtn.textContent=
-          '⭐ 즐겨찾는 장소 추가하기';
 
-        addBtn.setAttribute(
-          'aria-label',
-          '지도에서 즐겨찾는 장소 추가하기'
-        );
+      if(dot){
+        dot.style.background=
+          '#2563eb';
       }
-    };
+
+
+      const label=
+        row.querySelector(
+          '.chip-label'
+        );
+
+
+      if(label){
+        label.textContent=
+          '⭐ 즐겨찾는 장소';
+      }
+    }
+
+
+    /* ========================================================
+       즐겨찾는 장소 추가 버튼
+       ======================================================== */
+
+    const addBtn=
+      container.querySelector(
+        '#auditAddBtn'
+      );
+
+
+    if(addBtn){
+
+      addBtn.textContent=
+        '⭐ 즐겨찾는 장소 추가하기';
+
+
+      addBtn.setAttribute(
+        'aria-label',
+        '지도에서 즐겨찾는 장소 추가하기'
+      );
+    }
+
+  };
+
 
   wrapped._favoriteWrapped=
     true;
+
 
   appendExtraChips=
     wrapped;
