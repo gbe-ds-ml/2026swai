@@ -39,7 +39,7 @@ const ROUTE_FACILITY_RADIUS_M=150;
    일치해야 합니다. 배포 주소를 바꾸면 VWorld 마이페이지에서 도메인을
    추가 등록하고 이 값도 함께 바꾸세요. */
 const VWORLD_API_KEY='30093378-543F-3458-B837-16DCF7D945AB';
-const VWORLD_SERVICE_DOMAIN='https://gbe-ds-ml.github.io/ssa/';
+const VWORLD_SERVICE_DOMAIN='https://gbe-ds-ml.github.io/2026swai/';
 const VWORLD_SEARCH_URL='https://api.vworld.kr/req/search';
 const SEARCH_PAGE_SIZE=8;
 
