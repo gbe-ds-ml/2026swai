@@ -516,32 +516,28 @@ function injectV22Styles(){
       height:auto;
     }
 
-    /* 여성 위 / 청소년 아래 */
-    .age-icon.youth-stack{
-      min-height:43px;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:0;
-      line-height:1;
-    }
+    /* 여성 · 청소년 카드: 글씨 기준으로 위/아래 분리 */
+.age-card[data-group="youth"]{
+  justify-content:center;
+  gap:6px;
+  padding-top:16px;
+  padding-bottom:16px;
+}
 
-    .age-icon.youth-stack .woman{
-      font-size:23px;
-      line-height:1;
-    }
+.age-card[data-group="youth"] .woman-top{
+  font-size:24px;
+  line-height:1;
+  display:block;
+  margin-bottom:1px;
+}
 
-    .age-icon.youth-stack .teens{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:0;
-      margin-top:-1px;
-      font-size:17px;
-      line-height:1;
-      letter-spacing:-3px;
-    }
+.age-card[data-group="youth"] .youth-bottom{
+  font-size:22px;
+  line-height:1;
+  display:block;
+  letter-spacing:-2px;
+  margin-top:1px;
+}
 
     /* 안전비상벨 공식 아이콘 */
     .sw-bell-icon{
@@ -708,27 +704,22 @@ function injectV22Styles(){
 
 /* ── 메인 화면 수정 ── */
 function customizeIntro(){
-  const youth=
-    document.querySelector(
-      '.age-card[data-group="youth"] .age-icon'
-    );
+  const youthCard=
+  document.querySelector(
+    '.age-card[data-group="youth"]'
+  );
 
-  if(youth){
-    youth.className=
-      'age-icon youth-stack';
+if(youthCard){
+  youthCard.setAttribute(
+    'aria-label',
+    '여성 및 청소년'
+  );
 
-    youth.setAttribute(
-      'aria-label',
-      '여성과 남녀 청소년'
-    );
-
-    youth.innerHTML=
-      '<span class="woman" aria-hidden="true">👩</span>'+
-      '<span class="teens" aria-hidden="true">'+
-        '<span>🧍‍♂️</span>'+
-        '<span>🧍‍♀️</span>'+
-      '</span>';
-  }
+  youthCard.innerHTML=
+    '<span class="age-icon woman-top" aria-hidden="true">👩</span>'+
+    '<span class="age-name">여성 · 청소년</span>'+
+    '<span class="age-icon youth-bottom" aria-hidden="true">🧍‍♂️ 🧍‍♀️</span>';
+}
 
   /* 메인 로고 */
   const version=
