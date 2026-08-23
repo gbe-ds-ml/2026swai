@@ -1,5 +1,5 @@
 /* ============================================================
-   SafeWalk v2.2 — audit.js
+   SafeWalk v2.2.1 — audit.js
    ------------------------------------------------------------
    기존 "시민 안전 평가" 모듈을 "즐겨찾는 장소" 기능으로 교체한다.
 
@@ -12,7 +12,7 @@
    1) 메인 여성·청소년 이모지: 여성 위 / 청소년 아래
    2) 메인 SafeWalk 로고 이미지 삽입
    3) CPTED 현재 위치 마커: 건설 아이콘 대신 사람 아이콘
-   4) 긴급 패널: 112 / 현재위치 문자 버튼을 반반 배치, 119 유지
+   4) 긴급 패널: 112·119 전화 유지 + 112 문자·보호자 문자 2분할
    5) 안전비상벨: 생활안전지도 accident.svg 아이콘 사용
    6) 시민 안전 평가 → 즐겨찾는 장소(추가/삭제)
    ============================================================ */
@@ -57,6 +57,7 @@ function writeFavorites(arr){
 function readLocalAudits(){return readFavorites();}
 function writeLocalAudits(arr){writeFavorites(arr);}
 async function loadAudits(){return readFavorites();}
+
 async function saveAudit(entry){
   const arr=readFavorites();
   arr.push(entry);
@@ -75,8 +76,8 @@ function mkAuditMarker(entry){
   });
 
   const when=entry.ts
-    ? new Date(entry.ts).toLocaleDateString('ko-KR')
-    : '';
+    ?new Date(entry.ts).toLocaleDateString('ko-KR')
+    :'';
 
   const id=String(entry.id||'')
     .replace(/[^a-zA-Z0-9_-]/g,'');
@@ -90,11 +91,11 @@ function mkAuditMarker(entry){
       '<div class="pbadge" style="background:'+color+'18;color:'+color+'">⭐ 즐겨찾는 장소</div>'+
       '<div class="ptitle">'+esc(entry.name||'즐겨찾는 장소')+'</div>'+
       (entry.addr
-        ? '<div class="prow">📍 '+esc(entry.addr)+'</div>'
-        : '')+
+        ?'<div class="prow">📍 '+esc(entry.addr)+'</div>'
+        :'')+
       (when
-        ? '<div class="prow" style="color:#94a3b8">저장일 '+esc(when)+'</div>'
-        : '')+
+        ?'<div class="prow" style="color:#94a3b8">저장일 '+esc(when)+'</div>'
+        :'')+
       '<button type="button" class="favorite-delete-btn" '+
       'onclick="deleteFavorite(\''+id+'\')">🗑 즐겨찾기 삭제</button>'
     )
@@ -155,7 +156,6 @@ function resetAuditFeature(){
   auditLayer=null;
   auditPending=null;
   auditPickMode=false;
-
   favoriteReverseToken++;
 
   closeAuditPanel();
@@ -163,7 +163,6 @@ function resetAuditFeature(){
 
 /* ── 즐겨찾기 추가 ── */
 function startAuditPick(){
-
   if(!map){
     showRouteToast('지도가 아직 준비되지 않았습니다.');
     return;
@@ -173,7 +172,9 @@ function startAuditPick(){
 
   auditPickMode=true;
 
-  document.body.classList.add('map-pick-mode');
+  document.body.classList.add(
+    'map-pick-mode'
+  );
 
   showRouteToast(
     '⭐ 즐겨찾기에 저장할 장소를 지도에서 한 번 터치하세요.'
@@ -181,10 +182,11 @@ function startAuditPick(){
 }
 
 function handleAuditPick(latlng){
-
   auditPickMode=false;
 
-  document.body.classList.remove('map-pick-mode');
+  document.body.classList.remove(
+    'map-pick-mode'
+  );
 
   auditPending={
     lat:Number(latlng.lat),
@@ -198,9 +200,7 @@ function handleAuditPick(latlng){
 
 /* ── 주소 확인 ── */
 async function resolveFavoriteAddress(lat,lng,token){
-
   try{
-
     const url=
       'https://nominatim.openstreetmap.org/reverse'+
       '?lat='+encodeURIComponent(lat)+
@@ -248,7 +248,6 @@ async function resolveFavoriteAddress(lat,lng,token){
       );
 
     if(text){
-
       text.textContent=
         auditPending.addr||
         (
@@ -260,8 +259,6 @@ async function resolveFavoriteAddress(lat,lng,token){
     }
 
   }catch(e){
-
-    /* 주소 변환 실패는 저장 자체를 막지 않는다. */
     console.warn(
       '즐겨찾기 주소 확인 실패:',
       e.message
@@ -271,9 +268,10 @@ async function resolveFavoriteAddress(lat,lng,token){
 
 /* ── 즐겨찾기 패널 ── */
 function openAuditPanel(){
-
   const el=
-    document.getElementById('auditPanel');
+    document.getElementById(
+      'auditPanel'
+    );
 
   if(!el||!auditPending)return;
 
@@ -292,7 +290,6 @@ function openAuditPanel(){
   }
 
   if(locationText){
-
     locationText.textContent=
       '위도 '+
       auditPending.lat.toFixed(6)+
@@ -312,9 +309,10 @@ function openAuditPanel(){
 }
 
 function closeAuditPanel(){
-
   const el=
-    document.getElementById('auditPanel');
+    document.getElementById(
+      'auditPanel'
+    );
 
   if(el){
     el.classList.remove('show');
@@ -331,7 +329,6 @@ function closeAuditPanel(){
 }
 
 function updateAuditSubmitState(){
-
   const btn=
     document.getElementById(
       'auditSubmitBtn'
@@ -344,7 +341,6 @@ function updateAuditSubmitState(){
 
 /* ── 저장 ── */
 async function submitAudit(){
-
   if(!auditPending)return;
 
   const input=
@@ -354,15 +350,14 @@ async function submitAudit(){
 
   const typed=
     input
-      ? input.value.trim()
-      : '';
+      ?input.value.trim()
+      :'';
 
   const name=
     typed||
     '즐겨찾는 장소';
 
   const entry={
-
     id:
       'fav_'+
       Date.now().toString(36)+
@@ -389,7 +384,6 @@ async function submitAudit(){
   };
 
   try{
-
     await saveAudit(entry);
 
     closeAuditPanel();
@@ -402,7 +396,6 @@ async function submitAudit(){
       );
 
     if(chip){
-
       chip.classList.add('on');
 
       chip.setAttribute(
@@ -426,7 +419,6 @@ async function submitAudit(){
     );
 
   }catch(e){
-
     console.warn(
       '즐겨찾기 저장 실패:',
       e
@@ -440,7 +432,6 @@ async function submitAudit(){
 
 /* ── 삭제 ── */
 function deleteFavorite(id){
-
   const safeId=
     String(id||'');
 
@@ -488,7 +479,6 @@ window.deleteFavorite=deleteFavorite;
    ============================================================ */
 
 function injectV22Styles(){
-
   if(
     document.getElementById(
       'safeWalkV22Styles'
@@ -581,24 +571,77 @@ function injectV22Styles(){
       vertical-align:-4px;
     }
 
-    /* 현재위치 문자 버튼 */
-    .em-call.sms{
-      border:0;
-      background:#2563eb;
-      color:#fff;
-      font-family:'Noto Sans KR',sans-serif;
-      cursor:pointer;
+    /* 긴급 패널 2행: 전화 2분할 + 문자 2분할 */
+    .em-sms-row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-top:8px;
+      margin-bottom:4px;
     }
 
-    /* 119는 하단 보조 버튼으로 유지 */
-    .em-action.em-fire-secondary{
-      display:block;
-      text-decoration:none;
-      text-align:center;
-      background:#fff7ed;
-      border-color:#fed7aa;
-      color:#c2410c;
+    .em-sms-btn{
+      min-width:0;
+      min-height:72px;
+      padding:9px 8px;
+      border-radius:14px;
+      border:1px solid;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:2px;
+      font-family:'Noto Sans KR',sans-serif;
+      cursor:pointer;
+      touch-action:manipulation;
+      -webkit-appearance:none;
+      appearance:none;
+      transition:
+        transform .12s ease,
+        background .12s ease;
+    }
+
+    .em-sms-btn:active{
+      transform:scale(.98);
+    }
+
+    .em-sms-btn.police-sms{
+      background:#fff1f2;
+      border-color:#fecaca;
+      color:#b91c1c;
+    }
+
+    .em-sms-btn.guardian-sms{
+      background:#eff6ff;
+      border-color:#bfdbfe;
+      color:#1d4ed8;
+    }
+
+    .em-sms-btn.guardian-sms.needs-phone{
+      background:#f8fafc;
+      border-color:#cbd5e1;
+      color:#64748b;
+    }
+
+    .em-sms-icon{
+      font-size:18px;
+      line-height:1;
+      margin-bottom:3px;
+    }
+
+    .em-sms-main{
+      font-size:12px;
       font-weight:900;
+      line-height:1.2;
+      white-space:nowrap;
+    }
+
+    .em-sms-sub{
+      font-size:9.5px;
+      font-weight:700;
+      line-height:1.25;
+      opacity:.78;
+      text-align:center;
     }
 
     /* 즐겨찾기 */
@@ -665,14 +708,12 @@ function injectV22Styles(){
 
 /* ── 메인 화면 수정 ── */
 function customizeIntro(){
-
   const youth=
     document.querySelector(
       '.age-card[data-group="youth"] .age-icon'
     );
 
   if(youth){
-
     youth.className=
       'age-icon youth-stack';
 
@@ -701,7 +742,6 @@ function customizeIntro(){
       '.sw-main-logo-frame'
     )
   ){
-
     const frame=
       document.createElement('div');
 
@@ -731,8 +771,6 @@ function customizeIntro(){
     );
   }
 
-  /* 로고 안에 SAFE WALK 글자가 있으므로
-     기존 큰 텍스트는 숨김 */
   const appName=
     document.querySelector(
       '.app-name'
@@ -752,57 +790,244 @@ function customizeIntro(){
   }
 }
 
-/* ── 긴급 패널 ── */
-function customizeEmergencyPanel(){
+/* ============================================================
+   긴급 문자
+   ============================================================ */
 
-  const row=
-    document.querySelector(
-      '#emergencyPanel .em-call-row'
+/* 문자 앱 열기 */
+function openSafeWalkSms(phone,message){
+  const number=
+    String(phone||'').trim();
+
+  const body=
+    encodeURIComponent(
+      message||''
     );
 
-  if(row){
+  const isIOS=
+    /iPad|iPhone|iPod/.test(
+      navigator.userAgent
+    )||
+    (
+      navigator.platform==='MacIntel' &&
+      navigator.maxTouchPoints>1
+    );
 
-    row.innerHTML=
+  location.href=
+    'sms:'+
+    number+
+    (isIOS?'&':'?')+
+    'body='+
+    body;
+}
+
+/* 112 문자 신고 */
+function open112Sms(){
+  const message=
+    buildLocationMessage(
+`[SafeWalk 112 문자신고]
+현재 위치에서 긴급 도움이 필요합니다.
+상황을 추가로 입력한 뒤 전송해 주세요.`
+    );
+
+  openSafeWalkSms(
+    '112',
+    message
+  );
+}
+
+window.open112Sms=
+  open112Sms;
+
+/* 보호자 위치 문자 */
+function openGuardianLocationSms(){
+  const phone=
+    typeof getGuardianPhone==='function'
+      ?getGuardianPhone()
+      :'';
+
+  if(!phone){
+    showRouteToast(
+      '보호자 전화번호를 먼저 입력하고 저장해 주세요.'
+    );
+
+    const input=
+      document.getElementById(
+        'guardianInput'
+      );
+
+    if(input){
+      input.focus();
+
+      input.scrollIntoView({
+        behavior:'smooth',
+        block:'nearest'
+      });
+    }
+
+    return;
+  }
+
+  const message=
+    buildLocationMessage(
+      '[SafeWalk] 보호자에게 긴급 위치를 공유합니다.'
+    );
+
+  openSafeWalkSms(
+    phone,
+    message
+  );
+}
+
+window.openGuardianLocationSms=
+  openGuardianLocationSms;
+
+/* 보호자 번호 상태 표시 */
+function updateCustomEmergencySmsButtons(){
+  const guardianBtn=
+    document.getElementById(
+      'guardianLocationSmsBtn'
+    );
+
+  if(!guardianBtn)return;
+
+  const phone=
+    typeof getGuardianPhone==='function'
+      ?getGuardianPhone()
+      :'';
+
+  guardianBtn.classList.toggle(
+    'needs-phone',
+    !phone
+  );
+
+  const sub=
+    guardianBtn.querySelector(
+      '.em-sms-sub'
+    );
+
+  if(sub){
+    sub.textContent=
+      phone
+        ?'현재위치 보내기'
+        :'번호 입력 필요';
+  }
+}
+
+/* ── 긴급 패널 ── */
+function customizeEmergencyPanel(){
+  const panel=
+    document.getElementById(
+      'emergencyPanel'
+    );
+
+  if(!panel)return;
+
+  /* 1행: 전화 */
+  const callRow=
+    panel.querySelector(
+      '.em-call-row'
+    );
+
+  if(callRow){
+    callRow.innerHTML=
       '<a class="em-call police" href="tel:112">'+
         '🚔 112'+
         '<span>경찰 신고</span>'+
       '</a>'+
-      '<button type="button" '+
-        'class="em-call sms" '+
-        'id="emergencyLocationSmsBtn" '+
-        'onclick="openGuardianSms(\'[SafeWalk] 긴급 위치 공유\')">'+
-        '💬 문자'+
-        '<span>현재위치 보내기</span>'+
-      '</button>';
+      '<a class="em-call fire" href="tel:119">'+
+        '🚒 119'+
+        '<span>소방·구급</span>'+
+      '</a>';
   }
 
-  /* 기존 문자 버튼 자리에 119 유지 */
-  const oldSms=
+  /* 기존 보호자 단일 문자 버튼 */
+  const oldGuardianSms=
     document.getElementById(
       'guardianSmsBtn'
     );
 
-  if(oldSms){
+  /* 2행: 문자 */
+  let smsRow=
+    panel.querySelector(
+      '.em-sms-row'
+    );
 
-    const fire=
-      document.createElement('a');
+  if(!smsRow){
+    smsRow=
+      document.createElement(
+        'div'
+      );
 
-    fire.className=
-      'em-action em-fire-secondary';
+    smsRow.className=
+      'em-sms-row';
 
-    fire.href=
-      'tel:119';
+    smsRow.innerHTML=
+      '<button type="button" '+
+        'class="em-sms-btn police-sms" '+
+        'onclick="open112Sms()">'+
 
-    fire.textContent=
-      '🚒 119 소방·구급';
+        '<span class="em-sms-icon">💬</span>'+
+        '<span class="em-sms-main">112 문자 신고</span>'+
+        '<span class="em-sms-sub">현재위치 보내기</span>'+
 
-    oldSms.replaceWith(fire);
+      '</button>'+
+
+      '<button type="button" '+
+        'class="em-sms-btn guardian-sms" '+
+        'id="guardianLocationSmsBtn" '+
+        'onclick="openGuardianLocationSms()">'+
+
+        '<span class="em-sms-icon">👨‍👩‍👧</span>'+
+        '<span class="em-sms-main">보호자 문자</span>'+
+        '<span class="em-sms-sub">현재위치 보내기</span>'+
+
+      '</button>';
+
+    if(oldGuardianSms){
+      oldGuardianSms.insertAdjacentElement(
+        'beforebegin',
+        smsRow
+      );
+
+      oldGuardianSms.remove();
+
+    }else if(callRow){
+      callRow.insertAdjacentElement(
+        'afterend',
+        smsRow
+      );
+    }
+
+  }else if(oldGuardianSms){
+    oldGuardianSms.remove();
+  }
+
+  updateCustomEmergencySmsButtons();
+
+  /* emergency.js 상태 갱신과 연결 */
+  if(
+    typeof updateEmergencyPanelState==='function' &&
+    !updateEmergencyPanelState._safeWalk221Wrapped
+  ){
+    const baseUpdateEmergencyPanelState=
+      updateEmergencyPanelState;
+
+    updateEmergencyPanelState=
+      function(){
+
+        baseUpdateEmergencyPanelState();
+
+        updateCustomEmergencySmsButtons();
+      };
+
+    updateEmergencyPanelState
+      ._safeWalk221Wrapped=true;
   }
 }
 
 /* ── 즐겨찾기 패널 ── */
 function customizeFavoritePanel(){
-
   const panel=
     document.getElementById(
       'auditPanel'
@@ -889,7 +1114,6 @@ function customizeFavoritePanel(){
 
 /* ── 레이어 설정 칩 변경 ── */
 function wrapExtraChipBuilder(){
-
   if(
     typeof appendExtraChips!=='function' ||
     appendExtraChips._favoriteWrapped
@@ -900,67 +1124,68 @@ function wrapExtraChipBuilder(){
   const base=
     appendExtraChips;
 
-  const wrapped=function(container){
+  const wrapped=
+    function(container){
 
-    base(container);
+      base(container);
 
-    const row=
-      container.querySelector(
-        '.chip-row[data-kind="audit"]'
-      );
-
-    if(row){
-
-      row.setAttribute(
-        'aria-label',
-        '즐겨찾는 장소'
-      );
-
-      const dot=
-        row.querySelector(
-          '.chip-dot'
+      const row=
+        container.querySelector(
+          '.chip-row[data-kind="audit"]'
         );
 
-      if(dot){
-        dot.style.background='#2563eb';
-      }
-
-      const label=
-        row.querySelector(
-          '.chip-label'
+      if(row){
+        row.setAttribute(
+          'aria-label',
+          '즐겨찾는 장소'
         );
 
-      if(label){
-        label.textContent=
-          '⭐ 즐겨찾는 장소';
+        const dot=
+          row.querySelector(
+            '.chip-dot'
+          );
+
+        if(dot){
+          dot.style.background=
+            '#2563eb';
+        }
+
+        const label=
+          row.querySelector(
+            '.chip-label'
+          );
+
+        if(label){
+          label.textContent=
+            '⭐ 즐겨찾는 장소';
+        }
       }
-    }
 
-    const addBtn=
-      container.querySelector(
-        '#auditAddBtn'
-      );
+      const addBtn=
+        container.querySelector(
+          '#auditAddBtn'
+        );
 
-    if(addBtn){
+      if(addBtn){
+        addBtn.textContent=
+          '⭐ 즐겨찾는 장소 추가하기';
 
-      addBtn.textContent=
-        '⭐ 즐겨찾는 장소 추가하기';
+        addBtn.setAttribute(
+          'aria-label',
+          '지도에서 즐겨찾는 장소 추가하기'
+        );
+      }
+    };
 
-      addBtn.setAttribute(
-        'aria-label',
-        '지도에서 즐겨찾는 장소 추가하기'
-      );
-    }
-  };
+  wrapped._favoriteWrapped=
+    true;
 
-  wrapped._favoriteWrapped=true;
-
-  appendExtraChips=wrapped;
+  appendExtraChips=
+    wrapped;
 }
 
 /* ── 비상벨 공식 아이콘 ── */
 function applyOfficialBellIcon(){
-
   if(
     typeof LAYER==='undefined' ||
     !LAYER.bell
@@ -989,7 +1214,6 @@ function applyOfficialBellIcon(){
 
 /* ── CPTED 현재 위치 사람 아이콘 ── */
 function overrideCptedCurrentLocationIcon(){
-
   if(
     typeof drawMe!=='function' ||
     drawMe._cptedPersonWrapped
@@ -1003,7 +1227,6 @@ function overrideCptedCurrentLocationIcon(){
   let cptedPersonIcon=null;
 
   const wrapped=function(){
-
     baseDrawMe();
 
     if(
@@ -1015,18 +1238,16 @@ function overrideCptedCurrentLocationIcon(){
     }
 
     if(!cptedPersonIcon){
-
       const color=
         (
           typeof GROUP!=='undefined' &&
           GROUP.cpted
         )
-        ? GROUP.cpted.color
-        : '#b45309';
+        ?GROUP.cpted.color
+        :'#b45309';
 
       cptedPersonIcon=
         L.divIcon({
-
           html:
             '<div style="'+
               'width:42px;'+
@@ -1044,9 +1265,7 @@ function overrideCptedCurrentLocationIcon(){
             '</div>',
 
           className:'',
-
           iconSize:[42,42],
-
           iconAnchor:[21,21]
         });
     }
@@ -1061,9 +1280,11 @@ function overrideCptedCurrentLocationIcon(){
     }
   };
 
-  wrapped._cptedPersonWrapped=true;
+  wrapped._cptedPersonWrapped=
+    true;
 
-  drawMe=wrapped;
+  drawMe=
+    wrapped;
 }
 
 /* ============================================================
@@ -1088,7 +1309,6 @@ document.addEventListener(
 
     wrapExtraChipBuilder();
 
-    /* main.js의 버전 표시 이후 최종 갱신 */
     setTimeout(()=>{
 
       const ver=
@@ -1098,7 +1318,7 @@ document.addEventListener(
 
       if(ver){
         ver.textContent=
-          'v.2.2.0';
+          'v.2.2.1';
       }
 
     },0);
