@@ -93,6 +93,8 @@ function goBack(){
   updateSlotUI();
   const spr=document.getElementById('spResults');if(spr)spr.innerHTML='';
   const spi=document.getElementById('spInput');if(spi)spi.value='';
+
+  resetPageScrollToTop();
 }
 
 /* 브라우저가 이전 스크롤 위치를 자동 복원하지 않도록 설정 */
