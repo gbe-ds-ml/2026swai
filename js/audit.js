@@ -1,5 +1,5 @@
 /* ============================================================
-   SafeWalk v2.2.1 — audit.js
+   SafeWalk v2.2.2 — audit.js
    ------------------------------------------------------------
    기존 "시민 안전 평가" 모듈을 "즐겨찾는 장소" 기능으로 교체한다.
 
@@ -11,14 +11,18 @@
    함께 적용되는 UI 보완
    1) 메인 여성·청소년 이모지: 여성 위 / 청소년 아래
    2) 메인 SafeWalk 로고 이미지 삽입
-   3) CPTED 현재 위치 마커: 건설 아이콘 대신 사람 아이콘
-   4) 긴급 패널: 112·119 전화 유지 + 112 문자·보호자 문자 2분할
+   3) CPTED 현재 위치 마커: 사람 아이콘
+   4) 긴급 패널: 112·119 전화 유지 + 112 문자·보호자 문자
    5) 안전비상벨: 생활안전지도 accident.svg 아이콘 사용
    6) 시민 안전 평가 → 즐겨찾는 장소(추가/삭제)
+   7) OSM 안심 편의점 레이어 제거
    ============================================================ */
 
-/* ── 즐겨찾기 상태 ──
-   이름은 기존 파일과의 호환 때문에 audit*을 유지한다. */
+
+/* ============================================================
+   즐겨찾기 상태
+   ============================================================ */
+
 let auditLayer=null;
 let auditChipOn=true;
 let auditPending=null;
@@ -29,469 +33,1041 @@ let favoriteReverseToken=0;
 const FAVORITE_STORAGE_KEY='sw_favorite_places_v1';
 const FAVORITE_MAX_ITEMS=100;
 
-/* ── localStorage ── */
+
+/* ============================================================
+   localStorage
+   ============================================================ */
+
 function readFavorites(){
+
   try{
-    const raw=localStorage.getItem(FAVORITE_STORAGE_KEY);
-    const arr=raw?JSON.parse(raw):[];
-    return Array.isArray(arr)?arr:[];
+
+    const raw=
+      localStorage.getItem(
+        FAVORITE_STORAGE_KEY
+      );
+
+    const arr=
+      raw
+        ?JSON.parse(raw)
+        :[];
+
+    return Array.isArray(arr)
+      ?arr
+      :[];
+
   }catch(e){
-    console.warn('즐겨찾기 불러오기 실패:',e);
+
+    console.warn(
+      '즐겨찾기 불러오기 실패:',
+      e
+    );
+
     return [];
+
   }
+
 }
+
 
 function writeFavorites(arr){
+
   try{
+
     localStorage.setItem(
+
       FAVORITE_STORAGE_KEY,
-      JSON.stringify((Array.isArray(arr)?arr:[]).slice(-FAVORITE_MAX_ITEMS))
+
+      JSON.stringify(
+
+        (
+          Array.isArray(arr)
+            ?arr
+            :[]
+        ).slice(
+          -FAVORITE_MAX_ITEMS
+        )
+
+      )
+
     );
+
   }catch(e){
-    console.warn('즐겨찾기 저장 실패:',e);
+
+    console.warn(
+      '즐겨찾기 저장 실패:',
+      e
+    );
+
     throw e;
+
   }
+
 }
+
 
 /* 기존 이름 호환 */
-function readLocalAudits(){return readFavorites();}
-function writeLocalAudits(arr){writeFavorites(arr);}
-async function loadAudits(){return readFavorites();}
+
+function readLocalAudits(){
+
+  return readFavorites();
+
+}
+
+
+function writeLocalAudits(arr){
+
+  writeFavorites(arr);
+
+}
+
+
+async function loadAudits(){
+
+  return readFavorites();
+
+}
+
 
 async function saveAudit(entry){
-  const arr=readFavorites();
-  arr.push(entry);
-  writeFavorites(arr);
-}
 
-/* ── 즐겨찾기 마커 ── */
-function mkAuditMarker(entry){
-  const color='#2563eb';
+  const arr=
+    readFavorites();
 
-  const icon=L.divIcon({
-    html:'<div class="sw-favorite-marker">⭐</div>',
-    className:'',
-    iconSize:[34,34],
-    iconAnchor:[17,17]
-  });
-
-  const when=entry.ts
-    ?new Date(entry.ts).toLocaleDateString('ko-KR')
-    :'';
-
-  const id=String(entry.id||'')
-    .replace(/[^a-zA-Z0-9_-]/g,'');
-
-  return L.marker([entry.lat,entry.lng],{icon}).bindPopup(
-    L.popup({
-      className:'safepopup',
-      closeButton:true,
-      maxWidth:260
-    }).setContent(
-      '<div class="pbadge" style="background:'+color+'18;color:'+color+'">⭐ 즐겨찾는 장소</div>'+
-      '<div class="ptitle">'+esc(entry.name||'즐겨찾는 장소')+'</div>'+
-      (entry.addr
-        ?'<div class="prow">📍 '+esc(entry.addr)+'</div>'
-        :'')+
-      (when
-        ?'<div class="prow" style="color:#94a3b8">저장일 '+esc(when)+'</div>'
-        :'')+
-      '<button type="button" class="favorite-delete-btn" '+
-      'onclick="deleteFavorite(\''+id+'\')">🗑 즐겨찾기 삭제</button>'
-    )
+  arr.push(
+    entry
   );
+
+  writeFavorites(
+    arr
+  );
+
 }
 
-async function refreshAuditMarkers(){
-  if(!map||!auditLayer)return;
 
-  auditCache=readFavorites();
-  auditLayer.clearLayers();
+/* ============================================================
+   즐겨찾기 마커
+   ============================================================ */
 
-  if(!auditChipOn)return;
+function mkAuditMarker(entry){
 
-  auditCache.forEach(entry=>{
-    const lat=Number(entry.lat);
-    const lng=Number(entry.lng);
+  const color=
+    '#2563eb';
 
-    if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
 
-    auditLayer.addLayer(
-      mkAuditMarker({...entry,lat,lng})
+  const icon=
+    L.divIcon({
+
+      html:
+        '<div class="sw-favorite-marker">⭐</div>',
+
+      className:'',
+
+      iconSize:[
+        34,
+        34
+      ],
+
+      iconAnchor:[
+        17,
+        17
+      ]
+
+    });
+
+
+  const when=
+    entry.ts
+      ?new Date(
+          entry.ts
+        ).toLocaleDateString(
+          'ko-KR'
+        )
+      :'';
+
+
+  const id=
+    String(
+      entry.id||
+      ''
+    )
+    .replace(
+      /[^a-zA-Z0-9_-]/g,
+      ''
     );
-  });
-}
 
-function setAuditLayerVisible(on){
-  auditChipOn=Boolean(on);
 
-  if(!map||!auditLayer)return;
+  return L.marker(
 
-  if(auditChipOn){
-    if(!map.hasLayer(auditLayer)){
-      auditLayer.addTo(map);
+    [
+      entry.lat,
+      entry.lng
+    ],
+
+    {
+      icon
     }
 
-    refreshAuditMarkers();
+  )
 
-  }else if(map.hasLayer(auditLayer)){
-    map.removeLayer(auditLayer);
-  }
+  .bindPopup(
+
+    L.popup({
+
+      className:
+        'safepopup',
+
+      closeButton:
+        true,
+
+      maxWidth:
+        260
+
+    })
+
+    .setContent(
+
+      '<div class="pbadge" style="background:'+color+'18;color:'+color+'">'+
+        '⭐ 즐겨찾는 장소'+
+      '</div>'+
+
+      '<div class="ptitle">'+
+        esc(
+          entry.name||
+          '즐겨찾는 장소'
+        )+
+      '</div>'+
+
+      (
+        entry.addr
+          ?'<div class="prow">📍 '+esc(entry.addr)+'</div>'
+          :''
+      )+
+
+      (
+        when
+          ?'<div class="prow" style="color:#94a3b8">저장일 '+esc(when)+'</div>'
+          :''
+      )+
+
+      '<button type="button" class="favorite-delete-btn" '+
+        'onclick="deleteFavorite(\''+id+'\')">'+
+        '🗑 즐겨찾기 삭제'+
+      '</button>'
+
+    )
+
+  );
+
 }
 
-/* map.js의 onLocated()가 호출하는 초기화 훅 */
-function initAuditLayer(){
-  if(!map)return;
 
-  auditLayer=L.layerGroup();
+async function refreshAuditMarkers(){
 
-  if(auditChipOn){
-    auditLayer.addTo(map);
-  }
-
-  refreshAuditMarkers();
-}
-
-function resetAuditFeature(){
-  auditLayer=null;
-  auditPending=null;
-  auditPickMode=false;
-  favoriteReverseToken++;
-
-  closeAuditPanel();
-}
-
-/* ── 즐겨찾기 추가 ── */
-function startAuditPick(){
-  if(!map){
-    showRouteToast('지도가 아직 준비되지 않았습니다.');
+  if(
+    !map||
+    !auditLayer
+  ){
     return;
   }
 
+
+  auditCache=
+    readFavorites();
+
+
+  auditLayer
+    .clearLayers();
+
+
+  if(
+    !auditChipOn
+  ){
+    return;
+  }
+
+
+  auditCache
+    .forEach(
+      entry=>{
+
+        const lat=
+          Number(
+            entry.lat
+          );
+
+        const lng=
+          Number(
+            entry.lng
+          );
+
+
+        if(
+          !Number.isFinite(lat)||
+          !Number.isFinite(lng)
+        ){
+          return;
+        }
+
+
+        auditLayer.addLayer(
+
+          mkAuditMarker({
+
+            ...entry,
+
+            lat,
+
+            lng
+
+          })
+
+        );
+
+      }
+    );
+
+}
+
+
+function setAuditLayerVisible(on){
+
+  auditChipOn=
+    Boolean(on);
+
+
+  if(
+    !map||
+    !auditLayer
+  ){
+    return;
+  }
+
+
+  if(
+    auditChipOn
+  ){
+
+    if(
+      !map.hasLayer(
+        auditLayer
+      )
+    ){
+
+      auditLayer.addTo(
+        map
+      );
+
+    }
+
+
+    refreshAuditMarkers();
+
+  }
+
+  else if(
+
+    map.hasLayer(
+      auditLayer
+    )
+
+  ){
+
+    map.removeLayer(
+      auditLayer
+    );
+
+  }
+
+}
+
+
+/* map.js의 onLocated()가 호출 */
+
+function initAuditLayer(){
+
+  if(
+    !map
+  ){
+    return;
+  }
+
+
+  auditLayer=
+    L.layerGroup();
+
+
+  if(
+    auditChipOn
+  ){
+
+    auditLayer.addTo(
+      map
+    );
+
+  }
+
+
+  refreshAuditMarkers();
+
+}
+
+
+function resetAuditFeature(){
+
+  auditLayer=null;
+
+  auditPending=null;
+
+  auditPickMode=false;
+
+  favoriteReverseToken++;
+
+
+  closeAuditPanel();
+
+}
+
+
+/* ============================================================
+   즐겨찾기 추가
+   ============================================================ */
+
+function startAuditPick(){
+
+  if(
+    !map
+  ){
+
+    showRouteToast(
+      '지도가 아직 준비되지 않았습니다.'
+    );
+
+    return;
+
+  }
+
+
   closeLayerSheet();
 
-  auditPickMode=true;
 
-  document.body.classList.add(
-    'map-pick-mode'
-  );
+  auditPickMode=
+    true;
+
+
+  document.body
+    .classList
+    .add(
+      'map-pick-mode'
+    );
+
 
   showRouteToast(
     '⭐ 즐겨찾기에 저장할 장소를 지도에서 한 번 터치하세요.'
   );
+
 }
+
 
 function handleAuditPick(latlng){
-  auditPickMode=false;
 
-  document.body.classList.remove(
-    'map-pick-mode'
-  );
+  auditPickMode=
+    false;
+
+
+  document.body
+    .classList
+    .remove(
+      'map-pick-mode'
+    );
+
 
   auditPending={
-    lat:Number(latlng.lat),
-    lng:Number(latlng.lng),
+
+    lat:
+      Number(
+        latlng.lat
+      ),
+
+    lng:
+      Number(
+        latlng.lng
+      ),
+
     name:'',
+
     addr:''
+
   };
 
+
   openAuditPanel();
+
 }
 
-/* ── 주소 확인 ── */
-async function resolveFavoriteAddress(lat,lng,token){
+
+/* ============================================================
+   즐겨찾기 주소 확인
+   ============================================================ */
+
+async function resolveFavoriteAddress(
+  lat,
+  lng,
+  token
+){
+
   try{
+
     const url=
+
       'https://nominatim.openstreetmap.org/reverse'+
-      '?lat='+encodeURIComponent(lat)+
-      '&lon='+encodeURIComponent(lng)+
+
+      '?lat='+
+      encodeURIComponent(
+        lat
+      )+
+
+      '&lon='+
+      encodeURIComponent(
+        lng
+      )+
+
       '&format=json'+
       '&accept-language=ko'+
       '&zoom=18';
 
-    const res=await fetch(url);
 
-    if(!res.ok){
-      throw new Error('HTTP '+res.status);
-    }
+    const res=
+      await fetch(
+        url
+      );
 
-    const data=await res.json();
 
     if(
-      token!==favoriteReverseToken ||
-      !auditPending
+      !res.ok
     ){
-      return;
+
+      throw new Error(
+        'HTTP '+
+        res.status
+      );
+
     }
 
-    const a=data.address||{};
+
+    const data=
+      await res.json();
+
+
+    if(
+
+      token!==
+        favoriteReverseToken||
+
+      !auditPending
+
+    ){
+
+      return;
+
+    }
+
+
+    const a=
+      data.address||
+      {};
+
 
     const short=[
+
       a.road||
       a.pedestrian||
       a.neighbourhood||
       a.suburb||
       '',
-      a.house_number||''
+
+      a.house_number||
+      ''
+
     ]
-    .filter(Boolean)
-    .join(' ');
+
+    .filter(
+      Boolean
+    )
+
+    .join(
+      ' '
+    );
+
 
     auditPending.addr=
+
       short||
       data.display_name||
       '';
+
 
     const text=
       document.getElementById(
         'favoriteLocationText'
       );
 
-    if(text){
+
+    if(
+      text
+    ){
+
       text.textContent=
+
         auditPending.addr||
+
         (
           '위도 '+
           auditPending.lat.toFixed(6)+
           ' · 경도 '+
           auditPending.lng.toFixed(6)
         );
+
     }
 
-  }catch(e){
+  }
+
+  catch(e){
+
     console.warn(
       '즐겨찾기 주소 확인 실패:',
       e.message
     );
+
   }
+
 }
 
-/* ── 즐겨찾기 패널 ── */
+
+/* ============================================================
+   즐겨찾기 패널
+   ============================================================ */
+
 function openAuditPanel(){
+
   const el=
     document.getElementById(
       'auditPanel'
     );
 
-  if(!el||!auditPending)return;
+
+  if(
+    !el||
+    !auditPending
+  ){
+    return;
+  }
+
 
   const nameInput=
     document.getElementById(
       'favoriteNameInput'
     );
 
+
   const locationText=
     document.getElementById(
       'favoriteLocationText'
     );
 
-  if(nameInput){
+
+  if(
+    nameInput
+  ){
+
     nameInput.value='';
+
   }
 
-  if(locationText){
+
+  if(
+    locationText
+  ){
+
     locationText.textContent=
+
       '위도 '+
       auditPending.lat.toFixed(6)+
       ' · 경도 '+
       auditPending.lng.toFixed(6);
+
   }
 
-  el.classList.add('show');
 
-  const token=++favoriteReverseToken;
+  el.classList.add(
+    'show'
+  );
+
+
+  const token=
+    ++favoriteReverseToken;
+
 
   resolveFavoriteAddress(
+
     auditPending.lat,
+
     auditPending.lng,
+
     token
+
   );
+
 }
 
+
 function closeAuditPanel(){
+
   const el=
     document.getElementById(
       'auditPanel'
     );
 
-  if(el){
-    el.classList.remove('show');
+
+  if(
+    el
+  ){
+
+    el.classList.remove(
+      'show'
+    );
+
   }
 
+
   auditPending=null;
+
   auditPickMode=false;
 
   favoriteReverseToken++;
 
-  document.body.classList.remove(
-    'map-pick-mode'
-  );
+
+  document.body
+    .classList
+    .remove(
+      'map-pick-mode'
+    );
+
 }
 
+
 function updateAuditSubmitState(){
+
   const btn=
     document.getElementById(
       'auditSubmitBtn'
     );
 
-  if(btn){
-    btn.classList.add('on');
+
+  if(
+    btn
+  ){
+
+    btn.classList.add(
+      'on'
+    );
+
   }
+
 }
 
-/* ── 저장 ── */
+
+/* ============================================================
+   즐겨찾기 저장
+   ============================================================ */
+
 async function submitAudit(){
-  if(!auditPending)return;
+
+  if(
+    !auditPending
+  ){
+    return;
+  }
+
 
   const input=
     document.getElementById(
       'favoriteNameInput'
     );
 
+
   const typed=
     input
       ?input.value.trim()
       :'';
 
+
   const name=
     typed||
     '즐겨찾는 장소';
 
+
   const entry={
+
     id:
+
       'fav_'+
-      Date.now().toString(36)+
+
+      Date.now()
+        .toString(36)+
+
       '_'+
+
       Math.random()
         .toString(36)
-        .slice(2,8),
+        .slice(
+          2,
+          8
+        ),
 
-    name:name.slice(0,40),
 
-    lat:Number(
-      auditPending.lat.toFixed(6)
-    ),
+    name:
+      name.slice(
+        0,
+        40
+      ),
 
-    lng:Number(
-      auditPending.lng.toFixed(6)
-    ),
 
-    addr:String(
-      auditPending.addr||''
-    ).slice(0,160),
+    lat:
+      Number(
+        auditPending.lat
+          .toFixed(6)
+      ),
 
-    ts:Date.now()
+
+    lng:
+      Number(
+        auditPending.lng
+          .toFixed(6)
+      ),
+
+
+    addr:
+      String(
+        auditPending.addr||
+        ''
+      )
+      .slice(
+        0,
+        160
+      ),
+
+
+    ts:
+      Date.now()
+
   };
 
+
   try{
-    await saveAudit(entry);
+
+    await saveAudit(
+      entry
+    );
+
 
     closeAuditPanel();
 
-    auditChipOn=true;
+
+    auditChipOn=
+      true;
+
 
     const chip=
       document.querySelector(
         '.chip-row[data-kind="audit"]'
       );
 
-    if(chip){
-      chip.classList.add('on');
+
+    if(
+      chip
+    ){
+
+      chip.classList.add(
+        'on'
+      );
+
 
       chip.setAttribute(
         'aria-checked',
         'true'
       );
+
     }
+
 
     if(
-      auditLayer &&
-      map &&
-      !map.hasLayer(auditLayer)
+
+      auditLayer&&
+      map&&
+      !map.hasLayer(
+        auditLayer
+      )
+
     ){
-      auditLayer.addTo(map);
+
+      auditLayer.addTo(
+        map
+      );
+
     }
 
+
     await refreshAuditMarkers();
+
 
     showRouteToast(
       '⭐ 즐겨찾는 장소에 저장했습니다.'
     );
 
-  }catch(e){
+  }
+
+  catch(e){
+
     console.warn(
       '즐겨찾기 저장 실패:',
       e
     );
 
+
     showRouteToast(
       '즐겨찾기 저장에 실패했습니다. 저장 공간을 확인해 주세요.'
     );
+
   }
+
 }
 
-/* ── 삭제 ── */
+
+/* ============================================================
+   즐겨찾기 삭제
+   ============================================================ */
+
 function deleteFavorite(id){
+
   const safeId=
-    String(id||'');
+    String(
+      id||
+      ''
+    );
+
 
   const current=
     readFavorites();
 
+
   const target=
     current.find(
-      item=>String(item.id)===safeId
+
+      item=>
+
+        String(
+          item.id
+        )===safeId
+
     );
 
-  if(!target)return;
 
   if(
-    !confirm(
-      '“'+
-      (target.name||'즐겨찾는 장소')+
-      '”을(를) 즐겨찾기에서 삭제할까요?'
-    )
+    !target
   ){
     return;
   }
 
-  writeFavorites(
-    current.filter(
-      item=>String(item.id)!==safeId
-    )
-  );
 
-  if(map){
-    map.closePopup();
+  if(
+
+    !confirm(
+
+      '“'+
+
+      (
+        target.name||
+        '즐겨찾는 장소'
+      )+
+
+      '”을(를) 즐겨찾기에서 삭제할까요?'
+
+    )
+
+  ){
+
+    return;
+
   }
 
+
+  writeFavorites(
+
+    current.filter(
+
+      item=>
+
+        String(
+          item.id
+        )!==safeId
+
+    )
+
+  );
+
+
+  if(
+    map
+  ){
+
+    map.closePopup();
+
+  }
+
+
   refreshAuditMarkers();
+
 
   showRouteToast(
     '즐겨찾기에서 삭제했습니다.'
   );
+
 }
 
-window.deleteFavorite=deleteFavorite;
+
+window.deleteFavorite=
+  deleteFavorite;
+
 
 /* ============================================================
-   화면 보완
+   스타일
    ============================================================ */
 
 function injectV22Styles(){
+
   if(
+
     document.getElementById(
       'safeWalkV22Styles'
     )
+
   ){
+
     return;
+
   }
 
+
   const style=
-    document.createElement('style');
+    document.createElement(
+      'style'
+    );
+
 
   style.id=
     'safeWalkV22Styles';
+
 
   style.textContent=`
 
@@ -499,574 +1075,1175 @@ function injectV22Styles(){
       margin-bottom:8px;
     }
 
+
+    /* 메인 SafeWalk 로고 */
+
     .sw-main-logo-frame{
+
       width:min(82vw,320px);
-      margin:0 auto 8px;
+
+      margin:
+        0 auto 8px;
+
       overflow:hidden;
-      border-radius:20px;
-      background:#fff;
+
+      border-radius:
+        20px;
+
+      background:
+        #fff;
+
       box-shadow:
         0 8px 24px
         rgba(15,23,42,.08);
+
     }
+
 
     .sw-main-logo{
+
       display:block;
+
       width:100%;
+
       height:auto;
+
     }
 
-    /* 여성 · 청소년 카드: 글씨 기준으로 위/아래 분리 */
-/* 여성 · 청소년 카드 */
-.age-card[data-group="youth"]{
-  justify-content:center;
-  gap:0;
-  padding-top:12px;
-  padding-bottom:12px;
-}
 
-.youth-group-box{
-  width:100%;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-}
+    /* ========================================================
+       여성 · 청소년 카드
+       
+       👩
+       여성
 
-.youth-person-block{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:3px;
-}
+       🧍‍♀️ 🧍‍♂️
+       청소년
+       ======================================================== */
 
-.youth-woman-emoji{
-  font-size:27px;
-  line-height:1;
-}
+    .age-card[data-group="youth"]{
 
-.youth-teen-emojis{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:5px;
-  font-size:26px;
-  line-height:1;
-}
+      justify-content:
+        center;
 
-.youth-part-label{
-  font-size:13px;
-  font-weight:800;
-  color:var(--navy);
-  line-height:1.2;
-}
+      gap:0;
 
-    /* 안전비상벨 공식 아이콘 */
+      padding-top:
+        11px;
+
+      padding-bottom:
+        11px;
+
+    }
+
+
+    .youth-group-box{
+
+      width:100%;
+
+      display:flex;
+
+      flex-direction:
+        column;
+
+      align-items:
+        center;
+
+      justify-content:
+        center;
+
+      gap:8px;
+
+    }
+
+
+    .youth-person-block{
+
+      display:flex;
+
+      flex-direction:
+        column;
+
+      align-items:
+        center;
+
+      justify-content:
+        center;
+
+      gap:3px;
+
+    }
+
+
+    .youth-woman-emoji{
+
+      font-size:
+        27px;
+
+      line-height:
+        1;
+
+    }
+
+
+    .youth-teen-emojis{
+
+      display:flex;
+
+      align-items:
+        center;
+
+      justify-content:
+        center;
+
+      gap:4px;
+
+      font-size:
+        27px;
+
+      line-height:
+        1;
+
+    }
+
+
+    .youth-part-label{
+
+      font-size:
+        13px;
+
+      font-weight:
+        800;
+
+      color:
+        var(--navy);
+
+      line-height:
+        1.15;
+
+    }
+
+
+    /* ========================================================
+       안전비상벨 공식 아이콘
+       ======================================================== */
+
     .sw-bell-icon{
-      display:inline-block;
-      width:20px;
-      height:20px;
-      object-fit:contain;
-      vertical-align:-5px;
-      pointer-events:none;
+
+      display:
+        inline-block;
+
+      width:
+        20px;
+
+      height:
+        20px;
+
+      object-fit:
+        contain;
+
+      vertical-align:
+        -5px;
+
+      pointer-events:
+        none;
+
     }
+
 
     .chip-label .sw-bell-icon,
     .stat-emoji .sw-bell-icon{
-      width:18px;
-      height:18px;
+
+      width:
+        18px;
+
+      height:
+        18px;
+
     }
+
 
     .route-pill .sw-bell-icon{
-      width:16px;
-      height:16px;
-      vertical-align:-4px;
+
+      width:
+        16px;
+
+      height:
+        16px;
+
+      vertical-align:
+        -4px;
+
     }
+
 
     .pbadge .sw-bell-icon{
-      width:16px;
-      height:16px;
-      vertical-align:-4px;
+
+      width:
+        16px;
+
+      height:
+        16px;
+
+      vertical-align:
+        -4px;
+
     }
 
-    /* 긴급 패널 2행: 전화 2분할 + 문자 2분할 */
+
+    /* ========================================================
+       긴급 패널 문자 버튼
+       ======================================================== */
+
     .em-sms-row{
+
       display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:8px;
-      margin-top:8px;
-      margin-bottom:4px;
+
+      grid-template-columns:
+        1fr 1fr;
+
+      gap:
+        8px;
+
+      margin-top:
+        8px;
+
+      margin-bottom:
+        4px;
+
     }
+
 
     .em-sms-btn{
-      min-width:0;
-      min-height:72px;
-      padding:9px 8px;
-      border-radius:14px;
-      border:1px solid;
+
+      min-width:
+        0;
+
+      min-height:
+        72px;
+
+      padding:
+        9px 8px;
+
+      border-radius:
+        14px;
+
+      border:
+        1px solid;
+
       display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:2px;
-      font-family:'Noto Sans KR',sans-serif;
-      cursor:pointer;
-      touch-action:manipulation;
-      -webkit-appearance:none;
-      appearance:none;
+
+      flex-direction:
+        column;
+
+      align-items:
+        center;
+
+      justify-content:
+        center;
+
+      gap:
+        2px;
+
+      font-family:
+        'Noto Sans KR',
+        sans-serif;
+
+      cursor:
+        pointer;
+
+      touch-action:
+        manipulation;
+
+      -webkit-appearance:
+        none;
+
+      appearance:
+        none;
+
       transition:
         transform .12s ease,
         background .12s ease;
+
     }
+
 
     .em-sms-btn:active{
-      transform:scale(.98);
+
+      transform:
+        scale(.98);
+
     }
+
 
     .em-sms-btn.police-sms{
-      background:#fff1f2;
-      border-color:#fecaca;
-      color:#b91c1c;
+
+      background:
+        #fff1f2;
+
+      border-color:
+        #fecaca;
+
+      color:
+        #b91c1c;
+
     }
+
 
     .em-sms-btn.guardian-sms{
-      background:#eff6ff;
-      border-color:#bfdbfe;
-      color:#1d4ed8;
+
+      background:
+        #eff6ff;
+
+      border-color:
+        #bfdbfe;
+
+      color:
+        #1d4ed8;
+
     }
+
 
     .em-sms-btn.guardian-sms.needs-phone{
-      background:#f8fafc;
-      border-color:#cbd5e1;
-      color:#64748b;
+
+      background:
+        #f8fafc;
+
+      border-color:
+        #cbd5e1;
+
+      color:
+        #64748b;
+
     }
+
 
     .em-sms-icon{
-      font-size:18px;
-      line-height:1;
-      margin-bottom:3px;
+
+      font-size:
+        18px;
+
+      line-height:
+        1;
+
+      margin-bottom:
+        3px;
+
     }
+
 
     .em-sms-main{
-      font-size:12px;
-      font-weight:900;
-      line-height:1.2;
-      white-space:nowrap;
+
+      font-size:
+        12px;
+
+      font-weight:
+        900;
+
+      line-height:
+        1.2;
+
+      white-space:
+        nowrap;
+
     }
+
 
     .em-sms-sub{
-      font-size:9.5px;
-      font-weight:700;
-      line-height:1.25;
-      opacity:.78;
-      text-align:center;
+
+      font-size:
+        9.5px;
+
+      font-weight:
+        700;
+
+      line-height:
+        1.25;
+
+      opacity:
+        .78;
+
+      text-align:
+        center;
+
     }
 
-    /* 즐겨찾기 */
+
+    /* ========================================================
+       즐겨찾기
+       ======================================================== */
+
     .favorite-field{
+
       display:grid;
-      gap:6px;
-      margin:10px 0;
+
+      gap:
+        6px;
+
+      margin:
+        10px 0;
+
     }
+
 
     .favorite-field label{
-      font-size:11px;
-      font-weight:800;
-      color:var(--navy);
+
+      font-size:
+        11px;
+
+      font-weight:
+        800;
+
+      color:
+        var(--navy);
+
     }
+
 
     .favorite-location{
-      padding:10px 11px;
-      border-radius:11px;
-      background:var(--bg);
-      border:1px solid var(--gray2);
-      color:var(--gray);
-      font-size:10.5px;
-      line-height:1.45;
-      word-break:keep-all;
+
+      padding:
+        10px 11px;
+
+      border-radius:
+        11px;
+
+      background:
+        var(--bg);
+
+      border:
+        1px solid var(--gray2);
+
+      color:
+        var(--gray);
+
+      font-size:
+        10.5px;
+
+      line-height:
+        1.45;
+
+      word-break:
+        keep-all;
+
     }
+
 
     .favorite-delete-btn{
-      width:100%;
-      margin-top:10px;
-      padding:9px 10px;
-      border-radius:10px;
-      border:1px solid #fecaca;
-      background:#fff1f2;
-      color:#be123c;
-      font-family:'Noto Sans KR',sans-serif;
-      font-size:11px;
-      font-weight:800;
-      cursor:pointer;
-      touch-action:manipulation;
+
+      width:
+        100%;
+
+      margin-top:
+        10px;
+
+      padding:
+        9px 10px;
+
+      border-radius:
+        10px;
+
+      border:
+        1px solid #fecaca;
+
+      background:
+        #fff1f2;
+
+      color:
+        #be123c;
+
+      font-family:
+        'Noto Sans KR',
+        sans-serif;
+
+      font-size:
+        11px;
+
+      font-weight:
+        800;
+
+      cursor:
+        pointer;
+
+      touch-action:
+        manipulation;
+
     }
+
 
     .favorite-delete-btn:active{
-      background:#ffe4e6;
+
+      background:
+        #ffe4e6;
+
     }
 
+
     .sw-favorite-marker{
-      width:34px;
-      height:34px;
-      border-radius:50%;
-      background:#fff;
-      border:2.5px solid #2563eb;
+
+      width:
+        34px;
+
+      height:
+        34px;
+
+      border-radius:
+        50%;
+
+      background:
+        #fff;
+
+      border:
+        2.5px solid #2563eb;
+
       display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:16px;
+
+      align-items:
+        center;
+
+      justify-content:
+        center;
+
+      font-size:
+        16px;
+
       box-shadow:
         0 2px 9px
         rgba(37,99,235,.28);
+
     }
+
   `;
 
-  document.head.appendChild(style);
+
+  document.head
+    .appendChild(
+      style
+    );
+
 }
 
-/* ── 메인 화면 수정 ── */
+
+/* ============================================================
+   메인 화면
+   ============================================================ */
+
 function customizeIntro(){
+
   const youthCard=
-  document.querySelector(
-    '.age-card[data-group="youth"]'
-  );
+    document.querySelector(
+      '.age-card[data-group="youth"]'
+    );
 
-if(youthCard){
 
-  youthCard.setAttribute(
-    'aria-label',
-    '여성 및 청소년'
-  );
+  if(
+    youthCard
+  ){
 
-  youthCard.innerHTML=
-    '<div class="youth-group-box">'+
+    youthCard.setAttribute(
+      'aria-label',
+      '여성 및 청소년'
+    );
 
-      '<div class="youth-person-block">'+
-        '<span class="youth-woman-emoji" aria-hidden="true">👩</span>'+
-        '<span class="youth-part-label">여성</span>'+
-      '</div>'+
 
-      '<div class="youth-person-block">'+
-        '<span class="youth-teen-emojis" aria-hidden="true">'+
-          '<span>🧍‍♀️</span>'+
-          '<span>🧍‍♂️</span>'+
-        '</span>'+
-        '<span class="youth-part-label">청소년</span>'+
-      '</div>'+
+    youthCard.innerHTML=
 
-    '</div>';
-}
+      '<div class="youth-group-box">'+
+
+
+        '<div class="youth-person-block">'+
+
+          '<span class="youth-woman-emoji" aria-hidden="true">'+
+            '👩'+
+          '</span>'+
+
+          '<span class="youth-part-label">'+
+            '여성'+
+          '</span>'+
+
+        '</div>'+
+
+
+        '<div class="youth-person-block">'+
+
+          '<span class="youth-teen-emojis" aria-hidden="true">'+
+
+            '<span>'+
+              '🧍‍♀️'+
+            '</span>'+
+
+            '<span>'+
+              '🧍‍♂️'+
+            '</span>'+
+
+          '</span>'+
+
+          '<span class="youth-part-label">'+
+            '청소년'+
+          '</span>'+
+
+        '</div>'+
+
+
+      '</div>';
+
+  }
+
+
   /* 메인 로고 */
+
   const version=
     document.getElementById(
       'versionTag'
     );
 
+
   if(
-    version &&
+
+    version&&
+
     !document.querySelector(
       '.sw-main-logo-frame'
     )
+
   ){
+
     const frame=
-      document.createElement('div');
+      document.createElement(
+        'div'
+      );
+
 
     frame.className=
       'sw-main-logo-frame';
 
+
     const logo=
-      document.createElement('img');
+      document.createElement(
+        'img'
+      );
+
 
     logo.className=
       'sw-main-logo';
 
+
     logo.src=
       'assets/safewalk-logo.png';
+
 
     logo.alt=
       'SafeWalk · Guiding You Securely';
 
+
     logo.decoding=
       'async';
 
-    frame.appendChild(logo);
+
+    frame.appendChild(
+      logo
+    );
+
 
     version.insertAdjacentElement(
       'afterend',
       frame
     );
+
   }
+
+
+  /* 기존 SafeWalk 큰 텍스트 숨기기 */
 
   const appName=
     document.querySelector(
       '.app-name'
     );
 
-  if(appName){
-    appName.style.display='none';
+
+  if(
+    appName
+  ){
+
+    appName.style.display=
+      'none';
+
   }
+
 
   const appSub=
     document.querySelector(
       '.app-sub'
     );
 
-  if(appSub){
-    appSub.style.marginTop='2px';
+
+  if(
+    appSub
+  ){
+
+    appSub.style.marginTop=
+      '2px';
+
   }
+
 }
+
 
 /* ============================================================
    긴급 문자
    ============================================================ */
 
-/* 문자 앱 열기 */
-function openSafeWalkSms(phone,message){
+function openSafeWalkSms(
+  phone,
+  message
+){
+
   const number=
-    String(phone||'').trim();
+    String(
+      phone||
+      ''
+    )
+    .trim();
+
 
   const body=
     encodeURIComponent(
-      message||''
+      message||
+      ''
     );
+
 
   const isIOS=
-    /iPad|iPhone|iPod/.test(
-      navigator.userAgent
-    )||
+
+    /iPad|iPhone|iPod/
+      .test(
+        navigator.userAgent
+      )
+
+    ||
+
     (
-      navigator.platform==='MacIntel' &&
-      navigator.maxTouchPoints>1
+      navigator.platform===
+        'MacIntel'
+
+      &&
+
+      navigator.maxTouchPoints>
+        1
     );
 
+
   location.href=
+
     'sms:'+
+
     number+
-    (isIOS?'&':'?')+
+
+    (
+      isIOS
+        ?'&'
+        :'?'
+    )+
+
     'body='+
+
     body;
+
 }
 
+
 /* 112 문자 신고 */
+
 function open112Sms(){
+
   const message=
     buildLocationMessage(
+
 `[SafeWalk 112 문자신고]
 현재 위치에서 긴급 도움이 필요합니다.
 상황을 추가로 입력한 뒤 전송해 주세요.`
+
     );
 
+
   openSafeWalkSms(
+
     '112',
+
     message
+
   );
+
 }
+
 
 window.open112Sms=
   open112Sms;
 
-/* 보호자 위치 문자 */
+
+/* 보호자 문자 */
+
 function openGuardianLocationSms(){
+
   const phone=
-    typeof getGuardianPhone==='function'
+
+    typeof getGuardianPhone===
+      'function'
+
       ?getGuardianPhone()
+
       :'';
 
-  if(!phone){
+
+  if(
+    !phone
+  ){
+
     showRouteToast(
       '보호자 전화번호를 먼저 입력하고 저장해 주세요.'
     );
+
 
     const input=
       document.getElementById(
         'guardianInput'
       );
 
-    if(input){
+
+    if(
+      input
+    ){
+
       input.focus();
 
+
       input.scrollIntoView({
-        behavior:'smooth',
-        block:'nearest'
+
+        behavior:
+          'smooth',
+
+        block:
+          'nearest'
+
       });
+
     }
 
+
     return;
+
   }
+
 
   const message=
     buildLocationMessage(
       '[SafeWalk] 보호자에게 긴급 위치를 공유합니다.'
     );
 
+
   openSafeWalkSms(
+
     phone,
+
     message
+
   );
+
 }
+
 
 window.openGuardianLocationSms=
   openGuardianLocationSms;
 
-/* 보호자 번호 상태 표시 */
+
+/* 보호자 번호 저장 여부에 따라 버튼 변경 */
+
 function updateCustomEmergencySmsButtons(){
+
   const guardianBtn=
     document.getElementById(
       'guardianLocationSmsBtn'
     );
 
-  if(!guardianBtn)return;
+
+  if(
+    !guardianBtn
+  ){
+    return;
+  }
+
 
   const phone=
-    typeof getGuardianPhone==='function'
+
+    typeof getGuardianPhone===
+      'function'
+
       ?getGuardianPhone()
+
       :'';
 
-  guardianBtn.classList.toggle(
-    'needs-phone',
-    !phone
-  );
 
-  const sub=
-    guardianBtn.querySelector(
-      '.em-sms-sub'
+  guardianBtn
+    .classList
+    .toggle(
+      'needs-phone',
+      !phone
     );
 
-  if(sub){
+
+  const sub=
+    guardianBtn
+      .querySelector(
+        '.em-sms-sub'
+      );
+
+
+  if(
+    sub
+  ){
+
     sub.textContent=
+
       phone
         ?'현재위치 보내기'
         :'번호 입력 필요';
+
   }
+
 }
 
-/* ── 긴급 패널 ── */
+
+/* ============================================================
+   긴급 패널
+   ============================================================ */
+
 function customizeEmergencyPanel(){
+
   const panel=
     document.getElementById(
       'emergencyPanel'
     );
 
-  if(!panel)return;
 
-  /* 1행: 전화 */
+  if(
+    !panel
+  ){
+    return;
+  }
+
+
+  /* 1행: 112 / 119 전화 */
+
   const callRow=
     panel.querySelector(
       '.em-call-row'
     );
 
-  if(callRow){
+
+  if(
+    callRow
+  ){
+
     callRow.innerHTML=
+
       '<a class="em-call police" href="tel:112">'+
+
         '🚔 112'+
-        '<span>경찰 신고</span>'+
+
+        '<span>'+
+          '경찰 신고'+
+        '</span>'+
+
       '</a>'+
+
+
       '<a class="em-call fire" href="tel:119">'+
+
         '🚒 119'+
-        '<span>소방·구급</span>'+
+
+        '<span>'+
+          '소방·구급'+
+        '</span>'+
+
       '</a>';
+
   }
 
+
   /* 기존 보호자 단일 문자 버튼 */
+
   const oldGuardianSms=
     document.getElementById(
       'guardianSmsBtn'
     );
 
-  /* 2행: 문자 */
+
+  /* 2행: 112 문자 / 보호자 문자 */
+
   let smsRow=
     panel.querySelector(
       '.em-sms-row'
     );
 
-  if(!smsRow){
+
+  if(
+    !smsRow
+  ){
+
     smsRow=
       document.createElement(
         'div'
       );
 
+
     smsRow.className=
       'em-sms-row';
 
+
     smsRow.innerHTML=
+
       '<button type="button" '+
         'class="em-sms-btn police-sms" '+
         'onclick="open112Sms()">'+
 
-        '<span class="em-sms-icon">💬</span>'+
-        '<span class="em-sms-main">112 문자 신고</span>'+
-        '<span class="em-sms-sub">현재위치 보내기</span>'+
+        '<span class="em-sms-icon">'+
+          '💬'+
+        '</span>'+
+
+        '<span class="em-sms-main">'+
+          '112 문자 신고'+
+        '</span>'+
+
+        '<span class="em-sms-sub">'+
+          '현재위치 보내기'+
+        '</span>'+
 
       '</button>'+
+
 
       '<button type="button" '+
         'class="em-sms-btn guardian-sms" '+
         'id="guardianLocationSmsBtn" '+
         'onclick="openGuardianLocationSms()">'+
 
-        '<span class="em-sms-icon">👨‍👩‍👧</span>'+
-        '<span class="em-sms-main">보호자 문자</span>'+
-        '<span class="em-sms-sub">현재위치 보내기</span>'+
+        '<span class="em-sms-icon">'+
+          '👨‍👩‍👧'+
+        '</span>'+
+
+        '<span class="em-sms-main">'+
+          '보호자 문자'+
+        '</span>'+
+
+        '<span class="em-sms-sub">'+
+          '현재위치 보내기'+
+        '</span>'+
 
       '</button>';
 
-    if(oldGuardianSms){
-      oldGuardianSms.insertAdjacentElement(
-        'beforebegin',
-        smsRow
-      );
+
+    if(
+      oldGuardianSms
+    ){
+
+      oldGuardianSms
+        .insertAdjacentElement(
+          'beforebegin',
+          smsRow
+        );
+
 
       oldGuardianSms.remove();
 
-    }else if(callRow){
-      callRow.insertAdjacentElement(
-        'afterend',
-        smsRow
-      );
     }
 
-  }else if(oldGuardianSms){
-    oldGuardianSms.remove();
+    else if(
+      callRow
+    ){
+
+      callRow
+        .insertAdjacentElement(
+          'afterend',
+          smsRow
+        );
+
+    }
+
   }
+
+  else if(
+    oldGuardianSms
+  ){
+
+    oldGuardianSms.remove();
+
+  }
+
 
   updateCustomEmergencySmsButtons();
 
-  /* emergency.js 상태 갱신과 연결 */
+
+  /* emergency.js 상태 갱신 연결 */
+
   if(
-    typeof updateEmergencyPanelState==='function' &&
-    !updateEmergencyPanelState._safeWalk221Wrapped
+
+    typeof updateEmergencyPanelState===
+      'function'
+
+    &&
+
+    !updateEmergencyPanelState
+      ._safeWalk221Wrapped
+
   ){
+
     const baseUpdateEmergencyPanelState=
       updateEmergencyPanelState;
+
 
     updateEmergencyPanelState=
       function(){
 
         baseUpdateEmergencyPanelState();
 
+
         updateCustomEmergencySmsButtons();
+
       };
 
+
     updateEmergencyPanelState
-      ._safeWalk221Wrapped=true;
+      ._safeWalk221Wrapped=
+      true;
+
   }
+
 }
 
-/* ── 즐겨찾기 패널 ── */
+
+/* ============================================================
+   즐겨찾기 패널 UI
+   ============================================================ */
+
 function customizeFavoritePanel(){
+
   const panel=
     document.getElementById(
       'auditPanel'
     );
 
-  if(!panel)return;
+
+  if(
+    !panel
+  ){
+    return;
+  }
+
 
   panel.setAttribute(
     'aria-label',
     '즐겨찾는 장소 추가'
   );
+
 
   panel.innerHTML=`
 
@@ -1086,10 +2263,14 @@ function customizeFavoritePanel(){
 
     </div>
 
+
     <div class="audit-sub">
+
       지도에서 선택한 장소를 이 기기에 저장합니다.
       저장한 장소는 지도에서 다시 확인하고 삭제할 수 있습니다.
+
     </div>
+
 
     <div class="favorite-field">
 
@@ -1114,6 +2295,7 @@ function customizeFavoritePanel(){
 
     </div>
 
+
     <div class="favorite-field">
 
       <label>
@@ -1123,10 +2305,13 @@ function customizeFavoritePanel(){
       <div
         id="favoriteLocationText"
         class="favorite-location">
+
         위치를 확인하고 있습니다.
+
       </div>
 
     </div>
+
 
     <button
       type="button"
@@ -1137,151 +2322,199 @@ function customizeFavoritePanel(){
       ⭐ 즐겨찾기에 저장
 
     </button>
+
   `;
+
 }
 
-/* ── 레이어 설정 칩 변경 ── */
-/* ── 레이어 설정 추가 기능 변경 ── */
+
+/* ============================================================
+   레이어 설정
+
+   - OSM 안심 편의점 제거
+   - 시민 안전 평가 → 즐겨찾기
+   ============================================================ */
+
 function wrapExtraChipBuilder(){
 
   if(
-    typeof appendExtraChips!=='function' ||
-    appendExtraChips._favoriteWrapped
+
+    typeof appendExtraChips!==
+      'function'
+
+    ||
+
+    appendExtraChips
+      ._favoriteWrapped
+
   ){
+
     return;
+
   }
+
 
   const base=
     appendExtraChips;
 
 
-  const wrapped=function(container){
+  const wrapped=
+    function(container){
 
-    /*
-      기존 havens.js가
-      - 안심 편의점(OSM)
-      - 시민 안전 평가
-
-      두 항목을 만든 뒤,
-      여기서 OSM 항목은 완전히 제거하고
-      시민 안전 평가만 즐겨찾기로 변경한다.
-    */
-    base(container);
-
-
-    /* ========================================================
-       OSM 안심 편의점 레이어 제거
-       ======================================================== */
-
-    const havenRow=
-      container.querySelector(
-        '.chip-row[data-kind="haven"]'
+      base(
+        container
       );
 
-    if(havenRow){
-      havenRow.remove();
-    }
+
+      /* ─────────────────────────────
+         OSM 안심 편의점 제거
+         ───────────────────────────── */
+
+      const havenRow=
+        container.querySelector(
+          '.chip-row[data-kind="haven"]'
+        );
 
 
-    /*
-      혹시 과거 상태에서 OSM 레이어가 켜져 있었다면
-      강제로 비활성화한다.
-    */
-    if(
-      typeof havenChipOn!=='undefined'
-    ){
-      havenChipOn=false;
-    }
+      if(
+        havenRow
+      ){
+
+        havenRow.remove();
+
+      }
 
 
-    if(
-      typeof havenLayer!=='undefined' &&
-      havenLayer &&
-      typeof map!=='undefined' &&
-      map
-    ){
       try{
 
         if(
+
+          typeof havenChipOn!==
+          'undefined'
+
+        ){
+
+          havenChipOn=
+            false;
+
+        }
+
+
+        if(
+
+          typeof havenLayer!==
+            'undefined'
+
+          &&
+
+          havenLayer
+
+          &&
+
+          typeof map!==
+            'undefined'
+
+          &&
+
+          map
+
+          &&
+
           map.hasLayer(
             havenLayer
           )
+
         ){
+
           map.removeLayer(
             havenLayer
           );
+
         }
 
-      }catch(e){}
-    }
+      }
+
+      catch(e){}
 
 
-    /* ========================================================
-       시민 안전 평가 → 즐겨찾는 장소
-       ======================================================== */
+      /* ─────────────────────────────
+         즐겨찾기 레이어
+         ───────────────────────────── */
 
-    const row=
-      container.querySelector(
-        '.chip-row[data-kind="audit"]'
-      );
-
-
-    if(row){
-
-      row.setAttribute(
-        'aria-label',
-        '즐겨찾는 장소'
-      );
-
-
-      const dot=
-        row.querySelector(
-          '.chip-dot'
+      const row=
+        container.querySelector(
+          '.chip-row[data-kind="audit"]'
         );
 
 
-      if(dot){
-        dot.style.background=
-          '#2563eb';
-      }
+      if(
+        row
+      ){
 
-
-      const label=
-        row.querySelector(
-          '.chip-label'
+        row.setAttribute(
+          'aria-label',
+          '즐겨찾는 장소'
         );
 
 
-      if(label){
-        label.textContent=
-          '⭐ 즐겨찾는 장소';
+        const dot=
+          row.querySelector(
+            '.chip-dot'
+          );
+
+
+        if(
+          dot
+        ){
+
+          dot.style.background=
+            '#2563eb';
+
+        }
+
+
+        const label=
+          row.querySelector(
+            '.chip-label'
+          );
+
+
+        if(
+          label
+        ){
+
+          label.textContent=
+            '⭐ 즐겨찾는 장소';
+
+        }
+
       }
-    }
 
 
-    /* ========================================================
-       즐겨찾는 장소 추가 버튼
-       ======================================================== */
+      /* 즐겨찾기 추가 버튼 */
 
-    const addBtn=
-      container.querySelector(
-        '#auditAddBtn'
-      );
+      const addBtn=
+        container.querySelector(
+          '#auditAddBtn'
+        );
 
 
-    if(addBtn){
+      if(
+        addBtn
+      ){
 
-      addBtn.textContent=
-        '⭐ 즐겨찾는 장소 추가하기';
+        addBtn.textContent=
+          '⭐ 즐겨찾는 장소 추가하기';
 
 
-      addBtn.setAttribute(
-        'aria-label',
-        '지도에서 즐겨찾는 장소 추가하기'
-      );
-    }
+        addBtn.setAttribute(
+          'aria-label',
+          '지도에서 즐겨찾는 장소 추가하기'
+        );
 
-  };
+      }
+
+    };
 
 
   wrapped._favoriteWrapped=
@@ -1290,110 +2523,211 @@ function wrapExtraChipBuilder(){
 
   appendExtraChips=
     wrapped;
+
 }
 
-/* ── 비상벨 공식 아이콘 ── */
+
+/* ============================================================
+   안전비상벨 공식 아이콘
+   ============================================================ */
+
 function applyOfficialBellIcon(){
+
   if(
-    typeof LAYER==='undefined' ||
+
+    typeof LAYER===
+      'undefined'
+
+    ||
+
     !LAYER.bell
+
   ){
+
     return;
+
   }
 
+
   const bellHtml=
+
     '<img '+
-    'src="assets/accident.svg" '+
-    'class="sw-bell-icon" '+
-    'alt="" '+
-    'aria-hidden="true">';
+      'src="assets/accident.svg" '+
+      'class="sw-bell-icon" '+
+      'alt="" '+
+      'aria-hidden="true">'+
+    '';
+
 
   LAYER.bell.emoji=
     bellHtml;
 
+
   if(
-    typeof FACILITY_ROUTE_LABEL!=='undefined'
+
+    typeof FACILITY_ROUTE_LABEL!==
+    'undefined'
+
   ){
+
     FACILITY_ROUTE_LABEL.bell=
+
       bellHtml+
       ' 안전비상벨 2순위';
+
   }
+
 }
 
-/* ── CPTED 현재 위치 사람 아이콘 ── */
+
+/* ============================================================
+   CPTED 현재 위치 사람 아이콘
+   ============================================================ */
+
 function overrideCptedCurrentLocationIcon(){
+
   if(
-    typeof drawMe!=='function' ||
-    drawMe._cptedPersonWrapped
+
+    typeof drawMe!==
+      'function'
+
+    ||
+
+    drawMe
+      ._cptedPersonWrapped
+
   ){
+
     return;
+
   }
+
 
   const baseDrawMe=
     drawMe;
 
-  let cptedPersonIcon=null;
 
-  const wrapped=function(){
-    baseDrawMe();
+  let cptedPersonIcon=
+    null;
 
-    if(
-      grp!=='cpted' ||
-      !myMark ||
-      typeof L==='undefined'
-    ){
-      return;
-    }
 
-    if(!cptedPersonIcon){
-      const color=
-        (
-          typeof GROUP!=='undefined' &&
-          GROUP.cpted
-        )
-        ?GROUP.cpted.color
-        :'#b45309';
+  const wrapped=
+    function(){
 
-      cptedPersonIcon=
-        L.divIcon({
-          html:
-            '<div style="'+
-              'width:42px;'+
-              'height:42px;'+
-              'border-radius:50%;'+
-              'background:'+color+';'+
-              'border:3px solid #fff;'+
-              'display:flex;'+
-              'align-items:center;'+
-              'justify-content:center;'+
-              'font-size:20px;'+
-              'box-shadow:0 3px 12px rgba(0,0,0,.25);'+
-            '">'+
-              '🧍'+
-            '</div>',
+      baseDrawMe();
 
-          className:'',
-          iconSize:[42,42],
-          iconAnchor:[21,21]
-        });
-    }
 
-    if(
-      myMark.options.icon !==
-      cptedPersonIcon
-    ){
-      myMark.setIcon(
+      if(
+
+        grp!==
+          'cpted'
+
+        ||
+
+        !myMark
+
+        ||
+
+        typeof L===
+          'undefined'
+
+      ){
+
+        return;
+
+      }
+
+
+      if(
+        !cptedPersonIcon
+      ){
+
+        const color=
+
+          (
+            typeof GROUP!==
+              'undefined'
+
+            &&
+
+            GROUP.cpted
+          )
+
+          ?GROUP.cpted.color
+
+          :'#b45309';
+
+
+        cptedPersonIcon=
+
+          L.divIcon({
+
+            html:
+
+              '<div style="'+
+
+                'width:42px;'+
+                'height:42px;'+
+                'border-radius:50%;'+
+                'background:'+color+';'+
+                'border:3px solid #fff;'+
+                'display:flex;'+
+                'align-items:center;'+
+                'justify-content:center;'+
+                'font-size:20px;'+
+                'box-shadow:0 3px 12px rgba(0,0,0,.25);'+
+
+              '">'+
+
+                '🧍'+
+
+              '</div>',
+
+
+            className:'',
+
+
+            iconSize:[
+              42,
+              42
+            ],
+
+
+            iconAnchor:[
+              21,
+              21
+            ]
+
+          });
+
+      }
+
+
+      if(
+
+        myMark.options.icon!==
         cptedPersonIcon
-      );
-    }
-  };
+
+      ){
+
+        myMark.setIcon(
+          cptedPersonIcon
+        );
+
+      }
+
+    };
+
 
   wrapped._cptedPersonWrapped=
     true;
 
+
   drawMe=
     wrapped;
+
 }
+
 
 /* ============================================================
    초기 적용
@@ -1403,8 +2737,11 @@ applyOfficialBellIcon();
 
 overrideCptedCurrentLocationIcon();
 
+
 document.addEventListener(
+
   'DOMContentLoaded',
+
   ()=>{
 
     injectV22Styles();
@@ -1417,18 +2754,31 @@ document.addEventListener(
 
     wrapExtraChipBuilder();
 
-    setTimeout(()=>{
 
-      const ver=
-        document.getElementById(
-          'versionTag'
-        );
+    setTimeout(
+      ()=>{
 
-      if(ver){
-        ver.textContent=
-          'v.2.2.1';
-      }
+        const ver=
+          document.getElementById(
+            'versionTag'
+          );
 
-    },0);
+
+        if(
+          ver
+        ){
+
+          ver.textContent=
+            'v.2.2.2';
+
+        }
+
+      },
+
+      0
+
+    );
+
   }
+
 );
