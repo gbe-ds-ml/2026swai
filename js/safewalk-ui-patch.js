@@ -1,50 +1,42 @@
-/* ============================================================
-   SafeWalk v2.6.1 — safewalk-ui-patch.js
+/* SafeWalk v2.7.0 — safewalk-ui-patch.js */
 
-   UI / 용어 통합 패치
-
-   1. "어린이안전지킴이집"
-      → "아동안전지킴이집"
-
-   2. CCTV 레이어 아이콘
-      📷
-      → CPTED에서 사용하는 assets/poi32.svg
-
-   내부 데이터 key인 child_house는 변경하지 않는다.
-   ============================================================ */
-
-
-/* ============================================================
-   공개 용어
-   ============================================================ */
-
-const SW_CHILD_HOUSE_PUBLIC_LABEL =
+const SW_CHILD_HOUSE_PUBLIC_LABEL=
   '아동안전지킴이집';
 
 
-/* ============================================================
-   CPTED SVG 아이콘
+/*
+  config.js에 이미 정의된
+  실제 CCTV 공식 아이콘을 그대로 사용한다.
+*/
 
-   메인화면 범죄예방환경설계 버튼에서 사용 중인
-   assets/poi32.svg를 그대로 재사용한다.
-   ============================================================ */
+const SW_CCTV_PUBLIC_ICON_URL=
 
-const SW_CCTV_CPTED_ICON_HTML =
+  (
+    typeof CCTV_ICON_URL!==
+      'undefined'
+
+    &&
+
+    CCTV_ICON_URL
+  )
+
+  ?CCTV_ICON_URL
+
+  :'assets/poi01_17_1.svg';
+
+
+const SW_CCTV_ICON_HTML=
 
   '<img '+
-
-    'src="assets/poi32.svg" '+
-
-    'class="sw-cctv-cpted-icon" '+
-
+    'src="'+SW_CCTV_PUBLIC_ICON_URL+'" '+
+    'class="sw-cctv-public-icon" '+
     'alt="" '+
-
     'aria-hidden="true">'+
   '';
 
 
 /* ============================================================
-   CSS
+   CCTV SVG 표시 스타일
    ============================================================ */
 
 function injectSafeWalkUiPatchStyles(){
@@ -54,31 +46,31 @@ function injectSafeWalkUiPatchStyles(){
       'safeWalkUiPatchStyles'
     )
   ){
+
     return;
+
   }
 
 
-  const style =
+  const style=
     document.createElement(
       'style'
     );
 
 
-  style.id =
+  style.id=
     'safeWalkUiPatchStyles';
 
 
-  style.textContent = `
+  style.textContent=`
 
-    /* CCTV → CPTED SVG */
-
-    .sw-cctv-cpted-icon{
+    .sw-cctv-public-icon{
 
       display:inline-block;
 
-      width:19px;
+      width:18px;
 
-      height:19px;
+      height:18px;
 
       object-fit:contain;
 
@@ -89,8 +81,7 @@ function injectSafeWalkUiPatchStyles(){
     }
 
 
-    .chip-label
-    .sw-cctv-cpted-icon{
+    .chip-label .sw-cctv-public-icon{
 
       width:19px;
 
@@ -101,8 +92,7 @@ function injectSafeWalkUiPatchStyles(){
     }
 
 
-    .stat-emoji
-    .sw-cctv-cpted-icon{
+    .stat-emoji .sw-cctv-public-icon{
 
       width:20px;
 
@@ -113,20 +103,8 @@ function injectSafeWalkUiPatchStyles(){
     }
 
 
-    .route-pill
-    .sw-cctv-cpted-icon{
-
-      width:16px;
-
-      height:16px;
-
-      vertical-align:-3px;
-
-    }
-
-
-    .pbadge
-    .sw-cctv-cpted-icon{
+    .route-pill .sw-cctv-public-icon,
+    .pbadge .sw-cctv-public-icon{
 
       width:16px;
 
@@ -147,13 +125,13 @@ function injectSafeWalkUiPatchStyles(){
 
 
 /* ============================================================
-   문자열 용어 변환
+   용어 변경
    ============================================================ */
 
 function normalizeSafeWalkPublicTerm(value){
 
   return String(
-    value ?? ''
+    value??''
   )
 
   .replace(
@@ -165,25 +143,21 @@ function normalizeSafeWalkPublicTerm(value){
 
 
 /* ============================================================
-   SafeWalk JS 설정값 변경
+   SafeWalk 전역 UI 설정값 변경
    ============================================================ */
 
 function applySafeWalkUiConstants(){
 
-  /* ========================================================
-     기본 레이어
-     ======================================================== */
-
   if(
-    typeof LAYER !==
-      'undefined'
+    typeof LAYER!==
+    'undefined'
   ){
 
     if(
       LAYER.child_house
     ){
 
-      LAYER.child_house.label =
+      LAYER.child_house.label=
         SW_CHILD_HOUSE_PUBLIC_LABEL;
 
     }
@@ -193,56 +167,50 @@ function applySafeWalkUiConstants(){
       LAYER.cctv
     ){
 
-      /*
-        지도 CCTV 마커 자체는 기존 공식 CCTV SVG 유지.
-        이번 변경은 레이어 메뉴/통계/팝업 표시용 아이콘이다.
-      */
-
-      LAYER.cctv.emoji =
-        SW_CCTV_CPTED_ICON_HTML;
+      LAYER.cctv.emoji=
+        SW_CCTV_ICON_HTML;
 
     }
 
   }
 
 
-  /* ========================================================
-     경로 안전도 항목
-     ======================================================== */
-
   if(
-    typeof FACILITY_ROUTE_LABEL !==
-      'undefined'
+    typeof FACILITY_ROUTE_LABEL!==
+    'undefined'
   ){
 
-    FACILITY_ROUTE_LABEL.child_house =
+    FACILITY_ROUTE_LABEL.child_house=
 
       '🏠 '+
       SW_CHILD_HOUSE_PUBLIC_LABEL+
       ' 3순위';
 
 
-    FACILITY_ROUTE_LABEL.cctv =
+    FACILITY_ROUTE_LABEL.cctv=
 
-      SW_CCTV_CPTED_ICON_HTML+
+      SW_CCTV_ICON_HTML+
       ' CCTV 2순위';
 
   }
 
 
-  /* ========================================================
-     가까운 안전시설 챗봇
-     ======================================================== */
+  /*
+    chat-facility.js 출력
+  */
 
   if(
-    typeof SW_CHAT_FACILITY_META !==
-      'undefined' &&
+    typeof SW_CHAT_FACILITY_META!==
+      'undefined'
+
+    &&
+
     SW_CHAT_FACILITY_META.child_house
   ){
 
     SW_CHAT_FACILITY_META
       .child_house
-      .label =
+      .label=
 
         SW_CHILD_HOUSE_PUBLIC_LABEL;
 
@@ -252,34 +220,37 @@ function applySafeWalkUiConstants(){
 
 
 /* ============================================================
-   getFacilityInfo() 보완
-
-   layers.js에 fallback 문자열이 남아 있더라도
-   사용자에게는 아동안전지킴이집으로 표시한다.
+   시설명 fallback 용어 변경
    ============================================================ */
 
 function wrapSafeWalkFacilityInfo(){
 
   if(
-    typeof getFacilityInfo !==
-      'function' ||
-    getFacilityInfo._swPublicTermWrapped
+    typeof getFacilityInfo!==
+      'function'
+
+    ||
+
+    getFacilityInfo
+      ._swPublicTermWrapped
   ){
+
     return;
+
   }
 
 
-  const base =
+  const base=
     getFacilityInfo;
 
 
-  const wrapped =
+  const wrapped=
     function(
       key,
       item
     ){
 
-      const info =
+      const info=
         base(
           key,
           item
@@ -287,22 +258,17 @@ function wrapSafeWalkFacilityInfo(){
 
 
       if(
-        !info ||
-        typeof info !==
+        info &&
+        typeof info===
           'object'
+
+        &&
+
+        typeof info.name===
+          'string'
       ){
 
-        return info;
-
-      }
-
-
-      if(
-        typeof info.name ===
-        'string'
-      ){
-
-        info.name =
+        info.name=
           normalizeSafeWalkPublicTerm(
             info.name
           );
@@ -315,53 +281,229 @@ function wrapSafeWalkFacilityInfo(){
     };
 
 
-  wrapped._swPublicTermWrapped =
+  wrapped._swPublicTermWrapped=
     true;
 
 
-  getFacilityInfo =
+  getFacilityInfo=
     wrapped;
 
 }
 
 
 /* ============================================================
-   Agent 시설 라벨 보완
+   CCTV 팝업 교체
+
+   1. 위 배지:
+      실제 CCTV SVG + CCTV
+
+   2. 아래 상세:
+      📷 2대
+      → 2대
+
+   카메라 이모지 삭제.
    ============================================================ */
 
-function wrapSafeWalkAgentFacilityLabel(){
+function wrapSafeWalkCctvPopup(){
 
   if(
-    typeof safeWalkAgentFacilityLabel !==
-      'function' ||
-    safeWalkAgentFacilityLabel
-      ._swPublicTermWrapped
+    typeof mkMarker!==
+      'function'
+
+    ||
+
+    mkMarker
+      ._swCctvPopupWrapped
   ){
+
     return;
+
   }
 
 
-  const base =
-    safeWalkAgentFacilityLabel;
+  const base=
+    mkMarker;
 
 
-  const wrapped =
-    function(key){
+  const wrapped=
+    function(
+      key,
+      lat,
+      lng,
+      it
+    ){
+
 
       if(
-        key ===
-        'child_house'
+        key!==
+        'cctv'
       ){
 
-        return SW_CHILD_HOUSE_PUBLIC_LABEL;
+        return base(
+          key,
+          lat,
+          lng,
+          it
+        );
 
       }
 
 
-      return normalizeSafeWalkPublicTerm(
+      const m=
+        LAYER.cctv;
 
-        base(
-          key
+
+      const info=
+        getFacilityInfo(
+          'cctv',
+          it
+        );
+
+
+      const prps=
+        xv(
+          it,
+          'instl_prps_se'
+        )||'';
+
+
+      const cnt=
+        xv(
+          it,
+          'cmr_cntom'
+        )||'';
+
+
+      const tel=
+        xv(
+          it,
+          'mng_inst_telno'
+        )||'';
+
+
+      /*
+        기존:
+        어린이보호 📷 2대 📞 ...
+
+        변경:
+        어린이보호 2대 📞 ...
+      */
+
+      const extra=
+
+        (
+          prps
+
+            ?'<span style="color:#2563eb">'+
+              esc(prps)+
+              '</span> '
+
+            :''
+        )
+
+        +
+
+        (
+          cnt
+
+            ?'<span style="color:#64748b">'+
+              esc(cnt)+
+              '대</span> '
+
+            :''
+        )
+
+        +
+
+        (
+          tel
+
+            ?'<span style="color:#64748b">'+
+              '📞 '+
+              esc(tel)+
+              '</span>'
+
+            :''
+        );
+
+
+      return L.marker(
+
+        [
+          lat,
+          lng
+        ],
+
+        {
+
+          /*
+            실제 지도 마커도
+            기존 CCTV 공식 SVG 그대로.
+          */
+
+          icon:
+            getCctvMarkerIcon()
+
+        }
+
+      )
+
+      .bindPopup(
+
+        L.popup({
+
+          className:
+            'safepopup',
+
+          closeButton:
+            true,
+
+          maxWidth:
+            240
+
+        })
+
+        .setContent(
+
+          '<div class="pbadge" style="'+
+            'background:'+m.color+'18;'+
+            'color:'+m.color+
+          '">'+
+
+            SW_CCTV_ICON_HTML+
+            ' CCTV'+
+
+          '</div>'+
+
+          '<div class="ptitle">'+
+            esc(
+              info.name
+            )+
+          '</div>'+
+
+          (
+            info.addr
+
+              ?'<div class="prow">'+
+                '📍 '+
+                esc(info.addr)+
+                '</div>'
+
+              :''
+          )
+
+          +
+
+          (
+            extra
+
+              ?'<div class="prow">'+
+                extra+
+                '</div>'
+
+              :''
+          )
+
         )
 
       );
@@ -369,53 +511,41 @@ function wrapSafeWalkAgentFacilityLabel(){
     };
 
 
-  wrapped._swPublicTermWrapped =
+  wrapped._swCctvPopupWrapped=
     true;
 
 
-  safeWalkAgentFacilityLabel =
+  mkMarker=
     wrapped;
 
 }
 
 
 /* ============================================================
-   DOM text node 변환
-
-   index.html / route.js / chat / 향후 동적 UI 등에
-   기존 문자열이 남아 있더라도 화면에서는 모두 통일한다.
+   기존 HTML / 동적 생성 UI의 옛 용어 변경
    ============================================================ */
 
 function replaceSafeWalkTermInNode(root){
 
-  if(!root){
-    return;
-  }
+  if(!root)return;
 
-
-  /*
-    Text node
-  */
 
   if(
-    root.nodeType ===
+    root.nodeType===
     Node.TEXT_NODE
   ){
 
-    const before =
-      root.nodeValue;
-
-
     if(
-      before &&
-      before.includes(
+      root.nodeValue &&
+      root.nodeValue.includes(
         '어린이안전지킴이집'
       )
     ){
 
-      root.nodeValue =
+      root.nodeValue=
+
         normalizeSafeWalkPublicTerm(
-          before
+          root.nodeValue
         );
 
     }
@@ -427,10 +557,13 @@ function replaceSafeWalkTermInNode(root){
 
 
   if(
-    root.nodeType !==
-    Node.ELEMENT_NODE &&
-    root.nodeType !==
-    Node.DOCUMENT_FRAGMENT_NODE
+    root.nodeType!==
+      Node.ELEMENT_NODE
+
+    &&
+
+    root.nodeType!==
+      Node.DOCUMENT_FRAGMENT_NODE
   ){
 
     return;
@@ -438,32 +571,25 @@ function replaceSafeWalkTermInNode(root){
   }
 
 
-  /*
-    script/style 내용은 수정하지 않음
-  */
-
   if(
-    root.nodeType ===
+    root.nodeType===
     Node.ELEMENT_NODE
   ){
 
-    const tag =
-      root.tagName;
-
-
     if(
-      tag === 'SCRIPT' ||
-      tag === 'STYLE'
+      root.tagName===
+        'SCRIPT'
+
+      ||
+
+      root.tagName===
+        'STYLE'
     ){
 
       return;
 
     }
 
-
-    /*
-      접근성 / 툴팁 속성
-    */
 
     [
       'aria-label',
@@ -481,20 +607,20 @@ function replaceSafeWalkTermInNode(root){
           )
         ){
 
-          const before =
+          const before=
             root.getAttribute(
               attr
             );
 
 
-          const after =
+          const after=
             normalizeSafeWalkPublicTerm(
               before
             );
 
 
           if(
-            before !==
+            before!==
             after
           ){
 
@@ -513,7 +639,7 @@ function replaceSafeWalkTermInNode(root){
   }
 
 
-  const walker =
+  const walker=
     document.createTreeWalker(
 
       root,
@@ -523,7 +649,7 @@ function replaceSafeWalkTermInNode(root){
     );
 
 
-  const targets = [];
+  const targets=[];
 
 
   let node;
@@ -531,18 +657,23 @@ function replaceSafeWalkTermInNode(root){
 
   while(
     (
-      node =
+      node=
         walker.nextNode()
     )
   ){
 
     if(
-      node.parentElement &&
-      (
-        node.parentElement.tagName ===
-          'SCRIPT' ||
+      node.parentElement
 
-        node.parentElement.tagName ===
+      &&
+
+      (
+        node.parentElement.tagName===
+          'SCRIPT'
+
+        ||
+
+        node.parentElement.tagName===
           'STYLE'
       )
     ){
@@ -553,7 +684,10 @@ function replaceSafeWalkTermInNode(root){
 
 
     if(
-      node.nodeValue &&
+      node.nodeValue
+
+      &&
+
       node.nodeValue.includes(
         '어린이안전지킴이집'
       )
@@ -569,11 +703,12 @@ function replaceSafeWalkTermInNode(root){
 
 
   targets.forEach(
-    item=>{
+    n=>{
 
-      item.nodeValue =
+      n.nodeValue=
+
         normalizeSafeWalkPublicTerm(
-          item.nodeValue
+          n.nodeValue
         );
 
     }
@@ -583,50 +718,45 @@ function replaceSafeWalkTermInNode(root){
 
 
 /* ============================================================
-   향후 동적으로 생성되는 UI도 감시
-
-   routeReason
-   chat answer
-   layer chip
-   popup 등
+   이후 동적으로 생기는 문구도 자동 변환
    ============================================================ */
 
 function observeSafeWalkTerminology(){
 
   if(
-    window._safeWalkTerminologyObserver
+    window
+      ._safeWalkTerminologyObserver
   ){
+
     return;
+
   }
 
 
-  const observer =
+  const observer=
     new MutationObserver(
 
       mutations=>{
 
         mutations.forEach(
-          mutation=>{
+          m=>{
 
-            mutation.addedNodes
+            m.addedNodes
               .forEach(
-                node=>{
-
+                n=>
                   replaceSafeWalkTermInNode(
-                    node
-                  );
-
-                }
+                    n
+                  )
               );
 
 
             if(
-              mutation.type ===
+              m.type===
               'characterData'
             ){
 
               replaceSafeWalkTermInNode(
-                mutation.target
+                m.target
               );
 
             }
@@ -659,84 +789,10 @@ function observeSafeWalkTerminology(){
   );
 
 
-  window._safeWalkTerminologyObserver =
-    observer;
+  window
+    ._safeWalkTerminologyObserver=
 
-}
-
-
-/* ============================================================
-   현재 생성되어 있는 CCTV 칩 아이콘 갱신
-
-   혹시 지도 진입 후 이 스크립트가 재적용되는 상황까지 대응
-   ============================================================ */
-
-function refreshExistingSafeWalkCctvUi(){
-
-  const row =
-    document.querySelector(
-      '.chip-row[data-kind="xml"][data-key="cctv"]'
-    );
-
-
-  if(row){
-
-    const label =
-      row.querySelector(
-        '.chip-label'
-      );
-
-
-    if(label){
-
-      label.innerHTML =
-
-        SW_CCTV_CPTED_ICON_HTML+
-        ' CCTV';
-
-    }
-
-  }
-
-
-  const stat =
-    document.querySelectorAll(
-      '#statsBar .stat-item'
-    );
-
-
-  stat.forEach(
-    item=>{
-
-      const label =
-        item.querySelector(
-          '.stat-lbl'
-        );
-
-
-      if(
-        label &&
-        label.textContent.trim() ===
-          'CCTV'
-      ){
-
-        const icon =
-          item.querySelector(
-            '.stat-emoji'
-          );
-
-
-        if(icon){
-
-          icon.innerHTML =
-            SW_CCTV_CPTED_ICON_HTML;
-
-        }
-
-      }
-
-    }
-  );
+      observer;
 
 }
 
@@ -754,11 +810,11 @@ applySafeWalkUiConstants();
 wrapSafeWalkFacilityInfo();
 
 
-wrapSafeWalkAgentFacilityLabel();
+wrapSafeWalkCctvPopup();
 
 
 if(
-  document.readyState ===
+  document.readyState===
   'loading'
 ){
 
@@ -770,11 +826,11 @@ if(
 
       applySafeWalkUiConstants();
 
+
       replaceSafeWalkTermInNode(
         document.body
       );
 
-      refreshExistingSafeWalkCctvUi();
 
       observeSafeWalkTerminology();
 
@@ -792,11 +848,11 @@ else{
 
   applySafeWalkUiConstants();
 
+
   replaceSafeWalkTermInNode(
     document.body
   );
 
-  refreshExistingSafeWalkCctvUi();
 
   observeSafeWalkTerminology();
 
@@ -804,5 +860,5 @@ else{
 
 
 console.log(
-  '[SafeWalk v2.6.1] UI 용어·CCTV CPTED 아이콘 패치 활성화'
+  '[SafeWalk v2.7] 용어 + CCTV 공식 아이콘 패치 활성화'
 );
