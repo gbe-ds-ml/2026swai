@@ -517,26 +517,50 @@ function injectV22Styles(){
     }
 
     /* 여성 · 청소년 카드: 글씨 기준으로 위/아래 분리 */
+/* 여성 · 청소년 카드 */
 .age-card[data-group="youth"]{
   justify-content:center;
-  gap:6px;
-  padding-top:16px;
-  padding-bottom:16px;
+  gap:0;
+  padding-top:12px;
+  padding-bottom:12px;
 }
 
-.age-card[data-group="youth"] .woman-top{
-  font-size:24px;
-  line-height:1;
-  display:block;
-  margin-bottom:1px;
+.youth-group-box{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
 }
 
-.age-card[data-group="youth"] .youth-bottom{
-  font-size:22px;
+.youth-person-block{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+}
+
+.youth-woman-emoji{
+  font-size:27px;
   line-height:1;
-  display:block;
-  letter-spacing:-2px;
-  margin-top:1px;
+}
+
+.youth-teen-emojis{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  font-size:26px;
+  line-height:1;
+}
+
+.youth-part-label{
+  font-size:13px;
+  font-weight:800;
+  color:var(--navy);
+  line-height:1.2;
 }
 
     /* 안전비상벨 공식 아이콘 */
@@ -710,17 +734,30 @@ function customizeIntro(){
   );
 
 if(youthCard){
+
   youthCard.setAttribute(
     'aria-label',
     '여성 및 청소년'
   );
 
   youthCard.innerHTML=
-    '<span class="age-icon woman-top" aria-hidden="true">👩</span>'+
-    '<span class="age-name">여성 · 청소년</span>'+
-    '<span class="age-icon youth-bottom" aria-hidden="true">🧍‍♂️ 🧍‍♀️</span>';
-}
+    '<div class="youth-group-box">'+
 
+      '<div class="youth-person-block">'+
+        '<span class="youth-woman-emoji" aria-hidden="true">👩</span>'+
+        '<span class="youth-part-label">여성</span>'+
+      '</div>'+
+
+      '<div class="youth-person-block">'+
+        '<span class="youth-teen-emojis" aria-hidden="true">'+
+          '<span>🧍‍♀️</span>'+
+          '<span>🧍‍♂️</span>'+
+        '</span>'+
+        '<span class="youth-part-label">청소년</span>'+
+      '</div>'+
+
+    '</div>';
+}
   /* 메인 로고 */
   const version=
     document.getElementById(
