@@ -556,7 +556,7 @@ function mkMarker(key,lat,lng,it){
     const cnt=xv(it,'cmr_cntom')||'';
     const tel=xv(it,'mng_inst_telno')||'';
     extra=(prps?'<span style="color:#2563eb">'+esc(prps)+'</span> ':'')+
-          (cnt?'<span style="color:#64748b">📷 '+esc(cnt)+'대</span> ':'')+
+          (cnt?'<span style="color:#64748b"> '+esc(cnt)+'대</span> ':'')+
           (tel?'<span style="color:#64748b">📞 '+esc(tel)+'</span>':'');
   }else if(key==='child_house'){
     const tel=xv(it,'telno')||'';
