@@ -95,16 +95,74 @@ function goBack(){
   const spi=document.getElementById('spInput');if(spi)spi.value='';
 }
 
-/* ── 부팅 ──
-   defer 스크립트는 DOMContentLoaded 직전에 순서대로 실행되므로
-   이 리스너는 항상 제때 등록된다. Leaflet CDN이 실패해도
-   인트로 화면은 정상적으로 뜬다. */
+/* 브라우저가 이전 스크롤 위치를 자동 복원하지 않도록 설정 */
+if('scrollRestoration' in history){
+  history.scrollRestoration='manual';
+}
+
+
+/* 항상 화면 최상단으로 이동 */
+function resetPageScrollToTop(){
+
+  window.scrollTo({
+    top:0,
+    left:0,
+    behavior:'instant'
+  });
+
+}
+
+
+/* ── 부팅 ── */
 document.addEventListener('DOMContentLoaded',function(){
+
+  resetPageScrollToTop();
+
   bindViewportSync();
+
   bindSearchInput();
+
   bindChatInput();
+
   const ver=document.getElementById('versionTag');
+
   if(ver)ver.textContent=APP_VERSION;
-  restoreSafeTimer();      /* 진행 중이던 안심 타이머 복원 — timer.js */
+
+  restoreSafeTimer();
+
   document.getElementById('loading').classList.add('hide');
+
+
+  /*
+    모바일 Safari / Chrome에서
+    레이아웃 계산 후 스크롤 위치가 다시 복원되는 경우 방지
+  */
+  requestAnimationFrame(
+    resetPageScrollToTop
+  );
+
+  setTimeout(
+    resetPageScrollToTop,
+    100
+  );
+
+});
+
+
+/*
+  뒤로가기 캐시(bfcache)로 페이지가 복원될 때도
+  메인 화면이면 최상단으로 맞춤
+*/
+window.addEventListener('pageshow',function(){
+
+  const intro=
+    document.getElementById('intro');
+
+  if(
+    intro &&
+    !intro.classList.contains('out')
+  ){
+    resetPageScrollToTop();
+  }
+
 });
