@@ -1,20 +1,31 @@
 /* ============================================================
-   SafeWalk v2.6.0 — map-longpress.js
+   SafeWalk v2.6.1 — map-longpress.js
 
    모바일 지도 Long Press 경로 지점 설정
 
    동작
-   - 지도에서 약 650ms 길게 누르기
-   - 손가락 이동량 12px 이하일 때만 Long Press 인정
-   - 출발지 / 목적지 선택 팝업 표시
-   - 출발지·목적지가 모두 지정되면 자동 길찾기
+   ------------------------------------------------------------
+   지도 약 650ms 길게 누르기
+
+   [🚩 출발지로 설정] [🏁 목적지로 설정]
+
+   출발지 선택
+   → 지도에 즉시 초록색 출발지 마커 표시
+
+   목적지 선택
+   → 지도에 즉시 빨간색 목적지 마커 표시
+   → 출발지가 없으면 현재 GPS 위치를 자동 출발지로 사용
+
+   출발지 + 목적지가 모두 존재
+   → 자동으로 SafeWalk 길찾기 실행
 
    제외
+   ------------------------------------------------------------
    - PC 마우스
    - CPTED 화면
    - 기존 지도 직접 선택 모드
-   - 즐겨찾기 지도 선택 모드
-   - 마커 / 팝업 / 지도 컨트롤 위 터치
+   - 즐겨찾기 위치 선택 모드
+   - 마커 / 팝업 / 지도 컨트롤
    ============================================================ */
 
 
@@ -54,7 +65,6 @@ function injectSafeWalkLongPressStyles(){
 
   style.textContent = `
 
-    /* iOS 길게 누르기 메뉴 방지 */
     .sw-longpress-enabled{
       -webkit-touch-callout:none;
       -webkit-user-select:none;
@@ -62,21 +72,22 @@ function injectSafeWalkLongPressStyles(){
     }
 
 
-    /* Long Press 팝업 */
-
     .sw-longpress-popup{
-      min-width:210px;
+      min-width:220px;
     }
 
 
     .sw-longpress-badge{
+
       display:inline-flex;
+
       align-items:center;
+
       gap:4px;
 
       margin-bottom:6px;
 
-      padding:3px 8px;
+      padding:4px 8px;
 
       border-radius:999px;
 
@@ -85,32 +96,42 @@ function injectSafeWalkLongPressStyles(){
       color:#1d4ed8;
 
       font-size:10px;
+
       font-weight:800;
+
     }
 
 
     .sw-longpress-title{
+
       margin-bottom:4px;
 
-      padding-right:10px;
+      padding-right:8px;
 
       color:var(--navy);
 
       font-size:14px;
+
       font-weight:900;
+
       line-height:1.35;
+
     }
 
 
     .sw-longpress-desc{
+
       color:var(--gray);
 
       font-size:10.5px;
+
       line-height:1.45;
+
     }
 
 
     .sw-longpress-actions{
+
       display:grid;
 
       grid-template-columns:
@@ -120,14 +141,17 @@ function injectSafeWalkLongPressStyles(){
       gap:7px;
 
       margin-top:11px;
+
     }
 
 
     .sw-longpress-btn{
-      min-width:0;
-      min-height:46px;
 
-      padding:8px 6px;
+      min-width:0;
+
+      min-height:48px;
+
+      padding:8px 5px;
 
       border-radius:11px;
 
@@ -136,7 +160,9 @@ function injectSafeWalkLongPressStyles(){
         sans-serif;
 
       font-size:11px;
+
       font-weight:900;
+
       line-height:1.25;
 
       cursor:pointer;
@@ -144,40 +170,56 @@ function injectSafeWalkLongPressStyles(){
       touch-action:manipulation;
 
       -webkit-appearance:none;
+
       appearance:none;
+
     }
 
 
     .sw-longpress-btn.origin{
-      border:1px solid #bfdbfe;
 
-      background:#eff6ff;
+      border:
+        1px solid #86efac;
 
-      color:#1d4ed8;
+      background:
+        #f0fdf4;
+
+      color:
+        #047857;
+
     }
 
 
     .sw-longpress-btn.dest{
-      border:1px solid
-        var(--route-red,#e11d48);
+
+      border:
+        1px solid #fda4af;
 
       background:
-        var(--route-red,#e11d48);
+        #fff1f2;
 
-      color:#fff;
+      color:
+        #be123c;
+
     }
 
 
     .sw-longpress-btn:active{
-      transform:scale(.97);
+
+      transform:
+        scale(.97);
+
     }
 
 
     .sw-longpress-btn:focus-visible{
-      outline:3px solid
-        rgba(37,99,235,.28);
 
-      outline-offset:2px;
+      outline:
+        3px solid rgba(37,99,235,.25);
+
+      outline-offset:
+        2px;
+
     }
 
   `;
@@ -191,14 +233,11 @@ function injectSafeWalkLongPressStyles(){
 
 
 /* ============================================================
-   Long Press 가능 상태 확인
+   사용 가능 여부
    ============================================================ */
 
 function canUseSafeWalkLongPress(){
 
-  /*
-    지도가 아직 없음
-  */
   if(
     typeof map === 'undefined' ||
     !map
@@ -208,9 +247,9 @@ function canUseSafeWalkLongPress(){
 
 
   /*
-    CPTED 지도에서는 기존
-    "가장 가까운 CPTED" 터치 기능 유지
+    CPTED는 기존 터치 기능 유지
   */
+
   if(
     typeof grp !== 'undefined' &&
     grp === 'cpted'
@@ -220,8 +259,9 @@ function canUseSafeWalkLongPress(){
 
 
   /*
-    기존 길찾기 지도 선택 모드가 우선
+    기존 지도 직접 선택 모드
   */
+
   if(
     typeof routePickMode !== 'undefined' &&
     routePickMode
@@ -231,8 +271,9 @@ function canUseSafeWalkLongPress(){
 
 
   /*
-    즐겨찾기 위치 선택 모드가 우선
+    즐겨찾기 선택 모드
   */
+
   if(
     typeof auditPickMode !== 'undefined' &&
     auditPickMode
@@ -242,8 +283,9 @@ function canUseSafeWalkLongPress(){
 
 
   /*
-    패널이 열린 상태에서는 사용하지 않음
+    다른 UI가 지도 위를 점유하는 경우
   */
+
   if(
     document.body.classList.contains(
       'search-open'
@@ -268,7 +310,7 @@ function canUseSafeWalkLongPress(){
 
 
 /* ============================================================
-   마커 / 버튼 / 팝업 등 위에서는 Long Press 금지
+   Long Press 허용 대상
    ============================================================ */
 
 function isSafeWalkLongPressTargetAllowed(target){
@@ -309,11 +351,473 @@ function isSafeWalkLongPressTargetAllowed(target){
 
 
 /* ============================================================
-   경로 지점 설정
+   현재 위치 취득
+
+   myLat / myLng가 있으면 즉시 사용
+   없으면 브라우저 GPS를 한 번 더 요청한다.
    ============================================================ */
 
-function setSafeWalkLongPressPoint(
-  slot,
+function getSafeWalkCurrentOrigin(){
+
+  if(
+    Number.isFinite(myLat) &&
+    Number.isFinite(myLng)
+  ){
+
+    return Promise.resolve({
+
+      lat:myLat,
+
+      lng:myLng,
+
+      label:'📍 현재 위치',
+
+      src:'gps'
+
+    });
+
+  }
+
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    )=>{
+
+
+      if(
+        !navigator.geolocation
+      ){
+
+        reject(
+          new Error(
+            '현재 위치 기능을 지원하지 않습니다.'
+          )
+        );
+
+        return;
+
+      }
+
+
+      navigator.geolocation.getCurrentPosition(
+
+        position=>{
+
+          const lat =
+            Number(
+              position.coords.latitude
+            );
+
+
+          const lng =
+            Number(
+              position.coords.longitude
+            );
+
+
+          if(
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lng)
+          ){
+
+            reject(
+              new Error(
+                '현재 위치 좌표가 올바르지 않습니다.'
+              )
+            );
+
+            return;
+
+          }
+
+
+          /*
+            SafeWalk 전역 현재 위치도 갱신
+          */
+
+          myLat =
+            lat;
+
+          myLng =
+            lng;
+
+
+          /*
+            지도 현재 위치 마커도 갱신
+          */
+
+          if(
+            typeof drawMe ===
+            'function'
+          ){
+
+            try{
+
+              drawMe();
+
+            }catch(e){}
+
+          }
+
+
+          if(
+            typeof writeLastPos ===
+            'function'
+          ){
+
+            try{
+
+              writeLastPos(
+                lat,
+                lng
+              );
+
+            }catch(e){}
+
+          }
+
+
+          resolve({
+
+            lat,
+
+            lng,
+
+            label:
+              '📍 현재 위치',
+
+            src:
+              'gps'
+
+          });
+
+        },
+
+
+        error=>{
+
+          reject(
+
+            error ||
+
+            new Error(
+              '현재 위치를 확인하지 못했습니다.'
+            )
+
+          );
+
+        },
+
+
+        {
+
+          enableHighAccuracy:
+            true,
+
+          timeout:
+            8000,
+
+          maximumAge:
+            30000
+
+        }
+
+      );
+
+    }
+  );
+
+}
+
+
+/* ============================================================
+   임시 출발지 / 목적지 마커
+   ============================================================ */
+
+function makeSafeWalkEndpointMarker(
+  point,
+  type
+){
+
+  if(
+    !map ||
+    !point
+  ){
+    return null;
+  }
+
+
+  const isOrigin =
+    type === 'origin';
+
+
+  const color =
+    isOrigin
+
+      ?'#059669'
+
+      :'#ef4444';
+
+
+  const emoji =
+    isOrigin
+
+      ?'🚩'
+
+      :'🎯';
+
+
+  const title =
+    isOrigin
+
+      ?'출발지'
+
+      :'목적지';
+
+
+  return L.marker(
+
+    [
+      point.lat,
+      point.lng
+    ],
+
+    {
+
+      zIndexOffset:
+        900,
+
+      icon:
+        L.divIcon({
+
+          html:
+
+            '<div style="'+
+
+              'width:34px;'+
+              'height:34px;'+
+              'border-radius:50%;'+
+              'background:'+color+';'+
+              'border:3px solid #fff;'+
+              'display:flex;'+
+              'align-items:center;'+
+              'justify-content:center;'+
+              'font-size:15px;'+
+              'box-shadow:0 3px 10px rgba(0,0,0,.25);'+
+
+            '">'+
+
+              emoji+
+
+            '</div>',
+
+
+          className:
+            '',
+
+
+          iconSize:[
+            34,
+            34
+          ],
+
+
+          iconAnchor:[
+            17,
+            17
+          ]
+
+        })
+
+    }
+
+  )
+
+  .bindPopup(
+
+    L.popup({
+
+      className:
+        'safepopup',
+
+      closeButton:
+        true,
+
+      maxWidth:
+        250
+
+    })
+
+    .setContent(
+
+      '<div class="pbadge" style="'+
+        'background:'+color+'18;'+
+        'color:'+color+
+      '">'+
+
+        title+
+
+      '</div>'+
+
+      '<div class="ptitle">'+
+
+        esc(
+          point.label ||
+          '지도 선택 지점'
+        )+
+
+      '</div>'
+
+    )
+
+  )
+
+  .addTo(
+    map
+  );
+
+}
+
+
+/* ============================================================
+   출발지·목적지 마커 새로 표시
+   ============================================================ */
+
+function refreshSafeWalkEndpointPreviewMarkers(){
+
+  if(!map){
+    return;
+  }
+
+
+  /*
+    기존 마커 제거
+  */
+
+  if(
+    typeof originMark !== 'undefined' &&
+    originMark
+  ){
+
+    try{
+
+      if(
+        map.hasLayer(
+          originMark
+        )
+      ){
+
+        map.removeLayer(
+          originMark
+        );
+
+      }
+
+    }catch(e){}
+
+
+    originMark =
+      null;
+
+  }
+
+
+  if(
+    typeof destinationMark !== 'undefined' &&
+    destinationMark
+  ){
+
+    try{
+
+      if(
+        map.hasLayer(
+          destinationMark
+        )
+      ){
+
+        map.removeLayer(
+          destinationMark
+        );
+
+      }
+
+    }catch(e){}
+
+
+    destinationMark =
+      null;
+
+  }
+
+
+  /*
+    새 마커
+  */
+
+  if(
+    routeOrigin
+  ){
+
+    originMark =
+      makeSafeWalkEndpointMarker(
+
+        routeOrigin,
+
+        'origin'
+
+      );
+
+  }
+
+
+  if(
+    routeDest
+  ){
+
+    destinationMark =
+      makeSafeWalkEndpointMarker(
+
+        routeDest,
+
+        'dest'
+
+      );
+
+  }
+
+}
+
+
+/* ============================================================
+   기존 경로 그림 제거
+
+   새 지점을 선택했는데 옛 경로선이 남는 것을 방지한다.
+   routeOrigin / routeDest 값 자체는 clearRoute()가 지우지 않는다.
+   ============================================================ */
+
+function prepareSafeWalkForNewEndpoint(){
+
+  if(
+    typeof clearRoute ===
+    'function'
+  ){
+
+    clearRoute(
+      false
+    );
+
+  }
+
+}
+
+
+/* ============================================================
+   출발지 설정
+   ============================================================ */
+
+async function setSafeWalkLongPressOrigin(
   latlng
 ){
 
@@ -326,10 +830,6 @@ function setSafeWalkLongPressPoint(
   }
 
 
-  /*
-    팝업 닫기
-  */
-
   if(map){
 
     map.closePopup();
@@ -337,17 +837,16 @@ function setSafeWalkLongPressPoint(
   }
 
 
-  /*
-    search.js의 기존 슬롯 구조 사용
-  */
+  prepareSafeWalkForNewEndpoint();
+
 
   activeSlot =
-    slot;
+    'origin';
 
 
   setSlotValue(
 
-    slot,
+    'origin',
 
     {
 
@@ -358,7 +857,7 @@ function setSafeWalkLongPressPoint(
         latlng.lng,
 
       label:
-        '지도 선택 지점',
+        '지도 선택 출발지',
 
       src:
         'map-longpress'
@@ -368,10 +867,17 @@ function setSafeWalkLongPressPoint(
   );
 
 
-  /* ========================================================
-     출발지 + 목적지가 모두 지정됨
-     → 바로 길찾기
-     ======================================================== */
+  /*
+    요청 사항:
+    출발지만 설정했어도 지도에 바로 표시
+  */
+
+  refreshSafeWalkEndpointPreviewMarkers();
+
+
+  /*
+    목적지가 이미 있다면 바로 재계산
+  */
 
   if(
     routeOrigin &&
@@ -379,30 +885,13 @@ function setSafeWalkLongPressPoint(
   ){
 
     showRouteToast(
-
-      slot === 'origin'
-
-        ?'🚩 출발지를 설정했습니다. 경로를 계산합니다.'
-
-        :'🏁 목적지를 설정했습니다. 경로를 계산합니다.'
-
+      '🚩 출발지를 설정했습니다. 경로를 계산합니다.'
     );
 
 
-    /*
-      팝업이 닫힌 뒤 UI가 한 프레임 갱신된 후 실행
-    */
-
     setTimeout(
-
-      ()=>{
-
-        runSearchRoute();
-
-      },
-
-      80
-
+      runSearchRoute,
+      100
     );
 
 
@@ -411,44 +900,211 @@ function setSafeWalkLongPressPoint(
   }
 
 
-  /* ========================================================
-     한쪽만 설정된 경우
+  activeSlot =
+    'dest';
 
-     다음 Long Press가 자연스럽게
-     반대쪽 슬롯을 설정하도록 activeSlot 변경
+
+  updateSlotUI();
+
+
+  showRouteToast(
+    '🚩 출발지를 설정했습니다. 목적지를 지도에서 길게 눌러 지정하세요.'
+  );
+
+}
+
+
+/* ============================================================
+   목적지 설정
+
+   핵심:
+   출발지가 비어 있으면 현재 위치를 자동 출발지로 만든다.
+   ============================================================ */
+
+async function setSafeWalkLongPressDestination(
+  latlng
+){
+
+  if(
+    !latlng ||
+    !Number.isFinite(latlng.lat) ||
+    !Number.isFinite(latlng.lng)
+  ){
+    return;
+  }
+
+
+  if(map){
+
+    map.closePopup();
+
+  }
+
+
+  prepareSafeWalkForNewEndpoint();
+
+
+  activeSlot =
+    'dest';
+
+
+  setSlotValue(
+
+    'dest',
+
+    {
+
+      lat:
+        latlng.lat,
+
+      lng:
+        latlng.lng,
+
+      label:
+        '지도 선택 목적지',
+
+      src:
+        'map-longpress'
+
+    }
+
+  );
+
+
+  /*
+    우선 목적지부터 바로 지도에 보여준다.
+  */
+
+  refreshSafeWalkEndpointPreviewMarkers();
+
+
+  /* ========================================================
+     출발지가 없으면 현재 위치 자동 사용
      ======================================================== */
 
   if(
-    slot === 'origin'
+    !routeOrigin
   ){
 
-    activeSlot =
-      'dest';
+    showRouteToast(
+      '📍 현재 위치를 출발지로 설정하고 있습니다.'
+    );
 
 
-    updateSlotUI();
+    try{
 
+      const current =
+        await getSafeWalkCurrentOrigin();
+
+
+      setSlotValue(
+
+        'origin',
+
+        current
+
+      );
+
+
+      refreshSafeWalkEndpointPreviewMarkers();
+
+    }
+
+    catch(error){
+
+      console.warn(
+        '현재 위치 자동 출발지 설정 실패:',
+        error
+      );
+
+
+      /*
+        목적지는 그대로 유지한다.
+        사용자가 직접 출발지를 선택할 수 있게 함.
+      */
+
+      activeSlot =
+        'origin';
+
+
+      updateSlotUI();
+
+
+      showRouteToast(
+        '현재 위치를 확인하지 못했습니다. 위치 권한을 허용하거나 출발지를 직접 지정해 주세요.'
+      );
+
+
+      return;
+
+    }
+
+  }
+
+
+  /* ========================================================
+     이제 둘 다 있으므로 자동 길찾기
+     ======================================================== */
+
+  if(
+    routeOrigin &&
+    routeDest
+  ){
 
     showRouteToast(
-      '🚩 출발지를 설정했습니다. 지도를 다시 길게 눌러 목적지를 지정하세요.'
+      '🏁 목적지를 설정했습니다. 현재 위치에서 경로를 계산합니다.'
+    );
+
+
+    setTimeout(
+      runSearchRoute,
+      120
+    );
+
+
+    return;
+
+  }
+
+
+  activeSlot =
+    'origin';
+
+
+  updateSlotUI();
+
+
+  showRouteToast(
+    '🏁 목적지를 설정했습니다. 출발지를 지정해 주세요.'
+  );
+
+}
+
+
+/* ============================================================
+   기존 함수명 호환
+   ============================================================ */
+
+function setSafeWalkLongPressPoint(
+  slot,
+  latlng
+){
+
+  if(
+    slot ===
+    'origin'
+  ){
+
+    return setSafeWalkLongPressOrigin(
+      latlng
     );
 
   }
 
-  else{
 
-    activeSlot =
-      'origin';
-
-
-    updateSlotUI();
-
-
-    showRouteToast(
-      '🏁 목적지를 설정했습니다. 지도를 다시 길게 눌러 출발지를 지정하세요.'
-    );
-
-  }
+  return setSafeWalkLongPressDestination(
+    latlng
+  );
 
 }
 
@@ -457,7 +1113,9 @@ function setSafeWalkLongPressPoint(
    Long Press 팝업
    ============================================================ */
 
-function openSafeWalkLongPressPopup(latlng){
+function openSafeWalkLongPressPopup(
+  latlng
+){
 
   if(
     !map ||
@@ -467,16 +1125,8 @@ function openSafeWalkLongPressPopup(latlng){
   }
 
 
-  /*
-    기존 팝업 닫기
-  */
-
   map.closePopup();
 
-
-  /* ========================================================
-     팝업 DOM
-     ======================================================== */
 
   const box =
     document.createElement(
@@ -487,8 +1137,6 @@ function openSafeWalkLongPressPopup(latlng){
   box.className =
     'sw-longpress-popup';
 
-
-  /* badge */
 
   const badge =
     document.createElement(
@@ -504,8 +1152,6 @@ function openSafeWalkLongPressPopup(latlng){
     '📍 지도에서 선택';
 
 
-  /* title */
-
   const title =
     document.createElement(
       'div'
@@ -520,8 +1166,6 @@ function openSafeWalkLongPressPopup(latlng){
     '이 위치를 경로에 사용할까요?';
 
 
-  /* description */
-
   const desc =
     document.createElement(
       'div'
@@ -533,10 +1177,8 @@ function openSafeWalkLongPressPopup(latlng){
 
 
   desc.textContent =
-    '출발지 또는 목적지로 지정할 수 있습니다.';
+    '목적지만 설정하면 현재 위치가 자동으로 출발지가 됩니다.';
 
-
-  /* actions */
 
   const actions =
     document.createElement(
@@ -548,9 +1190,7 @@ function openSafeWalkLongPressPopup(latlng){
     'sw-longpress-actions';
 
 
-  /* ========================================================
-     출발지 버튼
-     ======================================================== */
+  /* 출발지 */
 
   const originBtn =
     document.createElement(
@@ -581,12 +1221,8 @@ function openSafeWalkLongPressPopup(latlng){
       event.stopPropagation();
 
 
-      setSafeWalkLongPressPoint(
-
-        'origin',
-
+      setSafeWalkLongPressOrigin(
         latlng
-
       );
 
     }
@@ -594,9 +1230,7 @@ function openSafeWalkLongPressPopup(latlng){
   );
 
 
-  /* ========================================================
-     목적지 버튼
-     ======================================================== */
+  /* 목적지 */
 
   const destBtn =
     document.createElement(
@@ -627,12 +1261,8 @@ function openSafeWalkLongPressPopup(latlng){
       event.stopPropagation();
 
 
-      setSafeWalkLongPressPoint(
-
-        'dest',
-
+      setSafeWalkLongPressDestination(
         latlng
-
       );
 
     }
@@ -663,8 +1293,7 @@ function openSafeWalkLongPressPopup(latlng){
 
 
   /*
-    팝업 안 버튼을 눌렀을 때
-    지도 터치로 전달되지 않도록 차단
+    팝업 안 터치가 지도에 전달되지 않도록
   */
 
   if(
@@ -684,15 +1313,6 @@ function openSafeWalkLongPressPopup(latlng){
   }
 
 
-  /* ========================================================
-     Leaflet 팝업
-
-     closeOnClick:false가 중요함.
-
-     Long Press 후 손을 떼면서 발생하는
-     지도 click 이벤트가 팝업을 즉시 닫는 것을 방지.
-     ======================================================== */
-
   L.popup({
 
     className:
@@ -708,7 +1328,7 @@ function openSafeWalkLongPressPopup(latlng){
       true,
 
     maxWidth:
-      290
+      300
 
   })
 
@@ -728,7 +1348,7 @@ function openSafeWalkLongPressPopup(latlng){
 
 
 /* ============================================================
-   Long Press 이벤트
+   Long Press 바인딩
    ============================================================ */
 
 function bindSafeWalkLongPress(){
@@ -744,10 +1364,6 @@ function bindSafeWalkLongPress(){
   const mapEl =
     map.getContainer();
 
-
-  /*
-    중복 바인딩 방지
-  */
 
   if(
     mapEl.dataset.swLongPressBound ===
@@ -766,16 +1382,15 @@ function bindSafeWalkLongPress(){
   );
 
 
-  let state = null;
+  let state =
+    null;
 
-  let timer = null;
+
+  let timer =
+    null;
 
 
-  /* ========================================================
-     타이머 제거
-     ======================================================== */
-
-  function clearLongPressTimer(){
+  function clearTimer(){
 
     if(timer){
 
@@ -792,13 +1407,9 @@ function bindSafeWalkLongPress(){
   }
 
 
-  /* ========================================================
-     상태 초기화
-     ======================================================== */
+  function reset(){
 
-  function resetLongPressState(){
-
-    clearLongPressTimer();
+    clearTimer();
 
     state =
       null;
@@ -813,7 +1424,7 @@ function bindSafeWalkLongPress(){
   function onPointerDown(event){
 
     /*
-      모바일 touch / stylus만
+      PC 마우스에서는 사용하지 않음
     */
 
     if(
@@ -824,16 +1435,12 @@ function bindSafeWalkLongPress(){
     }
 
 
-    /*
-      멀티터치의 보조 포인터 제외
-    */
-
     if(
       event.isPrimary ===
       false
     ){
 
-      resetLongPressState();
+      reset();
 
       return;
 
@@ -856,7 +1463,7 @@ function bindSafeWalkLongPress(){
     }
 
 
-    resetLongPressState();
+    reset();
 
 
     state = {
@@ -876,14 +1483,11 @@ function bindSafeWalkLongPress(){
     };
 
 
-    /* ======================================================
-       Long Press timer
-       ====================================================== */
-
     timer =
       setTimeout(
 
         ()=>{
+
 
           if(
             !state ||
@@ -898,7 +1502,7 @@ function bindSafeWalkLongPress(){
             !canUseSafeWalkLongPress()
           ){
 
-            resetLongPressState();
+            reset();
 
             return;
 
@@ -908,12 +1512,6 @@ function bindSafeWalkLongPress(){
           state.fired =
             true;
 
-
-          /*
-            브라우저 좌표
-            →
-            Leaflet 지도 좌표
-          */
 
           const rect =
             mapEl.getBoundingClientRect();
@@ -938,8 +1536,7 @@ function bindSafeWalkLongPress(){
 
 
           /*
-            Android 등 지원 기기에서
-            아주 짧은 햅틱 피드백
+            지원되는 Android 기기에서 짧은 햅틱
           */
 
           try{
@@ -954,9 +1551,7 @@ function bindSafeWalkLongPress(){
 
             }
 
-          }
-
-          catch(e){}
+          }catch(e){}
 
 
           openSafeWalkLongPressPopup(
@@ -979,16 +1574,14 @@ function bindSafeWalkLongPress(){
   /* ========================================================
      pointermove
 
-     길게 누른 상태에서 지도를 움직이면
-     일반 지도 드래그로 판단하고 Long Press 취소
+     지도 드래그를 시작하면 Long Press 취소
      ======================================================== */
 
   function onPointerMove(event){
 
     if(
       !state ||
-      state.pointerId !==
-        event.pointerId ||
+      state.pointerId !== event.pointerId ||
       state.fired
     ){
       return;
@@ -1005,21 +1598,15 @@ function bindSafeWalkLongPress(){
       state.y;
 
 
-    const distance =
-      Math.sqrt(
-
-        dx*dx +
-        dy*dy
-
-      );
-
-
     if(
-      distance >
+      Math.hypot(
+        dx,
+        dy
+      ) >
       SW_LONG_PRESS_MOVE_LIMIT
     ){
 
-      resetLongPressState();
+      reset();
 
     }
 
@@ -1027,7 +1614,7 @@ function bindSafeWalkLongPress(){
 
 
   /* ========================================================
-     pointerup
+     종료
      ======================================================== */
 
   function onPointerUp(event){
@@ -1041,54 +1628,32 @@ function bindSafeWalkLongPress(){
     }
 
 
-    /*
-      Long Press가 이미 실행되었더라도
-      지도 자체의 pointerup 처리는 막지 않는다.
-
-      Leaflet의 drag 상태가 정상적으로 종료되도록 하기 위함.
-    */
-
-    resetLongPressState();
+    reset();
 
   }
 
-
-  /* ========================================================
-     pointercancel
-     ======================================================== */
 
   function onPointerCancel(event){
 
     if(
-      !state
-    ){
-      return;
-    }
-
-
-    if(
+      !state ||
       state.pointerId !==
-      event.pointerId
+        event.pointerId
     ){
       return;
     }
 
 
-    resetLongPressState();
+    reset();
 
   }
 
 
   /* ========================================================
-     iOS / Android 기본 Long Press 메뉴 차단
+     모바일 기본 컨텍스트 메뉴 방지
      ======================================================== */
 
   function onContextMenu(event){
-
-    /*
-      터치 기기에서 지도 길게 누르기 시
-      브라우저 기본 컨텍스트 메뉴를 띄우지 않는다.
-    */
 
     if(
       window.matchMedia(
@@ -1103,78 +1668,47 @@ function bindSafeWalkLongPress(){
   }
 
 
-  /* ========================================================
-     이벤트 등록
-     ======================================================== */
-
   mapEl.addEventListener(
-
     'pointerdown',
-
     onPointerDown,
-
-    {
-      passive:true
-    }
-
+    {passive:true}
   );
 
 
   mapEl.addEventListener(
-
     'pointermove',
-
     onPointerMove,
-
-    {
-      passive:true
-    }
-
+    {passive:true}
   );
 
 
   mapEl.addEventListener(
-
     'pointerup',
-
     onPointerUp,
-
-    {
-      passive:true
-    }
-
+    {passive:true}
   );
 
 
   mapEl.addEventListener(
-
     'pointercancel',
-
     onPointerCancel,
-
-    {
-      passive:true
-    }
-
+    {passive:true}
   );
 
 
   mapEl.addEventListener(
-
     'contextmenu',
-
     onContextMenu
-
   );
 
 
   /* ========================================================
-     기존 SafeWalk map cleanup 구조에 연결
+     SafeWalk 지도 종료 시 listener 제거
      ======================================================== */
 
   if(
     typeof mapDomCleanups !==
-    'undefined' &&
+      'undefined' &&
     Array.isArray(
       mapDomCleanups
     )
@@ -1184,7 +1718,7 @@ function bindSafeWalkLongPress(){
 
       ()=>{
 
-        resetLongPressState();
+        reset();
 
 
         mapEl.removeEventListener(
@@ -1231,12 +1765,7 @@ function bindSafeWalkLongPress(){
 
 
 /* ============================================================
-   initMap 확장
-
-   기존 map.js는 수정하지 않는다.
-
-   지도 생성이 끝난 직후
-   Long Press 기능만 추가한다.
+   기존 initMap 확장
    ============================================================ */
 
 if(
@@ -1251,22 +1780,13 @@ if(
   initMap =
     function(){
 
-      /*
-        기존 지도 생성
-      */
 
       const result =
-        safeWalkBaseInitMapLongPress
-          .apply(
-            this,
-            arguments
-          );
+        safeWalkBaseInitMapLongPress.apply(
+          this,
+          arguments
+        );
 
-
-      /*
-        initMap 내부에서 map 컨테이너가
-        이미 만들어진 상태이므로 바로 바인딩 가능
-      */
 
       bindSafeWalkLongPress();
 
@@ -1276,7 +1796,7 @@ if(
     };
 
 
-  initMap._safeWalkLongPressV26 =
+  initMap._safeWalkLongPressV261 =
     true;
 
 }
@@ -1290,5 +1810,5 @@ injectSafeWalkLongPressStyles();
 
 
 console.log(
-  '[SafeWalk v2.6] 모바일 지도 Long Press 활성화'
+  '[SafeWalk v2.6.1] 모바일 Long Press 경로 설정 활성화'
 );
