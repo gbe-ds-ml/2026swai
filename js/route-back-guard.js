@@ -686,30 +686,31 @@ window.addEventListener(
     */
 
     if(
-      swBackGuardHasRoute() &&
-      swIsRoutePanelVisible()
-    ){
+  swBackGuardHasRoute() &&
+  swIsRoutePanelVisible()
+){
 
-      /*
-        중요:
-        wrapper가 아닌 기존 hide 함수를 직접 호출.
+  /*
+    뒤로가기 Guard는 이미 이번 popstate에서 소진됐으므로
+    swHideRoutePanel()을 호출해도 history.back()이
+    추가로 실행되지 않는다.
 
-        여기서 다시 history.back()을 호출하면 안 됨.
-      */
+    따라서 실제 X 버튼과 동일하게:
+    - 길안내 패널만 닫고
+    - 경로선은 유지하고
+    - 경로 상태는 저장한다.
+  */
 
-      if(
-        typeof swBaseHideRoutePanelForBackGuard ===
-          'function'
-      ){
+  if(
+    typeof swHideRoutePanel ===
+      'function'
+  ){
 
-        swBaseHideRoutePanelForBackGuard();
+    swHideRoutePanel();
 
-      }
+  }
 
-
-      swShowRouteKeepMessage();
-
-    }
+}
 
   }
 
