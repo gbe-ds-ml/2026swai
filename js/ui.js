@@ -142,11 +142,17 @@ function updateRouteButtonVisibility(){
 }
 
 /* ── 토스트 메시지 ── */
-function showRouteToast(msg){
+function showRouteToast(msg,duration=3800){
   const t=document.getElementById('routeToast');
   if(!t){alert(msg);return;}
+
   t.textContent=msg;
   t.classList.add('show');
+
   clearTimeout(t._timer);
-  t._timer=setTimeout(()=>t.classList.remove('show'),3800);
+
+  t._timer=setTimeout(
+    ()=>t.classList.remove('show'),
+    duration
+  );
 }
