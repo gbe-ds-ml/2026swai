@@ -58,12 +58,13 @@ async function runSearchRoute(){
       showRouteToast('⚠️ 경로는 표시했지만 안전시설 조회에 실패해 안전도를 계산하지 못했습니다.');
     }else{
   showRouteToast(
-    '✅ 경로 계산 완료 · 경로 주변 시설 '+
-    corridor.facilities.length+
-    '건을 반영했습니다.\n'+
-    '뒤로가기·X를 눌러도 경로는 유지됩니다. 종료하려면 \'길찾기 취소\'를 눌러주세요.',
-    6500
-  );
+  '✅ 경로 계산 완료 · 경로 주변 시설 '+
+  corridor.facilities.length+
+  '건을 반영했습니다.\n'+
+  '뒤로가기·X를 눌러도 경로는 유지됩니다. 메인 화면에서도 같은 이용자 유형으로 다시 들어오면 경로가 복원됩니다.\n'+
+  '종료하려면 \'길찾기 취소\'를 눌러주세요.',
+  7500
+);
 }
   }catch(err){
     if(token!==routeRunToken||!map)return;
