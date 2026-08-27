@@ -73,19 +73,86 @@ function tileXY(lat,lng,z){
   return {x,y};
 }
 function prefetchCenterTiles(lat,lng){
-  if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
-  const z=DEFAULT_ZOOM;
-  const c=tileXY(lat,lng,z);
-  const r=(window.devicePixelRatio||1)>1?'@2x':'';
-  const subs=['a','b','c','d'];
-  for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
-    const tx=c.x+dx,ty=c.y+dy;
-    const s=subs[Math.abs(tx+ty)%subs.length];
-    const url='https://'+s+'.basemaps.cartocdn.com/rastertiles/voyager/'+z+'/'+tx+'/'+ty+r+'.png';
-    if(prefetchedTiles.has(url))continue;
-    prefetchedTiles.add(url);
-    new Image().src=url;
+
+  if(
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng)
+  ){
+    return;
   }
+
+
+  const z=
+    DEFAULT_ZOOM;
+
+
+  const c=
+    tileXY(
+      lat,
+      lng,
+      z
+    );
+
+
+  /*
+    현재 위치 주변 3×3 타일 미리 요청
+  */
+
+  for(let dx=-1;dx<=1;dx++){
+
+    for(let dy=-1;dy<=1;dy++){
+
+      const tx=
+        c.x+dx;
+
+
+      const ty=
+        c.y+dy;
+
+
+      /*
+        VWorld WMTS
+
+        주의:
+        Base/{z}/{y}/{x}.png
+        순서임.
+      */
+
+      const url=
+
+        'https://api.vworld.kr/req/wmts/1.0.0/'+
+        VWORLD_API_KEY+
+        '/Base/'+
+        z+'/'+
+        ty+'/'+
+        tx+
+        '.png';
+
+
+      if(
+        prefetchedTiles.has(url)
+      ){
+        continue;
+      }
+
+
+      prefetchedTiles.add(
+        url
+      );
+
+
+      const img=
+        new Image();
+
+
+      img.src=
+        url;
+
+    }
+
+  }
+
+}
 }
 
 /* 인트로에서 유형 카드를 고르는 순간 위치를 미리 요청해 둔다.
