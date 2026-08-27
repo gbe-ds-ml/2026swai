@@ -19,7 +19,7 @@ const APP_VERSION='v.2.2.0';
 /*
   ↓ 기존 생활안전지도 API 키 입력
 */
-const API_KEY='30093378-543F-3458-B837-16DCF7D945AB';
+const API_KEY='no';
 
 const MARKER_API=
   'https://safemap.go.kr/layer/getMarkerLayerPost.json';
