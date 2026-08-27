@@ -43,6 +43,24 @@ const VWORLD_SERVICE_DOMAIN='https://gbe-ds-ml.github.io/2026swai/';
 const VWORLD_SEARCH_URL='https://api.vworld.kr/req/search';
 const SEARCH_PAGE_SIZE=8;
 
+/* ── VWorld ── */
+
+const VWORLD_API_KEY='30093378-543F-3458-B837-16DCF7D945AB';
+
+const VWORLD_SERVICE_DOMAIN=
+  'https://gbe-ds-ml.github.io/2026swai/';
+
+const VWORLD_SEARCH_URL=
+  'https://api.vworld.kr/req/search';
+
+/* VWorld 2D 일반 배경지도 */
+const VWORLD_BASE_TILE_URL=
+  'https://api.vworld.kr/req/wmts/1.0.0/'+
+  VWORLD_API_KEY+
+  '/Base/{z}/{y}/{x}.png';
+
+const SEARCH_PAGE_SIZE=8;
+
 /* ── SafeWalk AI 챗봇 (Cloudflare Worker) ── */
 const CHAT_API_URL='https://safewalk-chat.ds-ml.workers.dev/chat';
 const CHAT_MAX_LENGTH=500;
