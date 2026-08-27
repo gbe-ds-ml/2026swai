@@ -1,12 +1,22 @@
 /* ============================================================
-   SafeWalk v2.2 — map.js
+   SafeWalk v2.2.2 — map.js
 
    Leaflet 지도
+   ------------------------------------------------------------
    - VWorld Base 2D 배경지도
    - GPS
-   - 위치 기억
+   - 마지막 위치 기억
    - 생활안전지도 WMS
+     · 여성밤길치안안전
+     · 어린이대상범죄주의구간
+     · 노인대상범죄주의구간
    - CPTED
+   - 지도 터치 처리
+
+   WMS 개선
+   ------------------------------------------------------------
+   생활안전지도 공식 WMS 예제에 맞춰
+   EPSG:3857 + layers + styles 방식으로 요청한다.
    ============================================================ */
 
 
@@ -22,13 +32,16 @@ let myLat=null;
 
 let myLng=null;
 
-
 let watchId=null;
 
 let mapDomCleanups=[];
 
 let suppressMoveFetch=false;
 
+
+/* ============================================================
+   CPTED 상태
+   ============================================================ */
 
 let cptedGuideLine=null;
 
@@ -44,64 +57,362 @@ let lastPopupCloseAt=0;
 
 
 /* ============================================================
-   생활안전지도 EPSG:4326 WMS
+   생활안전지도 WMS 메타데이터
+
+   config.js가 예전처럼 URL 문자열만 가지고 있어도
+   map.js에서 정상적으로 동작하게 하기 위한 fallback.
+
+   config.js에서 이미
+   {url, layers, styles}
+   구조로 변경했다면 그 설정을 우선 사용한다.
    ============================================================ */
 
-let _SafemapWMS4326=null;
+const SAFEMAP_WMS_META={
+
+  women:{
+    url:
+      'https://www.safemap.go.kr/openapi2/IF_0080_WMS',
+
+    layers:
+      'A2SM_CRMNLHSPOT_F1_TOT',
+
+    /*
+      현재 신규 OpenAPI 문서에서는 빈 style 예제가 제공됨.
+    */
+    styles:
+      ''
+  },
+
+
+  children:{
+    url:
+      'https://www.safemap.go.kr/openapi2/IF_0081_WMS',
+
+    layers:
+      'A2SM_ODBLRCRMNLHSPOT_KID',
+
+    styles:
+      'A2SM_OdblrCrmnlHspot_Kid'
+  },
+
+
+  elder_c:{
+    url:
+      'https://www.safemap.go.kr/openapi2/IF_0082_WMS',
+
+    layers:
+      'A2SM_ODBLRCRMNLHSPOT_ODSN',
+
+    styles:
+      'A2SM_OdblrCrmnlHspot_Odsn'
+  },
+
+
+  cpted:{
+    url:
+      'https://www.safemap.go.kr/geoserver_pos/safemap/wms',
+
+    layers:
+      'A2SM_CPTED_G',
+
+    styles:
+      ''
+  }
+
+};
+
+
+/* ============================================================
+   WMS 설정 읽기
+
+   config.js가 아래 두 형태 모두 가능:
+
+   기존:
+   women:'https://...'
+
+   신규:
+   women:{
+     url:'https://...',
+     layers:'...',
+     styles:'...'
+   }
+   ============================================================ */
+
+function getSafeMapWmsConfig(key){
+
+  const fallback=
+    SAFEMAP_WMS_META[key];
+
+
+  if(
+    !fallback
+  ){
+
+    return null;
+
+  }
+
+
+  if(
+    typeof WMS_API ===
+      'undefined'
+  ){
+
+    return fallback;
+
+  }
+
+
+  const raw=
+    WMS_API[key];
+
+
+  /*
+    config.js가 기존 문자열 방식
+  */
+
+  if(
+    typeof raw ===
+      'string'
+  ){
+
+    return {
+
+      ...fallback,
+
+      url:
+        raw
+
+    };
+
+  }
+
+
+  /*
+    config.js가 신규 object 방식
+  */
+
+  if(
+    raw &&
+    typeof raw ===
+      'object'
+  ){
+
+    return {
+
+      url:
+        raw.url ||
+        fallback.url,
+
+      layers:
+        raw.layers ||
+        fallback.layers,
+
+      styles:
+
+        typeof raw.styles ===
+          'string'
+
+          ?raw.styles
+
+          :fallback.styles
+
+    };
+
+  }
+
+
+  return fallback;
+
+}
+
+
+/* ============================================================
+   생활안전지도 WMS TileLayer
+
+   중요:
+   Leaflet 지도는 EPSG:3857 기반.
+
+   생활안전지도 공식 WMS 예제 역시
+   srs:"EPSG:3857"을 사용한다.
+   ============================================================ */
+
+let _SafemapWMS3857=null;
 
 
 function getSafemapWMSClass(){
 
   if(
-    !_SafemapWMS4326
+    !_SafemapWMS3857
   ){
 
-    _SafemapWMS4326=
+    _SafemapWMS3857=
       L.TileLayer.extend({
+
+
+        initialize:function(
+          url,
+          options={}
+        ){
+
+          this._wmsLayers=
+            options.layers ||
+            '';
+
+
+          this._wmsStyles=
+
+            typeof options.styles ===
+              'string'
+
+              ?options.styles
+
+              :'';
+
+
+          L.TileLayer.prototype
+            .initialize.call(
+              this,
+              url,
+              options
+            );
+
+        },
+
 
         getTileUrl:function(coords){
 
-          const b=
+          /*
+            현재 Leaflet tile의 위경도 bounds
+          */
+
+          const bounds=
             this._tileCoordsToBounds(
               coords
             );
 
 
+          /*
+            EPSG:3857 미터 좌표로 변환
+          */
+
+          const northWest=
+            L.CRS.EPSG3857.project(
+              bounds.getNorthWest()
+            );
+
+
+          const southEast=
+            L.CRS.EPSG3857.project(
+              bounds.getSouthEast()
+            );
+
+
+          /*
+            WMS 1.1.1 BBOX:
+
+            minX,minY,maxX,maxY
+          */
+
           const bbox=[
 
-            b.getWest(),
+            northWest.x,
 
-            b.getSouth(),
+            southEast.y,
 
-            b.getEast(),
+            southEast.x,
 
-            b.getNorth()
+            northWest.y
 
           ].join(',');
 
 
+          /*
+            생활안전지도 공식 예제는
+            serviceKey만 camelCase를 유지하고
+            나머지 WMS 파라미터는 소문자 사용.
+          */
+
+          const params=
+            new URLSearchParams();
+
+
+          params.set(
+            'serviceKey',
+            API_KEY
+          );
+
+
+          params.set(
+            'service',
+            'WMS'
+          );
+
+
+          params.set(
+            'request',
+            'GetMap'
+          );
+
+
+          params.set(
+            'version',
+            '1.1.1'
+          );
+
+
+          params.set(
+            'layers',
+            this._wmsLayers
+          );
+
+
+          params.set(
+            'styles',
+            this._wmsStyles
+          );
+
+
+          params.set(
+            'format',
+            'image/png'
+          );
+
+
+          params.set(
+            'srs',
+            'EPSG:3857'
+          );
+
+
+          params.set(
+            'transparent',
+            'TRUE'
+          );
+
+
+          params.set(
+            'bbox',
+            bbox
+          );
+
+
+          params.set(
+            'width',
+            '256'
+          );
+
+
+          params.set(
+            'height',
+            '256'
+          );
+
+
           return (
-
             this._url+
-
-            '?serviceKey='+
-            encodeURIComponent(
-              API_KEY
-            )+
-
-            '&srs=EPSG:4326'+
-
-            '&bbox='+
-            bbox+
-
-            '&format=image/png'+
-
-            '&width=256'+
-
-            '&height=256'+
-
-            '&transparent=TRUE'
-
+            '?'+
+            params.toString()
           );
 
         }
@@ -111,7 +422,7 @@ function getSafemapWMSClass(){
   }
 
 
-  return _SafemapWMS4326;
+  return _SafemapWMS3857;
 
 }
 
@@ -136,19 +447,21 @@ function readLastPos(){
     if(
       !raw
     ){
+
       return null;
+
     }
 
 
-    const p=
+    const point=
       JSON.parse(
         raw
       );
 
 
     if(
-      !Number.isFinite(p.lat) ||
-      !Number.isFinite(p.lng)
+      !Number.isFinite(point.lat) ||
+      !Number.isFinite(point.lng)
     ){
 
       return null;
@@ -156,7 +469,7 @@ function readLastPos(){
     }
 
 
-    return p;
+    return point;
 
   }
 
@@ -179,12 +492,12 @@ function writeLastPos(
 
 
   /*
-    localStorage 쓰기 과다 방지
+    30초에 한 번만 저장
   */
 
   if(
     now-lastPosSavedAt <
-    30000
+      30000
   ){
 
     return;
@@ -208,7 +521,8 @@ function writeLastPos(
 
         lng,
 
-        ts:now
+        ts:
+          now
 
       })
 
@@ -222,9 +536,9 @@ function writeLastPos(
 
 
 /* ============================================================
-   VWorld 타일 URL 생성
+   VWorld Base 타일 URL 생성
 
-   공식 WMTS:
+   VWorld WMTS:
    Base/{z}/{y}/{x}.png
    ============================================================ */
 
@@ -250,7 +564,7 @@ function getVWorldTileUrl(
 
 
 /* ============================================================
-   Web Mercator XYZ 타일 좌표 계산
+   Web Mercator XYZ 타일 좌표
    ============================================================ */
 
 function tileXY(
@@ -326,10 +640,9 @@ function tileXY(
 
 
 /* ============================================================
-   VWorld 중심 타일 prefetch
+   VWorld 타일 Prefetch
 
-   현재 위치 주변 3×3 타일을
-   미리 브라우저 캐시에 요청한다.
+   현재 위치 주변 3×3 타일 미리 요청.
    ============================================================ */
 
 const prefetchedTiles=
@@ -351,7 +664,7 @@ function prefetchCenterTiles(
   }
 
 
-  const z=
+  const zoom=
     DEFAULT_ZOOM;
 
 
@@ -359,7 +672,7 @@ function prefetchCenterTiles(
     tileXY(
       lat,
       lng,
-      z
+      zoom
     );
 
 
@@ -387,7 +700,7 @@ function prefetchCenterTiles(
 
       const url=
         getVWorldTileUrl(
-          z,
+          zoom,
           x,
           y
         );
@@ -409,15 +722,15 @@ function prefetchCenterTiles(
       );
 
 
-      const img=
+      const image=
         new Image();
 
 
-      img.decoding=
+      image.decoding=
         'async';
 
 
-      img.src=
+      image.src=
         url;
 
     }
@@ -428,10 +741,10 @@ function prefetchCenterTiles(
 
 
 /* ============================================================
-   위치 워밍업
+   GPS 워밍업
 
-   이용자 유형을 고른 뒤
-   실제 지도 시작 전에 GPS를 미리 요청한다.
+   이용자 유형을 선택하는 순간
+   미리 위치를 받아 지도 진입 속도를 높인다.
    ============================================================ */
 
 let locationWarmupStarted=false;
@@ -453,8 +766,7 @@ function warmupLocation(){
 
 
   /*
-    이전 위치가 있으면
-    우선 해당 위치 VWorld 타일 prefetch
+    이전 위치 주변 VWorld 타일 prefetch
   */
 
   const saved=
@@ -535,10 +847,10 @@ function warmupLocation(){
 function initMap(){
 
   /*
-    초기 위치 우선순위
+    초기 지도 중심 우선순위
 
     1. 워밍업 GPS
-    2. 저장된 마지막 위치
+    2. 마지막 위치
     3. 대한민국 전국
   */
 
@@ -603,7 +915,7 @@ function initMap(){
 
 
   /* ========================================================
-     Leaflet
+     Leaflet 생성
      ======================================================== */
 
   map=
@@ -617,11 +929,11 @@ function initMap(){
           false,
 
         /*
-          실제 서비스 확대를 고려하여
-          지도 출처 표시를 활성화
+          현재 UI를 유지하기 위해 기본 attribution UI는
+          기존처럼 끈다.
         */
         attributionControl:
-          true,
+          false,
 
         tap:
           false,
@@ -649,7 +961,7 @@ function initMap(){
 
 
   /* ========================================================
-     VWorld Base 2D 일반지도
+     VWorld 2D 일반 배경지도
      ======================================================== */
 
   const baseLayer=
@@ -672,10 +984,7 @@ function initMap(){
           3,
 
         updateWhenIdle:
-          false,
-
-        attribution:
-          '&copy; 공간정보 오픈플랫폼 VWorld'
+          false
 
       }
 
@@ -683,11 +992,7 @@ function initMap(){
 
 
   /*
-    VWorld 타일 로딩 오류 확인용
-
-    개발자도구 콘솔에서:
-    [SafeWalk] VWorld 타일 로딩 실패
-    가 반복된다면 VWorld API 설정/키 문제.
+    VWorld 오류 확인용
   */
 
   baseLayer.on(
@@ -881,7 +1186,7 @@ function bindPopupCloseGuard(){
 
 
 /* ============================================================
-   CPTED 안내 제거
+   CPTED 안내 삭제
    ============================================================ */
 
 function clearCptedGuide(
@@ -1048,6 +1353,7 @@ function drawCptedGuide(
     L.divIcon({
 
       html:
+
         '<div class="cpted-target-label">'+
           '🏗 가장 가까운 CPTED'+
         '</div>',
@@ -1096,7 +1402,7 @@ function drawCptedGuide(
 
 
 /* ============================================================
-   CPTED 터치
+   CPTED 지도 터치
    ============================================================ */
 
 async function handleCptedTap(
@@ -1130,6 +1436,10 @@ async function handleCptedTap(
     true
   );
 
+
+  /*
+    일반 연령 지도에서는 CPTED 터치 조회 안 함
+  */
 
   if(
     zoomBlocked ||
@@ -1522,7 +1832,7 @@ async function handleCptedTap(
   catch(error){
 
     console.warn(
-      'CPTED 정보 조회 실패',
+      '[SafeWalk] CPTED 정보 조회 실패:',
       error
     );
 
@@ -1568,8 +1878,8 @@ function getGPS(){
 
 
   /*
-    이미 warmupLocation()에서
-    위치를 확보했다면 바로 시작
+    warmupLocation에서 이미 위치를 받았다면
+    바로 지도 초기화
   */
 
   if(
@@ -1633,7 +1943,7 @@ function getGPS(){
 
 
   /*
-    이후 고정밀 GPS 추적
+    이후 고정밀 위치 보정
   */
 
   watchId=
@@ -1680,10 +1990,9 @@ function getGPS(){
 
 
 /* ============================================================
-   GPS 실패 시 포항 기본 위치
+   GPS 실패 fallback
 
-   전국 서비스에서도 GPS 실패 상황에서
-   완전 빈 화면이 되는 것을 막기 위한 fallback.
+   기존 포항 기본 좌표 유지.
    ============================================================ */
 
 function useDefault(){
@@ -1702,7 +2011,7 @@ function useDefault(){
 
 
 /* ============================================================
-   GPS 확보 후 초기 처리
+   위치 확보 후 지도 초기 처리
    ============================================================ */
 
 function onLocated(){
@@ -1740,7 +2049,7 @@ function onLocated(){
 
 
   /* ========================================================
-     이동 / 확대
+     지도 이동 / 줌 이벤트
      ======================================================== */
 
   let moveTimer=null;
@@ -1805,7 +2114,7 @@ function onLocated(){
 
   if(
     typeof initAuditLayer ===
-    'function'
+      'function'
   ){
 
     initAuditLayer();
@@ -1813,14 +2122,9 @@ function onLocated(){
   }
 
 
-  /*
-    현재 havens.js는 안심 편의점을 제거한 호환 버전이므로
-    함수가 있어도 외부 Overpass 요청을 하지 않는다.
-  */
-
   if(
     typeof initHavenLayer ===
-    'function'
+      'function'
   ){
 
     initHavenLayer();
@@ -1829,7 +2133,7 @@ function onLocated(){
 
 
   /* ========================================================
-     지도 클릭
+     Leaflet 기본 click
      ======================================================== */
 
   map.on(
@@ -1839,7 +2143,7 @@ function onLocated(){
     event=>{
 
       /*
-        길찾기 지도 직접 선택
+        길찾기 지도 직접 선택 모드
       */
 
       if(
@@ -1871,7 +2175,7 @@ function onLocated(){
 
 
       /*
-        즐겨찾기 위치 선택
+        즐겨찾기 지점 선택
       */
 
       if(
@@ -1889,7 +2193,7 @@ function onLocated(){
 
 
       /*
-        CPTED
+        CPTED 지도에서만 실제 처리됨
       */
 
       handleCptedTap(
@@ -1968,7 +2272,7 @@ function onLocated(){
         pointerStart.y;
 
 
-      const dt=
+      const elapsed=
         Date.now()-
         pointerStart.t;
 
@@ -1978,8 +2282,7 @@ function onLocated(){
 
 
       /*
-        드래그 또는 Long Press는
-        일반 터치로 취급하지 않는다.
+        드래그 및 Long Press 제외
       */
 
       if(
@@ -1991,7 +2294,7 @@ function onLocated(){
 
         ||
 
-        dt >
+        elapsed >
         900
       ){
 
@@ -2143,7 +2446,7 @@ function drawMe(){
 
 
   /*
-    이미 있으면 위치만 이동
+    기존 마커가 있으면 위치만 이동
   */
 
   if(myMark){
@@ -2167,10 +2470,6 @@ function drawMe(){
     GROUP[grp];
 
 
-  /*
-    안전망
-  */
-
   if(
     !group
   ){
@@ -2188,16 +2487,25 @@ function drawMe(){
         '<div style="'+
 
           'width:42px;'+
+
           'height:42px;'+
+
           'border-radius:50%;'+
+
           'background:'+
             group.color+
             ';'+
+
           'border:3px solid #fff;'+
+
           'display:flex;'+
+
           'align-items:center;'+
+
           'justify-content:center;'+
+
           'font-size:19px;'+
+
           'box-shadow:0 3px 12px rgba(0,0,0,.25);'+
 
         '">'+
@@ -2309,8 +2617,8 @@ function flyHome(){
 /* ============================================================
    현재 행정구역 표시
 
-   현재는 Nominatim reverse geocoding 유지.
-   VWorld 배경지도와는 별개 기능.
+   기존 Nominatim reverse geocoding 유지.
+   VWorld 배경지도와 독립된 기능.
    ============================================================ */
 
 function revGeo(){
@@ -2357,8 +2665,12 @@ function revGeo(){
         );
 
 
-      if(!locText){
+      if(
+        !locText
+      ){
+
         return;
+
       }
 
 
@@ -2405,9 +2717,17 @@ function revGeo(){
 
 
 /* ============================================================
-   WMS
+   WMS 추가
 
-   범죄주의구간 / CPTED
+   일반 이용자:
+   ------------------------------------------------------------
+   child  → 어린이대상범죄주의구간
+   youth  → 여성밤길치안안전
+   elder  → 노인대상범죄주의구간
+
+   CPTED:
+   ------------------------------------------------------------
+   cpted → 범죄예방환경설계
    ============================================================ */
 
 function addWMS(){
@@ -2418,7 +2738,9 @@ function addWMS(){
 
   if(
     !group ||
-    !Array.isArray(group.wms)
+    !Array.isArray(
+      group.wms
+    )
   ){
 
     return;
@@ -2432,23 +2754,42 @@ function addWMS(){
 
       try{
 
-        const url=
-          WMS_API[key];
+        const config=
+          getSafeMapWmsConfig(
+            key
+          );
 
 
-        if(!url){
+        if(
+          !config ||
+          !config.url ||
+          !config.layers
+        ){
+
+          console.warn(
+
+            '[SafeWalk] WMS 설정 없음:',
+
+            key,
+
+            config
+
+          );
+
 
           return;
 
         }
 
 
-        let tileLayer;
+        let tileLayer=null;
 
 
-        /*
-          CPTED
-        */
+        /* ====================================================
+           CPTED
+
+           기존 GeoServer WMS 사용
+           ==================================================== */
 
         if(
           key ===
@@ -2458,12 +2799,16 @@ function addWMS(){
           tileLayer=
             L.tileLayer.wms(
 
-              url,
+              config.url,
 
               {
 
                 layers:
-                  'A2SM_CPTED_G',
+                  config.layers,
+
+                styles:
+                  config.styles ||
+                  '',
 
                 format:
                   'image/png',
@@ -2489,9 +2834,12 @@ function addWMS(){
 
         }
 
-        /*
-          생활안전지도 OpenAPI WMS
-        */
+
+        /* ====================================================
+           생활안전지도 OpenAPI WMS
+
+           EPSG:3857 기반 custom layer
+           ==================================================== */
 
         else{
 
@@ -2502,26 +2850,98 @@ function addWMS(){
           tileLayer=
             new WMSClass(
 
-              url,
+              config.url,
 
               {
 
+                layers:
+                  config.layers,
+
+                styles:
+                  config.styles ||
+                  '',
+
                 opacity:
-                  .5,
+                  .52,
 
                 tileSize:
-                  256
+                  256,
+
+                /*
+                  WMS overlay가 타일 로딩 중
+                  사용자 입력을 막지 않게 함.
+                */
+                updateWhenIdle:
+                  false
 
               }
 
             );
 
+
+          /*
+            디버깅용 오류 로그
+          */
+
+          tileLayer.on(
+
+            'tileerror',
+
+            event=>{
+
+              console.warn(
+
+                '[SafeWalk] 생활안전지도 WMS 타일 실패:',
+
+                key,
+
+                event?.tile?.src ||
+                ''
+
+              );
+
+            }
+
+          );
+
+
+          /*
+            실제 WMS가 로드되면 확인 가능
+          */
+
+          tileLayer.on(
+
+            'load',
+
+            ()=>{
+
+              console.log(
+
+                '[SafeWalk] 생활안전지도 WMS 로딩 완료:',
+
+                key
+
+              );
+
+            }
+
+          );
+
         }
 
+
+        /*
+          layers.js의 공통 WMS registry
+        */
 
         wmsTiles[key]=
           tileLayer;
 
+
+        /*
+          해당 chip이 ON이고
+          줌 제한 상태가 아니면 지도에 추가
+        */
 
         if(
           chipOn[
@@ -2540,13 +2960,27 @@ function addWMS(){
 
         }
 
+
+        console.log(
+
+          '[SafeWalk] WMS 등록:',
+
+          {
+            key,
+            url:config.url,
+            layers:config.layers,
+            styles:config.styles
+          }
+
+        );
+
       }
 
       catch(error){
 
         console.warn(
 
-          'WMS 오류',
+          '[SafeWalk] WMS 생성 오류:',
 
           key,
 
