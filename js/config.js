@@ -188,17 +188,52 @@ const LAYER_API={
 
 const WMS_API={
 
-  women:
-    'https://safemap.go.kr/openapi2/IF_0080_WMS',
+  women:{
+    url:
+      'https://www.safemap.go.kr/openapi2/IF_0080_WMS',
 
-  elder_c:
-    'https://safemap.go.kr/openapi2/IF_0082_WMS',
+    layers:
+      'A2SM_CRMNLHSPOT_F1_TOT',
 
-  children:
-    'https://safemap.go.kr/openapi2/IF_0081_WMS',
+    styles:
+      ''
+  },
 
-  cpted:
-    'https://www.safemap.go.kr/geoserver_pos/safemap/wms'
+
+  elder_c:{
+    url:
+      'https://www.safemap.go.kr/openapi2/IF_0082_WMS',
+
+    layers:
+      'A2SM_ODBLRCRMNLHSPOT_ODSN',
+
+    styles:
+      'A2SM_OdblrCrmnlHspot_Odsn'
+  },
+
+
+  children:{
+    url:
+      'https://www.safemap.go.kr/openapi2/IF_0081_WMS',
+
+    layers:
+      'A2SM_ODBLRCRMNLHSPOT_KID',
+
+    styles:
+      'A2SM_OdblrCrmnlHspot_Kid'
+  },
+
+
+  cpted:{
+    url:
+      'https://www.safemap.go.kr/geoserver_pos/safemap/wms',
+
+    layers:
+      'A2SM_CPTED_G',
+
+    styles:
+      ''
+  }
 
 };
 
