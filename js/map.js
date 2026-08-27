@@ -123,8 +123,16 @@ function initMap(){
   }
   map=L.map('map',{zoomControl:false,attributionControl:false,tap:false,tapTolerance:15}).setView([seed.lat,seed.lng],seed.zoom);
   bindPopupCloseGuard();
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    {maxZoom:19,subdomains:'abcd',keepBuffer:3}).addTo(map);
+  L.tileLayer(
+  VWORLD_BASE_TILE_URL,
+  {
+    maxZoom:19,
+    keepBuffer:3,
+
+    attribution:
+      '&copy; 공간정보 오픈플랫폼 VWorld'
+  }
+).addTo(map);
   buildChips();
   initSheet();
   syncViewportChrome();
