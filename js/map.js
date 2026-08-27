@@ -1,84 +1,353 @@
 /* ============================================================
-   SafeWalk v2.0 — map.js
-   Leaflet 지도 생성, GPS 위치 추적, WMS 타일, CPTED 안내.
-   "지도가 안 뜬다 / 내 위치가 이상하다"는 이 파일을 보세요.
+   SafeWalk v2.2 — map.js
 
-   [v2 개선]
-   - drawMe(): GPS 갱신마다 마커를 새로 만들지 않고 위치만 이동
-   - CPTED 팝업 문자열 esc() 적용(XSS 방지)
-   - CPTED 조회 완료 시 요청 토큰을 확인하고 스피너를 정리
+   Leaflet 지도
+   - VWorld Base 2D 배경지도
+   - GPS
+   - 위치 기억
+   - 생활안전지도 WMS
+   - CPTED
    ============================================================ */
 
-/* ── 지도 상태 ── */
-let map=null,myMark=null,myLat=null,myLng=null;
+
+/* ============================================================
+   지도 상태
+   ============================================================ */
+
+let map=null;
+
+let myMark=null;
+
+let myLat=null;
+
+let myLng=null;
+
+
 let watchId=null;
+
 let mapDomCleanups=[];
+
 let suppressMoveFetch=false;
 
+
 let cptedGuideLine=null;
+
 let cptedTargetMark=null;
+
 let cptedTapMark=null;
+
 let lastCptedDirectTapAt=0;
+
 let cptedTapRequestToken=0;
+
 let lastPopupCloseAt=0;
 
-/* Leaflet 로드 후에만 만들 수 있는 클래스/아이콘은
-   최상위가 아니라 함수 안에서 지연 생성한다.
-   (CDN 로드 실패 시 스크립트 전체가 죽는 문제 방지) */
+
+/* ============================================================
+   생활안전지도 EPSG:4326 WMS
+   ============================================================ */
+
 let _SafemapWMS4326=null;
+
+
 function getSafemapWMSClass(){
-  if(!_SafemapWMS4326){
-    _SafemapWMS4326=L.TileLayer.extend({
-      getTileUrl:function(coords){
-        const b=this._tileCoordsToBounds(coords);
-        const bbox=[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].join(',');
-        return this._url+'?serviceKey='+API_KEY+'&srs=EPSG:4326&bbox='+bbox+
-          '&format=image/png&width=256&height=256&transparent=TRUE';
-      }
-    });
+
+  if(
+    !_SafemapWMS4326
+  ){
+
+    _SafemapWMS4326=
+      L.TileLayer.extend({
+
+        getTileUrl:function(coords){
+
+          const b=
+            this._tileCoordsToBounds(
+              coords
+            );
+
+
+          const bbox=[
+
+            b.getWest(),
+
+            b.getSouth(),
+
+            b.getEast(),
+
+            b.getNorth()
+
+          ].join(',');
+
+
+          return (
+
+            this._url+
+
+            '?serviceKey='+
+            encodeURIComponent(
+              API_KEY
+            )+
+
+            '&srs=EPSG:4326'+
+
+            '&bbox='+
+            bbox+
+
+            '&format=image/png'+
+
+            '&width=256'+
+
+            '&height=256'+
+
+            '&transparent=TRUE'
+
+          );
+
+        }
+
+      });
+
   }
+
+
   return _SafemapWMS4326;
+
 }
 
-/* ── 위치 기억: 다음 방문 때 전국 뷰를 거치지 않고
-   바로 내 동네 타일부터 불러오기 위한 저장 ── */
+
+/* ============================================================
+   마지막 위치 기억
+   ============================================================ */
+
 let lastPosSavedAt=0;
+
+
 function readLastPos(){
+
   try{
-    const raw=localStorage.getItem(LAST_POS_STORAGE_KEY);
-    if(!raw)return null;
-    const p=JSON.parse(raw);
-    if(!Number.isFinite(p.lat)||!Number.isFinite(p.lng))return null;
+
+    const raw=
+      localStorage.getItem(
+        LAST_POS_STORAGE_KEY
+      );
+
+
+    if(
+      !raw
+    ){
+      return null;
+    }
+
+
+    const p=
+      JSON.parse(
+        raw
+      );
+
+
+    if(
+      !Number.isFinite(p.lat) ||
+      !Number.isFinite(p.lng)
+    ){
+
+      return null;
+
+    }
+
+
     return p;
-  }catch(e){return null;}
-}
-function writeLastPos(lat,lng){
-  const now=Date.now();
-  if(now-lastPosSavedAt<30000)return; /* 30초에 한 번만 저장 */
-  lastPosSavedAt=now;
-  try{localStorage.setItem(LAST_POS_STORAGE_KEY,JSON.stringify({lat,lng,ts:now}));}catch(e){}
+
+  }
+
+  catch(error){
+
+    return null;
+
+  }
+
 }
 
-/* ── 중심 타일 미리 받기 ──
-   지도가 열리기 전에 내 좌표 주변 3×3 타일을 브라우저 캐시에
-   넣어 두면, 지도가 열릴 때 중심이 즉시 그려지고 바깥쪽으로
-   퍼져나가는 것처럼 보인다. URL 규칙(서브도메인·레티나)은
-   Leaflet과 동일하게 맞춰야 캐시가 적중한다. */
-const prefetchedTiles=new Set();
-function tileXY(lat,lng,z){
-  const n=Math.pow(2,z);
-  const x=Math.floor((lng+180)/360*n);
-  const latRad=lat*Math.PI/180;
-  const y=Math.floor((1-Math.log(Math.tan(latRad)+1/Math.cos(latRad))/Math.PI)/2*n);
-  return {x,y};
+
+function writeLastPos(
+  lat,
+  lng
+){
+
+  const now=
+    Date.now();
+
+
+  /*
+    localStorage 쓰기 과다 방지
+  */
+
+  if(
+    now-lastPosSavedAt <
+    30000
+  ){
+
+    return;
+
+  }
+
+
+  lastPosSavedAt=
+    now;
+
+
+  try{
+
+    localStorage.setItem(
+
+      LAST_POS_STORAGE_KEY,
+
+      JSON.stringify({
+
+        lat,
+
+        lng,
+
+        ts:now
+
+      })
+
+    );
+
+  }
+
+  catch(error){}
+
 }
-function prefetchCenterTiles(lat,lng){
+
+
+/* ============================================================
+   VWorld 타일 URL 생성
+
+   공식 WMTS:
+   Base/{z}/{y}/{x}.png
+   ============================================================ */
+
+function getVWorldTileUrl(
+  z,
+  x,
+  y
+){
+
+  return (
+
+    'https://api.vworld.kr/req/wmts/1.0.0/'+
+    VWORLD_API_KEY+
+    '/Base/'+
+    z+'/'+
+    y+'/'+
+    x+
+    '.png'
+
+  );
+
+}
+
+
+/* ============================================================
+   Web Mercator XYZ 타일 좌표 계산
+   ============================================================ */
+
+function tileXY(
+  lat,
+  lng,
+  z
+){
+
+  const n=
+    Math.pow(
+      2,
+      z
+    );
+
+
+  const x=
+    Math.floor(
+
+      (
+        lng+
+        180
+      )
+      /
+      360
+      *
+      n
+
+    );
+
+
+  const latRad=
+    lat*
+    Math.PI/
+    180;
+
+
+  const y=
+    Math.floor(
+
+      (
+        1-
+
+        Math.log(
+
+          Math.tan(
+            latRad
+          )
+          +
+          1/
+          Math.cos(
+            latRad
+          )
+
+        )
+        /
+        Math.PI
+
+      )
+      /
+      2
+      *
+      n
+
+    );
+
+
+  return {
+    x,
+    y
+  };
+
+}
+
+
+/* ============================================================
+   VWorld 중심 타일 prefetch
+
+   현재 위치 주변 3×3 타일을
+   미리 브라우저 캐시에 요청한다.
+   ============================================================ */
+
+const prefetchedTiles=
+  new Set();
+
+
+function prefetchCenterTiles(
+  lat,
+  lng
+){
 
   if(
     !Number.isFinite(lat) ||
     !Number.isFinite(lng)
   ){
+
     return;
+
   }
 
 
@@ -86,7 +355,7 @@ function prefetchCenterTiles(lat,lng){
     DEFAULT_ZOOM;
 
 
-  const c=
+  const center=
     tileXY(
       lat,
       lng,
@@ -94,45 +363,44 @@ function prefetchCenterTiles(lat,lng){
     );
 
 
-  /*
-    현재 위치 주변 3×3 타일 미리 요청
-  */
+  for(
+    let dx=-1;
+    dx<=1;
+    dx++
+  ){
 
-  for(let dx=-1;dx<=1;dx++){
+    for(
+      let dy=-1;
+      dy<=1;
+      dy++
+    ){
 
-    for(let dy=-1;dy<=1;dy++){
-
-      const tx=
-        c.x+dx;
-
-
-      const ty=
-        c.y+dy;
+      const x=
+        center.x+
+        dx;
 
 
-      /*
-        VWorld WMTS
+      const y=
+        center.y+
+        dy;
 
-        주의:
-        Base/{z}/{y}/{x}.png
-        순서임.
-      */
 
       const url=
-
-        'https://api.vworld.kr/req/wmts/1.0.0/'+
-        VWORLD_API_KEY+
-        '/Base/'+
-        z+'/'+
-        ty+'/'+
-        tx+
-        '.png';
+        getVWorldTileUrl(
+          z,
+          x,
+          y
+        );
 
 
       if(
-        prefetchedTiles.has(url)
+        prefetchedTiles.has(
+          url
+        )
       ){
+
         continue;
+
       }
 
 
@@ -145,6 +413,10 @@ function prefetchCenterTiles(lat,lng){
         new Image();
 
 
+      img.decoding=
+        'async';
+
+
       img.src=
         url;
 
@@ -153,332 +425,2139 @@ function prefetchCenterTiles(lat,lng){
   }
 
 }
-}
 
-/* 인트로에서 유형 카드를 고르는 순간 위치를 미리 요청해 둔다.
-   저정밀(네트워크 기반)이라 빠르고, "시작"을 누를 때쯤이면
-   좌표가 준비되어 지도가 곧바로 내 위치에서 열린다.
-   지난 방문 좌표가 있으면 그 주변 타일부터 먼저 받아 둔다. */
+
+/* ============================================================
+   위치 워밍업
+
+   이용자 유형을 고른 뒤
+   실제 지도 시작 전에 GPS를 미리 요청한다.
+   ============================================================ */
+
 let locationWarmupStarted=false;
+
+
 function warmupLocation(){
-  if(locationWarmupStarted)return;
-  locationWarmupStarted=true;
-  const saved=readLastPos();
-  if(saved)prefetchCenterTiles(saved.lat,saved.lng);
-  if(!navigator.geolocation)return;
-  navigator.geolocation.getCurrentPosition(
-    p=>{
-      myLat=p.coords.latitude;myLng=p.coords.longitude;
-      writeLastPos(myLat,myLng);
-      prefetchCenterTiles(myLat,myLng);
-    },
-    ()=>{},
-    {timeout:5000,enableHighAccuracy:false,maximumAge:120000}
-  );
+
+  if(
+    locationWarmupStarted
+  ){
+
+    return;
+
+  }
+
+
+  locationWarmupStarted=
+    true;
+
+
+  /*
+    이전 위치가 있으면
+    우선 해당 위치 VWorld 타일 prefetch
+  */
+
+  const saved=
+    readLastPos();
+
+
+  if(saved){
+
+    prefetchCenterTiles(
+      saved.lat,
+      saved.lng
+    );
+
+  }
+
+
+  if(
+    !navigator.geolocation
+  ){
+
+    return;
+
+  }
+
+
+  navigator.geolocation
+    .getCurrentPosition(
+
+      position=>{
+
+        myLat=
+          position.coords.latitude;
+
+
+        myLng=
+          position.coords.longitude;
+
+
+        writeLastPos(
+          myLat,
+          myLng
+        );
+
+
+        prefetchCenterTiles(
+          myLat,
+          myLng
+        );
+
+      },
+
+
+      ()=>{},
+
+
+      {
+
+        timeout:
+          5000,
+
+        enableHighAccuracy:
+          false,
+
+        maximumAge:
+          120000
+
+      }
+
+    );
+
 }
 
-/* ── 지도 초기화 ── */
+
+/* ============================================================
+   지도 초기화
+   ============================================================ */
+
 function initMap(){
-  /* 시작 화면 좌표 우선순위:
-     ① 워밍업으로 이미 받은 좌표 → ② 지난 방문 저장 좌표 → ③ 전국 뷰 */
-  let seed={lat:36.5,lng:127.8,zoom:7};
-  if(Number.isFinite(myLat)&&Number.isFinite(myLng)){
-    seed={lat:myLat,lng:myLng,zoom:DEFAULT_ZOOM};
-  }else{
-    const saved=readLastPos();
-    if(saved)seed={lat:saved.lat,lng:saved.lng,zoom:DEFAULT_ZOOM};
+
+  /*
+    초기 위치 우선순위
+
+    1. 워밍업 GPS
+    2. 저장된 마지막 위치
+    3. 대한민국 전국
+  */
+
+  let seed={
+
+    lat:
+      36.5,
+
+    lng:
+      127.8,
+
+    zoom:
+      7
+
+  };
+
+
+  if(
+    Number.isFinite(myLat) &&
+    Number.isFinite(myLng)
+  ){
+
+    seed={
+
+      lat:
+        myLat,
+
+      lng:
+        myLng,
+
+      zoom:
+        DEFAULT_ZOOM
+
+    };
+
   }
-  map=L.map('map',{zoomControl:false,attributionControl:false,tap:false,tapTolerance:15}).setView([seed.lat,seed.lng],seed.zoom);
+
+  else{
+
+    const saved=
+      readLastPos();
+
+
+    if(saved){
+
+      seed={
+
+        lat:
+          saved.lat,
+
+        lng:
+          saved.lng,
+
+        zoom:
+          DEFAULT_ZOOM
+
+      };
+
+    }
+
+  }
+
+
+  /* ========================================================
+     Leaflet
+     ======================================================== */
+
+  map=
+    L.map(
+
+      'map',
+
+      {
+
+        zoomControl:
+          false,
+
+        /*
+          실제 서비스 확대를 고려하여
+          지도 출처 표시를 활성화
+        */
+        attributionControl:
+          true,
+
+        tap:
+          false,
+
+        tapTolerance:
+          15
+
+      }
+
+    )
+
+    .setView(
+
+      [
+        seed.lat,
+        seed.lng
+      ],
+
+      seed.zoom
+
+    );
+
+
   bindPopupCloseGuard();
-  L.tileLayer(
-  VWORLD_BASE_TILE_URL,
-  {
-    maxZoom:19,
-    keepBuffer:3,
 
-    attribution:
-      '&copy; 공간정보 오픈플랫폼 VWorld'
-  }
-).addTo(map);
+
+  /* ========================================================
+     VWorld Base 2D 일반지도
+     ======================================================== */
+
+  const baseLayer=
+    L.tileLayer(
+
+      VWORLD_BASE_TILE_URL,
+
+      {
+
+        minZoom:
+          6,
+
+        maxZoom:
+          19,
+
+        tileSize:
+          256,
+
+        keepBuffer:
+          3,
+
+        updateWhenIdle:
+          false,
+
+        attribution:
+          '&copy; 공간정보 오픈플랫폼 VWorld'
+
+      }
+
+    );
+
+
+  /*
+    VWorld 타일 로딩 오류 확인용
+
+    개발자도구 콘솔에서:
+    [SafeWalk] VWorld 타일 로딩 실패
+    가 반복된다면 VWorld API 설정/키 문제.
+  */
+
+  baseLayer.on(
+
+    'tileerror',
+
+    event=>{
+
+      console.warn(
+
+        '[SafeWalk] VWorld 타일 로딩 실패:',
+
+        event?.tile?.src ||
+        ''
+
+      );
+
+    }
+
+  );
+
+
+  baseLayer.addTo(
+    map
+  );
+
+
   buildChips();
+
   initSheet();
+
   syncViewportChrome();
+
   getGPS();
+
 }
 
-/* ── 팝업 닫기 버튼 터치 보호 ── */
-function markPopupCloseTouch(e){
-  lastPopupCloseAt=Date.now();
-  if(e){
-    e.stopPropagation();
-    if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+
+/* ============================================================
+   Leaflet 팝업 X 터치 보호
+   ============================================================ */
+
+function markPopupCloseTouch(
+  event
+){
+
+  lastPopupCloseAt=
+    Date.now();
+
+
+  if(event){
+
+    event.stopPropagation();
+
+
+    if(
+      event.stopImmediatePropagation
+    ){
+
+      event.stopImmediatePropagation();
+
+    }
+
   }
+
 }
+
+
 function bindPopupCloseGuard(){
-  if(!map||map._popupCloseGuardBound)return;
-  map._popupCloseGuardBound=true;
-  map.on('popupopen',e=>{
-    const popupEl=e.popup&&e.popup.getElement?e.popup.getElement():null;
-    if(!popupEl)return;
-    const closeBtn=popupEl.querySelector('.leaflet-popup-close-button');
-    if(!closeBtn||closeBtn._safeWalkCloseGuard)return;
-    closeBtn._safeWalkCloseGuard=true;
-    ['pointerdown','touchstart','mousedown'].forEach(type=>{
-      closeBtn.addEventListener(type,markPopupCloseTouch,{capture:true,passive:true});
+
+  if(
+    !map ||
+    map._popupCloseGuardBound
+  ){
+
+    return;
+
+  }
+
+
+  map._popupCloseGuardBound=
+    true;
+
+
+  map.on(
+
+    'popupopen',
+
+    event=>{
+
+      const popupEl=
+
+        event.popup &&
+        event.popup.getElement
+
+          ?event.popup.getElement()
+
+          :null;
+
+
+      if(
+        !popupEl
+      ){
+
+        return;
+
+      }
+
+
+      const closeBtn=
+        popupEl.querySelector(
+          '.leaflet-popup-close-button'
+        );
+
+
+      if(
+        !closeBtn ||
+        closeBtn._safeWalkCloseGuard
+      ){
+
+        return;
+
+      }
+
+
+      closeBtn._safeWalkCloseGuard=
+        true;
+
+
+      [
+        'pointerdown',
+        'touchstart',
+        'mousedown'
+      ]
+
+      .forEach(
+
+        type=>{
+
+          closeBtn.addEventListener(
+
+            type,
+
+            markPopupCloseTouch,
+
+            {
+              capture:true,
+              passive:true
+            }
+
+          );
+
+        }
+
+      );
+
+
+      closeBtn.addEventListener(
+
+        'click',
+
+        clickEvent=>{
+
+          clickEvent.preventDefault();
+
+
+          markPopupCloseTouch(
+            clickEvent
+          );
+
+
+          if(map){
+
+            map.closePopup();
+
+          }
+
+        },
+
+        {
+          capture:true
+        }
+
+      );
+
+    }
+
+  );
+
+}
+
+
+/* ============================================================
+   CPTED 안내 제거
+   ============================================================ */
+
+function clearCptedGuide(
+  closePopup=true
+){
+
+  if(
+    cptedGuideLine &&
+    map
+  ){
+
+    map.removeLayer(
+      cptedGuideLine
+    );
+
+  }
+
+
+  if(
+    cptedTargetMark &&
+    map
+  ){
+
+    map.removeLayer(
+      cptedTargetMark
+    );
+
+  }
+
+
+  if(
+    cptedTapMark &&
+    map
+  ){
+
+    map.removeLayer(
+      cptedTapMark
+    );
+
+  }
+
+
+  cptedGuideLine=null;
+
+  cptedTargetMark=null;
+
+  cptedTapMark=null;
+
+
+  if(
+    closePopup &&
+    map
+  ){
+
+    map.closePopup();
+
+  }
+
+}
+
+
+/* ============================================================
+   CPTED 직선 안내
+   ============================================================ */
+
+function drawCptedGuide(
+  fromLatLng,
+  toLatLng
+){
+
+  if(
+    !map
+  ){
+
+    return;
+
+  }
+
+
+  cptedGuideLine=
+    L.polyline(
+
+      [
+
+        [
+          fromLatLng.lat,
+          fromLatLng.lng
+        ],
+
+        [
+          toLatLng.lat,
+          toLatLng.lng
+        ]
+
+      ],
+
+      {
+
+        color:
+          '#b45309',
+
+        weight:
+          4,
+
+        opacity:
+          .9,
+
+        dashArray:
+          '6,8',
+
+        lineCap:
+          'round',
+
+        lineJoin:
+          'round'
+
+      }
+
+    )
+
+    .addTo(
+      map
+    );
+
+
+  cptedTapMark=
+    L.circleMarker(
+
+      [
+        fromLatLng.lat,
+        fromLatLng.lng
+      ],
+
+      {
+
+        radius:
+          6,
+
+        color:
+          '#b45309',
+
+        weight:
+          3,
+
+        fillColor:
+          '#fff7ed',
+
+        fillOpacity:
+          1,
+
+        interactive:
+          false
+
+      }
+
+    )
+
+    .addTo(
+      map
+    );
+
+
+  const icon=
+    L.divIcon({
+
+      html:
+        '<div class="cpted-target-label">'+
+          '🏗 가장 가까운 CPTED'+
+        '</div>',
+
+      className:
+        '',
+
+      iconSize:
+        null,
+
+      iconAnchor:[
+        20,
+        18
+      ]
+
     });
-    closeBtn.addEventListener('click',ev=>{
-      ev.preventDefault();
-      markPopupCloseTouch(ev);
-      if(map)map.closePopup();
-    },{capture:true});
-  });
+
+
+  cptedTargetMark=
+    L.marker(
+
+      [
+        toLatLng.lat,
+        toLatLng.lng
+      ],
+
+      {
+
+        icon,
+
+        zIndexOffset:
+          920,
+
+        interactive:
+          false
+
+      }
+
+    )
+
+    .addTo(
+      map
+    );
+
 }
 
-/* ── CPTED 직선 안내 ── */
-function clearCptedGuide(closePopup=true){
-  if(cptedGuideLine&&map)map.removeLayer(cptedGuideLine);
-  if(cptedTargetMark&&map)map.removeLayer(cptedTargetMark);
-  if(cptedTapMark&&map)map.removeLayer(cptedTapMark);
-  cptedGuideLine=null;cptedTargetMark=null;cptedTapMark=null;
-  if(closePopup&&map)map.closePopup();
-}
-function drawCptedGuide(fromLatLng,toLatLng){
-  if(!map)return;
 
-  cptedGuideLine=L.polyline(
-    [[fromLatLng.lat,fromLatLng.lng],[toLatLng.lat,toLatLng.lng]],
-    {color:'#b45309',weight:4,opacity:.9,dashArray:'6,8',lineCap:'round',lineJoin:'round'}
-  ).addTo(map);
+/* ============================================================
+   CPTED 터치
+   ============================================================ */
 
-  cptedTapMark=L.circleMarker([fromLatLng.lat,fromLatLng.lng],{
-    radius:6,color:'#b45309',weight:3,fillColor:'#fff7ed',fillOpacity:1,interactive:false
-  }).addTo(map);
+async function handleCptedTap(
+  latlng
+){
 
-  const icon=L.divIcon({
-    html:'<div class="cpted-target-label">🏗 가장 가까운 CPTED</div>',
-    className:'',
-    iconSize:null,
-    iconAnchor:[20,18]
-  });
+  const now=
+    Date.now();
 
-  cptedTargetMark=L.marker([toLatLng.lat,toLatLng.lng],{
-    icon,
-    zIndexOffset:920,
-    interactive:false
-  }).addTo(map);
-}
 
-async function handleCptedTap(latlng){
-  const now=Date.now();
-  if(now-lastPopupCloseAt<520||now-lastCptedDirectTapAt<320)return;
-  lastCptedDirectTapAt=now;
-  clearCptedGuide(true);
-  if(zoomBlocked||!chipOn['w_cpted']||!wmsTiles.cpted)return;
+  if(
+    now-lastPopupCloseAt <
+      520
 
-  const spinner=document.getElementById('map-spinner');
-  if(spinner)spinner.classList.add('show');
-  const requestToken=++cptedTapRequestToken;
-  const b=map.getBounds().pad(.35);
-  const nw=L.CRS.EPSG3857.project(b.getNorthWest());
-  const se=L.CRS.EPSG3857.project(b.getSouthEast());
-  const params=new URLSearchParams({
-    top:nw.y,bottom:se.y,left:nw.x,right:se.x,
-    layer:'A2SM_CPTED_G',style:'A2SM_CPTED_G',
-    currentPage:'1',perPage:'300'
-  });
+    ||
+
+    now-lastCptedDirectTapAt <
+      320
+  ){
+
+    return;
+
+  }
+
+
+  lastCptedDirectTapAt=
+    now;
+
+
+  clearCptedGuide(
+    true
+  );
+
+
+  if(
+    zoomBlocked ||
+    !chipOn['w_cpted'] ||
+    !wmsTiles.cpted
+  ){
+
+    return;
+
+  }
+
+
+  const spinner=
+    document.getElementById(
+      'map-spinner'
+    );
+
+
+  if(spinner){
+
+    spinner.classList.add(
+      'show'
+    );
+
+  }
+
+
+  const requestToken=
+    ++cptedTapRequestToken;
+
+
+  const bounds=
+    map
+      .getBounds()
+      .pad(.35);
+
+
+  const northWest=
+    L.CRS.EPSG3857.project(
+      bounds.getNorthWest()
+    );
+
+
+  const southEast=
+    L.CRS.EPSG3857.project(
+      bounds.getSouthEast()
+    );
+
+
+  const params=
+    new URLSearchParams({
+
+      top:
+        northWest.y,
+
+      bottom:
+        southEast.y,
+
+      left:
+        northWest.x,
+
+      right:
+        southEast.x,
+
+      layer:
+        'A2SM_CPTED_G',
+
+      style:
+        'A2SM_CPTED_G',
+
+      currentPage:
+        '1',
+
+      perPage:
+        '300'
+
+    });
+
 
   try{
-    const res=await fetch(CPTED_LIST_API,{
-      method:'POST',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:params
-    });
-    const data=await res.json();
-    if(requestToken!==cptedTapRequestToken)return;
-    const items=(data.layerList||[]).filter(it=>it.x&&it.y);
 
-    if(!items.length){
-      L.popup({className:'safepopup',closeButton:true,maxWidth:260,closeOnClick:true})
-        .setLatLng(latlng)
-        .setContent('<div class="pbadge" style="background:#b4530918;color:#b45309">🏗 범죄예방환경설계</div>'+
-                    '<div class="ptitle">조회 가능한 CPTED 정보 없음</div>'+
-                    '<div class="prow">현재 화면 주변에서 CPTED 상세 정보를 찾지 못했습니다.</div>')
-        .openOn(map);
+    const response=
+      await fetch(
+
+        CPTED_LIST_API,
+
+        {
+
+          method:
+            'POST',
+
+          headers:{
+
+            'Content-Type':
+              'application/x-www-form-urlencoded'
+
+          },
+
+          body:
+            params
+
+        }
+
+      );
+
+
+    const data=
+      await response.json();
+
+
+    if(
+      requestToken !==
+      cptedTapRequestToken
+    ){
+
       return;
+
     }
 
-    let closest=null,closestLatLng=null,minDist=Infinity;
-    items.forEach(it=>{
-      const x=parseFloat(it.x),y=parseFloat(it.y);
-      if(isNaN(x)||isNaN(y))return;
-      const p=L.CRS.EPSG3857.unproject(L.point(x,y));
-      const d=distM(latlng.lat,latlng.lng,p.lat,p.lng);
-      if(d<minDist){minDist=d;closest=it;closestLatLng=p;}
-    });
 
-    if(!closest||!closestLatLng)return;
+    const items=
+      (
+        data.layerList ||
+        []
+      )
 
-    drawCptedGuide(latlng,closestLatLng);
-    const addr=closest.adres||closest.roadnm_add||closest.jibun_addr||'';
-    const district=closest.jurisd_inst_nm||closest.jp_nm||'';
-    const distText=minDist<1000?Math.round(minDist)+'m':(minDist/1000).toFixed(1)+'km';
+      .filter(
 
-    L.popup({className:'safepopup',closeButton:true,maxWidth:285,closeOnClick:true})
-      .setLatLng(latlng)
+        item=>
+          item.x &&
+          item.y
+
+      );
+
+
+    if(
+      !items.length
+    ){
+
+      L.popup({
+
+        className:
+          'safepopup',
+
+        closeButton:
+          true,
+
+        maxWidth:
+          260,
+
+        closeOnClick:
+          true
+
+      })
+
+      .setLatLng(
+        latlng
+      )
+
       .setContent(
-        '<div class="pbadge" style="background:#b4530918;color:#b45309">🏗 범죄예방환경설계</div>'+
-        '<div class="ptitle">가장 가까운 CPTED 구역</div>'+
-        (addr?'<div class="prow">📍 '+esc(addr)+'</div>':'')+
-        (district?'<div class="prow">🏢 '+esc(district)+'</div>':'')+
-        '<div class="prow" style="color:#b45309">선택 지점에서 직선거리 약 '+distText+'</div>'+
-        '<div class="prow">지도에 점선으로 선택 지점과 CPTED 대표 좌표를 연결했습니다.</div>'
-      ).openOn(map);
-  }catch(err){
-    console.warn('CPTED 정보 조회 실패',err);
-  }finally{
-    if(requestToken===cptedTapRequestToken&&spinner)spinner.classList.remove('show');
+
+        '<div class="pbadge" '+
+          'style="background:#b4530918;color:#b45309">'+
+          '🏗 범죄예방환경설계'+
+        '</div>'+
+
+        '<div class="ptitle">'+
+          '조회 가능한 CPTED 정보 없음'+
+        '</div>'+
+
+        '<div class="prow">'+
+          '현재 화면 주변에서 CPTED 상세 정보를 찾지 못했습니다.'+
+        '</div>'
+
+      )
+
+      .openOn(
+        map
+      );
+
+
+      return;
+
+    }
+
+
+    let closest=null;
+
+    let closestLatLng=null;
+
+    let minDist=Infinity;
+
+
+    items.forEach(
+
+      item=>{
+
+        const x=
+          parseFloat(
+            item.x
+          );
+
+
+        const y=
+          parseFloat(
+            item.y
+          );
+
+
+        if(
+          Number.isNaN(x) ||
+          Number.isNaN(y)
+        ){
+
+          return;
+
+        }
+
+
+        const point=
+          L.CRS.EPSG3857.unproject(
+
+            L.point(
+              x,
+              y
+            )
+
+          );
+
+
+        const distance=
+          distM(
+
+            latlng.lat,
+            latlng.lng,
+
+            point.lat,
+            point.lng
+
+          );
+
+
+        if(
+          distance <
+          minDist
+        ){
+
+          minDist=
+            distance;
+
+          closest=
+            item;
+
+          closestLatLng=
+            point;
+
+        }
+
+      }
+
+    );
+
+
+    if(
+      !closest ||
+      !closestLatLng
+    ){
+
+      return;
+
+    }
+
+
+    drawCptedGuide(
+
+      latlng,
+
+      closestLatLng
+
+    );
+
+
+    const addr=
+
+      closest.adres ||
+      closest.roadnm_add ||
+      closest.jibun_addr ||
+      '';
+
+
+    const district=
+
+      closest.jurisd_inst_nm ||
+      closest.jp_nm ||
+      '';
+
+
+    const distText=
+
+      minDist <
+      1000
+
+        ?Math.round(
+            minDist
+          )+
+          'm'
+
+        :(
+            minDist/
+            1000
+          )
+          .toFixed(1)+
+          'km';
+
+
+    L.popup({
+
+      className:
+        'safepopup',
+
+      closeButton:
+        true,
+
+      maxWidth:
+        285,
+
+      closeOnClick:
+        true
+
+    })
+
+    .setLatLng(
+      latlng
+    )
+
+    .setContent(
+
+      '<div class="pbadge" '+
+        'style="background:#b4530918;color:#b45309">'+
+        '🏗 범죄예방환경설계'+
+      '</div>'+
+
+      '<div class="ptitle">'+
+        '가장 가까운 CPTED 구역'+
+      '</div>'+
+
+      (
+        addr
+
+          ?'<div class="prow">'+
+             '📍 '+
+             esc(addr)+
+           '</div>'
+
+          :''
+      )
+
+      +
+
+      (
+        district
+
+          ?'<div class="prow">'+
+             '🏢 '+
+             esc(district)+
+           '</div>'
+
+          :''
+      )
+
+      +
+
+      '<div class="prow" style="color:#b45309">'+
+        '선택 지점에서 직선거리 약 '+
+        distText+
+      '</div>'+
+
+      '<div class="prow">'+
+        '지도에 점선으로 선택 지점과 CPTED 대표 좌표를 연결했습니다.'+
+      '</div>'
+
+    )
+
+    .openOn(
+      map
+    );
+
   }
+
+  catch(error){
+
+    console.warn(
+      'CPTED 정보 조회 실패',
+      error
+    );
+
+  }
+
+  finally{
+
+    if(
+      requestToken ===
+        cptedTapRequestToken
+
+      &&
+
+      spinner
+    ){
+
+      spinner.classList.remove(
+        'show'
+      );
+
+    }
+
+  }
+
 }
 
-/* ── GPS ──
-   1차 위치는 저정밀+캐시 허용으로 "빨리" 받고(지도 중심 잡기용),
-   정밀 보정은 watchPosition(고정밀)이 이어서 담당한다. */
+
+/* ============================================================
+   GPS
+   ============================================================ */
+
 function getGPS(){
-  if(!navigator.geolocation){useDefault();return;}
-  if(Number.isFinite(myLat)&&Number.isFinite(myLng)){
-    /* 인트로 워밍업으로 이미 좌표가 있으면 기다리지 않는다 */
-    onLocated();
-  }else{
-    navigator.geolocation.getCurrentPosition(
-      p=>{myLat=p.coords.latitude;myLng=p.coords.longitude;writeLastPos(myLat,myLng);onLocated();},
-      ()=>useDefault(),
-      {timeout:7000,enableHighAccuracy:false,maximumAge:120000}
-    );
+
+  if(
+    !navigator.geolocation
+  ){
+
+    useDefault();
+
+    return;
+
   }
-  watchId=navigator.geolocation.watchPosition(
-    p=>{myLat=p.coords.latitude;myLng=p.coords.longitude;writeLastPos(myLat,myLng);drawMe();},
-    ()=>{},
-    {enableHighAccuracy:true,maximumAge:3000}
-  );
+
+
+  /*
+    이미 warmupLocation()에서
+    위치를 확보했다면 바로 시작
+  */
+
+  if(
+    Number.isFinite(myLat) &&
+    Number.isFinite(myLng)
+  ){
+
+    onLocated();
+
+  }
+
+  else{
+
+    navigator.geolocation
+      .getCurrentPosition(
+
+        position=>{
+
+          myLat=
+            position.coords.latitude;
+
+
+          myLng=
+            position.coords.longitude;
+
+
+          writeLastPos(
+            myLat,
+            myLng
+          );
+
+
+          onLocated();
+
+        },
+
+
+        ()=>{
+
+          useDefault();
+
+        },
+
+
+        {
+
+          timeout:
+            7000,
+
+          enableHighAccuracy:
+            false,
+
+          maximumAge:
+            120000
+
+        }
+
+      );
+
+  }
+
+
+  /*
+    이후 고정밀 GPS 추적
+  */
+
+  watchId=
+    navigator.geolocation
+      .watchPosition(
+
+        position=>{
+
+          myLat=
+            position.coords.latitude;
+
+
+          myLng=
+            position.coords.longitude;
+
+
+          writeLastPos(
+            myLat,
+            myLng
+          );
+
+
+          drawMe();
+
+        },
+
+
+        ()=>{},
+
+
+        {
+
+          enableHighAccuracy:
+            true,
+
+          maximumAge:
+            3000
+
+        }
+
+      );
+
 }
-function useDefault(){myLat=36.0190;myLng=129.3435;onLocated();}
+
+
+/* ============================================================
+   GPS 실패 시 포항 기본 위치
+
+   전국 서비스에서도 GPS 실패 상황에서
+   완전 빈 화면이 되는 것을 막기 위한 fallback.
+   ============================================================ */
+
+function useDefault(){
+
+  myLat=
+    36.0190;
+
+
+  myLng=
+    129.3435;
+
+
+  onLocated();
+
+}
+
+
+/* ============================================================
+   GPS 확보 후 초기 처리
+   ============================================================ */
 
 function onLocated(){
-  if(!map)return;
-  map.setView([myLat,myLng],DEFAULT_ZOOM);
+
+  if(
+    !map
+  ){
+
+    return;
+
+  }
+
+
+  map.setView(
+
+    [
+      myLat,
+      myLng
+    ],
+
+    DEFAULT_ZOOM
+
+  );
+
+
   drawMe();
+
   revGeo();
+
   addWMS();
+
   applyZoomGate();
+
   fetchAll();
 
+
+  /* ========================================================
+     이동 / 확대
+     ======================================================== */
+
   let moveTimer=null;
-  map.on('zoomend',()=>applyZoomGate());
-  map.on('moveend',()=>{
-    if(suppressMoveFetch)return;
-    clearTimeout(moveTimer);
-    moveTimer=setTimeout(()=>fetchAll(true),MARKER_MOVE_DEBOUNCE_MS);
-  });
 
-  /* v2.1 추가 레이어 초기화 — audit.js, havens.js */
-  if(typeof initAuditLayer==='function')initAuditLayer();
-  if(typeof initHavenLayer==='function')initHavenLayer();
 
-  map.on('click',e=>{
-    if(routePickMode){
-      clearCptedGuide(true);
-      routePickMode=false;
-      document.body.classList.remove('map-pick-mode');
-      setDestinationAndRoute(e.latlng);
-      return;
+  map.on(
+
+    'zoomend',
+
+    ()=>{
+
+      applyZoomGate();
+
     }
-    if(auditPickMode){handleAuditPick(e.latlng);return;}
-    handleCptedTap(e.latlng);
-  });
 
-  const mapEl=map.getContainer();
-  let pointerStart=null;
-  const onPointerDown=e=>{
-    if(e.pointerType==='mouse')return;
-    pointerStart={x:e.clientX,y:e.clientY,t:Date.now()};
-  };
-  const onPointerUp=e=>{
-    if(e.pointerType==='mouse'||!pointerStart)return;
-    const dx=e.clientX-pointerStart.x;
-    const dy=e.clientY-pointerStart.y;
-    const dt=Date.now()-pointerStart.t;
-    pointerStart=null;
-    if(Math.sqrt(dx*dx+dy*dy)>12||dt>900)return;
-    const rect=mapEl.getBoundingClientRect();
-    const pt=L.point(e.clientX-rect.left,e.clientY-rect.top);
-    const tappedLatLng=map.containerPointToLatLng(pt);
-    if(routePickMode){
-      clearCptedGuide(true);
-      routePickMode=false;
-      document.body.classList.remove('map-pick-mode');
-      setDestinationAndRoute(tappedLatLng);
-      return;
-    }
-    if(auditPickMode){handleAuditPick(tappedLatLng);return;}
-    handleCptedTap(tappedLatLng);
-  };
-  mapEl.addEventListener('pointerdown',onPointerDown,{passive:true});
-  mapEl.addEventListener('pointerup',onPointerUp,{passive:true});
-  mapDomCleanups.push(()=>{
-    mapEl.removeEventListener('pointerdown',onPointerDown);
-    mapEl.removeEventListener('pointerup',onPointerUp);
-  });
-}
+  );
 
-/* 내 위치 마커 — 이미 있으면 위치만 이동(GPS 갱신마다 재생성 방지) */
-function drawMe(){
-  if(!map||!myLat||!myLng)return;
-  if(myMark){
-    myMark.setLatLng([myLat,myLng]);
-    return;
-  }
-  const g=GROUP[grp];
-  const icon=L.divIcon({
-    html:'<div style="width:42px;height:42px;border-radius:50%;background:'+g.color+';border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:19px;box-shadow:0 3px 12px rgba(0,0,0,.25);">'+g.emoji+'</div>',
-    className:'',iconSize:[42,42],iconAnchor:[21,21]
-  });
-  myMark=L.marker([myLat,myLng],{icon,zIndexOffset:1000}).addTo(map);
-  myMark.bindPopup('<div class="ptitle">📍 현재 내 위치</div><div class="prow">현재 지도 화면 범위의 안전시설을 표시합니다</div>');
-}
-function flyHome(){
-  if(myLat&&myLng&&map){
-    const z=Math.max(map.getZoom(),MIN_DATA_ZOOM);
-    map.flyTo([myLat,myLng],z,{duration:1});
-  }
-}
-function revGeo(){
-  fetch('https://nominatim.openstreetmap.org/reverse?lat='+myLat+'&lon='+myLng+'&format=json&accept-language=ko')
-    .then(r=>r.json())
-    .then(d=>{
-      const a=d.address||{};
-      document.getElementById('locTxt').textContent=a.city_district||a.suburb||a.neighbourhood||a.county||'위치 확인됨';
-    })
-    .catch(()=>{document.getElementById('locTxt').textContent='위치 확인됨';});
-}
 
-/* ── WMS 타일(범죄주의구간·CPTED 면 데이터) ── */
-function addWMS(){
-  GROUP[grp].wms.forEach(key=>{
-    try{
-      const url=WMS_API[key];
-      if(!url)return;
-      let t;
-      if(key==='cpted'){
-        t=L.tileLayer.wms(url,{
-          layers:'A2SM_CPTED_G',format:'image/png',transparent:true,
-          version:'1.3.0',tiled:true,opacity:.5,tileSize:256
-        });
-      }else{
-        const WMSClass=getSafemapWMSClass();
-        t=new WMSClass(url,{opacity:.5,tileSize:256});
+  map.on(
+
+    'moveend',
+
+    ()=>{
+
+      if(
+        suppressMoveFetch
+      ){
+
+        return;
+
       }
-      wmsTiles[key]=t;
-      if(chipOn['w_'+key]&&!zoomBlocked)t.addTo(map);
-    }catch(e){console.warn('WMS 오류',key,e);}
-  });
+
+
+      clearTimeout(
+        moveTimer
+      );
+
+
+      moveTimer=
+        setTimeout(
+
+          ()=>{
+
+            fetchAll(
+              true
+            );
+
+          },
+
+          MARKER_MOVE_DEBOUNCE_MS
+
+        );
+
+    }
+
+  );
+
+
+  /* ========================================================
+     추가 레이어
+     ======================================================== */
+
+  if(
+    typeof initAuditLayer ===
+    'function'
+  ){
+
+    initAuditLayer();
+
+  }
+
+
+  /*
+    현재 havens.js는 안심 편의점을 제거한 호환 버전이므로
+    함수가 있어도 외부 Overpass 요청을 하지 않는다.
+  */
+
+  if(
+    typeof initHavenLayer ===
+    'function'
+  ){
+
+    initHavenLayer();
+
+  }
+
+
+  /* ========================================================
+     지도 클릭
+     ======================================================== */
+
+  map.on(
+
+    'click',
+
+    event=>{
+
+      /*
+        길찾기 지도 직접 선택
+      */
+
+      if(
+        routePickMode
+      ){
+
+        clearCptedGuide(
+          true
+        );
+
+
+        routePickMode=
+          false;
+
+
+        document.body.classList.remove(
+          'map-pick-mode'
+        );
+
+
+        setDestinationAndRoute(
+          event.latlng
+        );
+
+
+        return;
+
+      }
+
+
+      /*
+        즐겨찾기 위치 선택
+      */
+
+      if(
+        auditPickMode
+      ){
+
+        handleAuditPick(
+          event.latlng
+        );
+
+
+        return;
+
+      }
+
+
+      /*
+        CPTED
+      */
+
+      handleCptedTap(
+        event.latlng
+      );
+
+    }
+
+  );
+
+
+  /* ========================================================
+     모바일 직접 터치 보조
+     ======================================================== */
+
+  const mapEl=
+    map.getContainer();
+
+
+  let pointerStart=null;
+
+
+  const onPointerDown=
+    event=>{
+
+      if(
+        event.pointerType ===
+        'mouse'
+      ){
+
+        return;
+
+      }
+
+
+      pointerStart={
+
+        x:
+          event.clientX,
+
+        y:
+          event.clientY,
+
+        t:
+          Date.now()
+
+      };
+
+    };
+
+
+  const onPointerUp=
+    event=>{
+
+      if(
+        event.pointerType ===
+          'mouse'
+
+        ||
+
+        !pointerStart
+      ){
+
+        return;
+
+      }
+
+
+      const dx=
+        event.clientX-
+        pointerStart.x;
+
+
+      const dy=
+        event.clientY-
+        pointerStart.y;
+
+
+      const dt=
+        Date.now()-
+        pointerStart.t;
+
+
+      pointerStart=
+        null;
+
+
+      /*
+        드래그 또는 Long Press는
+        일반 터치로 취급하지 않는다.
+      */
+
+      if(
+        Math.hypot(
+          dx,
+          dy
+        ) >
+        12
+
+        ||
+
+        dt >
+        900
+      ){
+
+        return;
+
+      }
+
+
+      const rect=
+        mapEl.getBoundingClientRect();
+
+
+      const point=
+        L.point(
+
+          event.clientX-
+          rect.left,
+
+          event.clientY-
+          rect.top
+
+        );
+
+
+      const tappedLatLng=
+        map.containerPointToLatLng(
+          point
+        );
+
+
+      if(
+        routePickMode
+      ){
+
+        clearCptedGuide(
+          true
+        );
+
+
+        routePickMode=
+          false;
+
+
+        document.body.classList.remove(
+          'map-pick-mode'
+        );
+
+
+        setDestinationAndRoute(
+          tappedLatLng
+        );
+
+
+        return;
+
+      }
+
+
+      if(
+        auditPickMode
+      ){
+
+        handleAuditPick(
+          tappedLatLng
+        );
+
+
+        return;
+
+      }
+
+
+      handleCptedTap(
+        tappedLatLng
+      );
+
+    };
+
+
+  mapEl.addEventListener(
+
+    'pointerdown',
+
+    onPointerDown,
+
+    {
+      passive:true
+    }
+
+  );
+
+
+  mapEl.addEventListener(
+
+    'pointerup',
+
+    onPointerUp,
+
+    {
+      passive:true
+    }
+
+  );
+
+
+  mapDomCleanups.push(
+
+    ()=>{
+
+      mapEl.removeEventListener(
+
+        'pointerdown',
+
+        onPointerDown
+
+      );
+
+
+      mapEl.removeEventListener(
+
+        'pointerup',
+
+        onPointerUp
+
+      );
+
+    }
+
+  );
+
+}
+
+
+/* ============================================================
+   내 위치 마커
+   ============================================================ */
+
+function drawMe(){
+
+  if(
+    !map ||
+    !Number.isFinite(myLat) ||
+    !Number.isFinite(myLng)
+  ){
+
+    return;
+
+  }
+
+
+  /*
+    이미 있으면 위치만 이동
+  */
+
+  if(myMark){
+
+    myMark.setLatLng(
+
+      [
+        myLat,
+        myLng
+      ]
+
+    );
+
+
+    return;
+
+  }
+
+
+  const group=
+    GROUP[grp];
+
+
+  /*
+    안전망
+  */
+
+  if(
+    !group
+  ){
+
+    return;
+
+  }
+
+
+  const icon=
+    L.divIcon({
+
+      html:
+
+        '<div style="'+
+
+          'width:42px;'+
+          'height:42px;'+
+          'border-radius:50%;'+
+          'background:'+
+            group.color+
+            ';'+
+          'border:3px solid #fff;'+
+          'display:flex;'+
+          'align-items:center;'+
+          'justify-content:center;'+
+          'font-size:19px;'+
+          'box-shadow:0 3px 12px rgba(0,0,0,.25);'+
+
+        '">'+
+
+          group.emoji+
+
+        '</div>',
+
+
+      className:
+        '',
+
+
+      iconSize:[
+        42,
+        42
+      ],
+
+
+      iconAnchor:[
+        21,
+        21
+      ]
+
+    });
+
+
+  myMark=
+    L.marker(
+
+      [
+        myLat,
+        myLng
+      ],
+
+      {
+
+        icon,
+
+        zIndexOffset:
+          1000
+
+      }
+
+    )
+
+    .addTo(
+      map
+    );
+
+
+  myMark.bindPopup(
+
+    '<div class="ptitle">'+
+      '📍 현재 내 위치'+
+    '</div>'+
+
+    '<div class="prow">'+
+      '현재 지도 화면 범위의 안전시설을 표시합니다'+
+    '</div>'
+
+  );
+
+}
+
+
+/* ============================================================
+   현재 위치로 이동
+   ============================================================ */
+
+function flyHome(){
+
+  if(
+    Number.isFinite(myLat) &&
+    Number.isFinite(myLng) &&
+    map
+  ){
+
+    const zoom=
+      Math.max(
+
+        map.getZoom(),
+
+        MIN_DATA_ZOOM
+
+      );
+
+
+    map.flyTo(
+
+      [
+        myLat,
+        myLng
+      ],
+
+      zoom,
+
+      {
+        duration:1
+      }
+
+    );
+
+  }
+
+}
+
+
+/* ============================================================
+   현재 행정구역 표시
+
+   현재는 Nominatim reverse geocoding 유지.
+   VWorld 배경지도와는 별개 기능.
+   ============================================================ */
+
+function revGeo(){
+
+  fetch(
+
+    'https://nominatim.openstreetmap.org/reverse'+
+
+    '?lat='+
+    encodeURIComponent(
+      myLat
+    )+
+
+    '&lon='+
+    encodeURIComponent(
+      myLng
+    )+
+
+    '&format=json'+
+
+    '&accept-language=ko'
+
+  )
+
+  .then(
+
+    response=>
+      response.json()
+
+  )
+
+  .then(
+
+    data=>{
+
+      const address=
+        data.address ||
+        {};
+
+
+      const locText=
+        document.getElementById(
+          'locTxt'
+        );
+
+
+      if(!locText){
+        return;
+      }
+
+
+      locText.textContent=
+
+        address.city_district ||
+
+        address.suburb ||
+
+        address.neighbourhood ||
+
+        address.county ||
+
+        address.city ||
+
+        '위치 확인됨';
+
+    }
+
+  )
+
+  .catch(
+
+    ()=>{
+
+      const locText=
+        document.getElementById(
+          'locTxt'
+        );
+
+
+      if(locText){
+
+        locText.textContent=
+          '위치 확인됨';
+
+      }
+
+    }
+
+  );
+
+}
+
+
+/* ============================================================
+   WMS
+
+   범죄주의구간 / CPTED
+   ============================================================ */
+
+function addWMS(){
+
+  const group=
+    GROUP[grp];
+
+
+  if(
+    !group ||
+    !Array.isArray(group.wms)
+  ){
+
+    return;
+
+  }
+
+
+  group.wms.forEach(
+
+    key=>{
+
+      try{
+
+        const url=
+          WMS_API[key];
+
+
+        if(!url){
+
+          return;
+
+        }
+
+
+        let tileLayer;
+
+
+        /*
+          CPTED
+        */
+
+        if(
+          key ===
+          'cpted'
+        ){
+
+          tileLayer=
+            L.tileLayer.wms(
+
+              url,
+
+              {
+
+                layers:
+                  'A2SM_CPTED_G',
+
+                format:
+                  'image/png',
+
+                transparent:
+                  true,
+
+                version:
+                  '1.3.0',
+
+                tiled:
+                  true,
+
+                opacity:
+                  .5,
+
+                tileSize:
+                  256
+
+              }
+
+            );
+
+        }
+
+        /*
+          생활안전지도 OpenAPI WMS
+        */
+
+        else{
+
+          const WMSClass=
+            getSafemapWMSClass();
+
+
+          tileLayer=
+            new WMSClass(
+
+              url,
+
+              {
+
+                opacity:
+                  .5,
+
+                tileSize:
+                  256
+
+              }
+
+            );
+
+        }
+
+
+        wmsTiles[key]=
+          tileLayer;
+
+
+        if(
+          chipOn[
+            'w_'+
+            key
+          ]
+
+          &&
+
+          !zoomBlocked
+        ){
+
+          tileLayer.addTo(
+            map
+          );
+
+        }
+
+      }
+
+      catch(error){
+
+        console.warn(
+
+          'WMS 오류',
+
+          key,
+
+          error
+
+        );
+
+      }
+
+    }
+
+  );
+
 }
