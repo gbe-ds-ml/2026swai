@@ -1,7 +1,7 @@
 /* ============================================================
    SafeWalk v2.0 — route.js
    보행 경로 요청(Worker 프록시→OSRM→Valhalla 폴백), 경로 그리기,
-   경로 주변 시설 조회(회랑), 안전도 점수 계산, 경로 패널 표시.
+   경로 주변 시설 조회(회랑), 시설 접근성 점수 계산, 경로 패널 표시.
 
    [v2 개선]
    1) 재진입 가드: 경로 계산 중 새 길찾기를 시작하면 이전 계산 결과를
@@ -11,7 +11,7 @@
    3) 회랑 버퍼를 미터 단위로 계산해 경도 방향에서도 판정 반경(150m)
       이상을 보장한다(기존에는 동서 방향 ~141m로 누락 발생).
    4) km 단위 응답 감지를 예상 시간 계산보다 먼저 수행.
-   5) 안전도 평가 전에 경로 상자 밖 시설을 걸러내고, 경로 점이
+   5) 시설 접근성 평가 전에 경로 상자 밖 시설을 걸러내고, 경로 점이
       너무 많으면 간격을 띄워 계산량을 줄인다(UI 멈춤 방지).
    ============================================================ */
 
@@ -55,11 +55,11 @@ async function runSearchRoute(){
     const safety=allFailed?null:evaluateRouteSafety(routeLatLngs,corridor.facilities);
     updateRoutePanel(summary,safety,false,corridor);
     if(allFailed){
-      showRouteToast('⚠️ 경로는 표시했지만 안전시설 조회에 실패해 안전도를 계산하지 못했습니다.');
+      showRouteToast('⚠️ 경로는 표시했지만 안전시설 조회에 실패해 시설 접근성을 계산하지 못했습니다.');
     }else{
   showRouteToast(
   '✅ 경로 계산 완료 · 경로 주변 시설 '+
-  corridor.facilities.length+
+  safety.total+
   '건을 반영했습니다.\n'+
   '뒤로가기·X를 눌러도 경로는 유지됩니다. 메인 화면에서도 같은 이용자 유형으로 다시 들어오면 경로가 복원됩니다.\n'+
   '종료하려면 \'길찾기 취소\'를 눌러주세요.',
@@ -69,19 +69,16 @@ async function runSearchRoute(){
   }catch(err){
     if(token!==routeRunToken||!map)return;
     console.warn('경로 API 실패:',err);
+    if(apiRouteLayer){map.removeLayer(apiRouteLayer);apiRouteLayer=null;}
     const pts=[[origin.lat,origin.lng],[dest.lat,dest.lng]];
     fallbackRouteLine=L.polyline(pts,{
-      color:ROUTE_COLOR,weight:5,opacity:.85,dashArray:'8,8',lineCap:'round',lineJoin:'round'
+      color:'#64748b',weight:4,opacity:.85,dashArray:'8,8',lineCap:'round',lineJoin:'round',safeWalkRoute:false
     }).addTo(map);
     map.fitBounds(fallbackRouteLine.getBounds(),{padding:[50,50]});
     const ll=pts.map(p=>({lat:p[0],lng:p[1]}));
-    const corridor=await fetchCorridorFacilities(ll);
-    if(token!==routeRunToken||!map)return;
     const dist=pathDistanceMeters(ll);
-    const allFailed=corridor.total>0&&corridor.failed>=corridor.total;
-    const safety=allFailed?null:evaluateRouteSafety(ll,corridor.facilities);
-    updateRoutePanel({distanceM:dist,durationSec:dist/1.1},safety,true,corridor);
-    showRouteToast('⚠️ 경로 API 호출에 실패해 직선 안내를 임시로 표시했습니다.');
+    updateRoutePanel({distanceM:dist,durationSec:0},null,true,null);
+    showRouteToast('⚠️ 보행 경로를 조회하지 못했습니다. 점선은 두 지점을 연결한 참고선이며 실제 이동 경로가 아닙니다.');
   }finally{
     if(token===routeRunToken){
       if(spinner)spinner.classList.remove('show');
@@ -193,13 +190,13 @@ async function fetchCorridorLayer(key,bounds){
       if(!pt)return;
       const info=getFacilityInfo(key,it);
       out.push({
-        id:key+':'+pt.lat.toFixed(6)+','+pt.lng.toFixed(6),
+        id:getMarkerStableId(key,pt.lat,pt.lng,it),
         key,lat:pt.lat,lng:pt.lng,
         name:info.name||(LAYER[key]?LAYER[key].label:key),
         addr:info.addr||''
       });
     });
-    return {ok:true,items:out};
+    return {ok:true,items:out,truncated:Boolean(items.truncated)};
   }catch(e){
     console.warn('[corridor:'+key+'] 실패:',e.message);
     return {ok:false,items:[]};
@@ -211,18 +208,19 @@ async function fetchCorridorFacilities(routeLatLngs){
   const cells=buildCorridorCells(routeLatLngs);
   const keys=Object.keys(FACILITY_SCORE_CONFIG);
   const seen=new Set(),facilities=[];
-  let failed=0,total=0;
+  let failed=0,total=0,truncated=0;
   for(let i=0;i<cells.length;i++){
     const results=await Promise.allSettled(keys.map(k=>fetchCorridorLayer(k,cells[i])));
     results.forEach(r=>{
       total++;
       if(r.status!=='fulfilled'||!r.value.ok){failed++;return;}
+      if(r.value.truncated)truncated++;
       r.value.items.forEach(f=>{
         if(!seen.has(f.id)){seen.add(f.id);facilities.push(f);}
       });
     });
   }
-  return {facilities,failed,total};
+  return {facilities,failed,total,truncated};
 }
 
 /* ── 경로 응답 파싱 ── */
@@ -251,12 +249,21 @@ function hasRouteGeometry(data){
   const g=extractRouteGeometry(data);
   return Boolean(g&&g.coordinates&&g.coordinates.length>1);
 }
+async function fetchRouteJSON(url,options={}){
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),10000);
+  try{
+    const res=await fetch(url,{...options,signal:controller.signal});
+    const data=await res.json();
+    return {res,data};
+  }finally{clearTimeout(timeout);}
+}
 async function requestWalkingRoute(locations){
   let lastErr=null;
 
   if(ROUTE_PROXY_URL){
     try{
-      const res=await fetch(ROUTE_PROXY_URL,{
+      const {res,data}=await fetchRouteJSON(ROUTE_PROXY_URL,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
@@ -267,8 +274,7 @@ async function requestWalkingRoute(locations){
           directions_options:{units:'kilometers',language:'ko-KR'}
         })
       });
-      const text=await res.text();
-      const data=JSON.parse(text);
+
       if(!res.ok)throw new Error((data&&(data.error||data.message))||('HTTP '+res.status));
       if(!hasRouteGeometry(data))throw new Error('프록시 응답에 경로 geometry 없음');
       data._routeProvider='Proxy';
@@ -285,8 +291,7 @@ async function requestWalkingRoute(locations){
       const params=new URLSearchParams({
         overview:'full',geometries:'geojson',steps:'true',alternatives:'false'
       });
-      const res=await fetch(baseUrl+'/'+coords+'?'+params.toString());
-      const data=await res.json();
+      const {res,data}=await fetchRouteJSON(baseUrl+'/'+coords+'?'+params.toString());
       if(!res.ok||data.code!=='Ok')throw new Error(data.message||data.code||('HTTP '+res.status));
       if(!hasRouteGeometry(data))throw new Error('OSRM 응답에 경로 geometry 없음');
       data._routeProvider='OSRM-foot';
@@ -306,12 +311,12 @@ async function requestWalkingRoute(locations){
 
   for(const url of VALHALLA_ROUTE_URLS){
     try{
-      const res=await fetch(url,{
+      const {res,data}=await fetchRouteJSON(url,{
         method:'POST',
         headers:{'Content-Type':'application/json','X-Client-Id':'safewalk-pohang-school-project'},
         body:JSON.stringify(body)
       });
-      const data=await res.json();
+
       if(!res.ok)throw new Error(data.message||data.error||('HTTP '+res.status));
       if(!hasRouteGeometry(data))throw new Error('Valhalla 응답에 경로 geometry 없음');
       data._routeProvider='Valhalla';
@@ -329,6 +334,7 @@ function drawApiRoute(data){
   if(!geometry)throw new Error('경로 geometry 없음');
   const halo=L.geoJSON(geometry,{style:{color:ROUTE_HALO_COLOR,weight:10,opacity:.9,lineCap:'round',lineJoin:'round'}});
   const redLine=L.geoJSON(geometry,{style:{color:ROUTE_COLOR,weight:6,opacity:.96,lineCap:'round',lineJoin:'round'}});
+  redLine.eachLayer(layer=>{layer.options.safeWalkRoute=true;});
   apiRouteLayer=L.featureGroup([halo,redLine]).addTo(map);
   map.fitBounds(apiRouteLayer.getBounds(),{padding:[56,56]});
   return geometry.coordinates.map(c=>({lat:c[1],lng:c[0]}));
@@ -345,7 +351,7 @@ function getRouteSummary(data,latLngs){
   return {distanceM,durationSec,provider:data._routeProvider||'routing'};
 }
 
-/* ── 안전도 점수 ── */
+/* ── 시설 접근성 점수 ── */
 function facilityProximityRate(distanceM){
   if(distanceM<=30)return 1;
   if(distanceM<=60)return .75;
@@ -353,12 +359,8 @@ function facilityProximityRate(distanceM){
   if(distanceM<=ROUTE_FACILITY_RADIUS_M)return .15;
   return 0;
 }
-function shortRouteBonus(distanceM){
-  if(distanceM<=300)return 15;
-  if(distanceM>=1200)return 0;
-  return Math.round(15*(1200-distanceM)/900);
-}
-/* 안전도 평가용으로 경로 점을 최대 800개까지만 사용한다.
+function shortRouteBonus(){return 0;}
+/* 시설 접근성 평가용으로 경로 점을 최대 800개까지만 사용한다.
    (수천 점짜리 경로에서도 UI가 멈추지 않도록. 간격은 수 m 수준이라
    점수 정확도에 미치는 영향은 무시할 수 있다) */
 function getScoringPath(routeLatLngs){
@@ -416,8 +418,8 @@ function evaluateRouteSafety(routeLatLngs,facilityList){
 
   facilityScore=Math.round(facilityScore);
   const routeDistance=pathDistanceMeters(routeLatLngs);
-  const shortBonus=shortRouteBonus(routeDistance);
-  const score=Math.max(0,Math.min(100,Math.round(SCORE_BASE+facilityScore+shortBonus)));
+  const shortBonus=0; // 이전 UI와의 호환 필드. 거리만으로 점수를 가산하지 않는다.
+  const score=Math.max(0,Math.min(100,Math.round(facilityScore/FACILITY_TOTAL_CAP*100)));
 
   return {countsByKey,scoreByKey,facilityScore,shortBonus,score,total:seen.size,radiusM:ROUTE_FACILITY_RADIUS_M};
 }
@@ -432,16 +434,18 @@ function updateRoutePanel(summary,safety,isFallback,corridor){
   syncRoutePanelWithSheet();
 
   const partialFail=Boolean(corridor&&corridor.failed>0&&corridor.failed<corridor.total);
+  const incomplete=partialFail||Boolean(corridor&&corridor.truncated);
+  panel.dataset.routeState=isFallback?'fallback':'road';
 
-  document.getElementById('routeTitle').textContent=isFallback?'⚠️ 임시 직선 안내':'🚶 최단 보행 경로 · 안전도 평가';
+  document.getElementById('routeTitle').textContent=isFallback?'⚠️ 보행 경로 조회 실패':'🚶 보행 경로 · 시설 접근성';
   document.getElementById('routeSub').textContent=isFallback
-    ?'도로망 경로 호출 실패로 목적지까지 직선 안내를 표시했습니다.'
-    :'안전시설을 강제 경유하지 않고 최단거리 우선 경로를 안내합니다.';
+    ?'점선은 출발지와 목적지를 연결한 참고선입니다. 실제 이동 경로로 이용하지 마세요.'
+    :'보행 경로를 조회한 뒤 경로 주변의 안전시설 접근성을 계산합니다.';
   document.getElementById('routeDistance').textContent=formatDistance(summary.distanceM);
-  document.getElementById('routeDuration').textContent=formatDuration(summary.durationSec);
+  document.getElementById('routeDuration').textContent=isFallback?'산출 불가':formatDuration(summary.durationSec);
 
   /* v2.1: 안심 타이머 제안 — timer.js */
-  if(typeof offerSafeTimer==='function')offerSafeTimer(summary,routeDest?routeDest.label:'');
+  if(!isFallback&&typeof offerSafeTimer==='function')offerSafeTimer(summary,routeDest?routeDest.label:'');
 
   const scoreEl=document.getElementById('routeScore');
   scoreEl.classList.toggle('na',!safety);
@@ -449,12 +453,19 @@ function updateRoutePanel(summary,safety,isFallback,corridor){
 
   const mobileSummary=document.getElementById('routeMobileSummary');
 
+  if(isFallback){
+    document.getElementById('routeSafeList').innerHTML='';
+    if(mobileSummary)mobileSummary.textContent='직선거리 참고 · 보행 안내 및 점수 산출 불가';
+    document.getElementById('routeReason').textContent='도로망 경로를 확인하지 못해 거리에는 두 지점 사이의 직선거리만 표시합니다. 네트워크 상태를 확인하고 길찾기를 다시 실행해 주세요.';
+    return;
+  }
+
   if(!safety){
     /* 시설 조회 전멸: 가짜 점수를 보여주지 않는다 */
     document.getElementById('routeSafeList').innerHTML='';
-    if(mobileSummary)mobileSummary.textContent='안전시설 조회 실패 · 안전도 측정 불가';
+    if(mobileSummary)mobileSummary.textContent='안전시설 조회 실패 · 시설 접근성 측정 불가';
     document.getElementById('routeReason').innerHTML=
-      '⚠️ 생활안전지도 시설 조회에 모두 실패해 안전도를 계산할 수 없습니다.'+
+      '⚠️ 생활안전지도 시설 조회에 모두 실패해 시설 접근성을 계산할 수 없습니다.'+
       '<br>네트워크 상태를 확인한 뒤 길찾기를 다시 실행해 주세요.'+
       '<br><span style="color:#94a3b8">점수가 없는 것은 "주변에 시설이 없다"는 뜻이 아니라 "확인하지 못했다"는 뜻입니다.</span>';
     return;
@@ -467,43 +478,44 @@ function updateRoutePanel(summary,safety,isFallback,corridor){
     const cap=FACILITY_SCORE_CONFIG[key].cap;
     chips.push('<span class="route-pill">'+FACILITY_ROUTE_LABEL[key]+' · '+count+'개 · '+itemScore+'/'+cap+'점</span>');
   });
-  chips.push('<span class="route-pill">📏 짧은 길 보정 +'+safety.shortBonus+'점</span>');
   document.getElementById('routeSafeList').innerHTML=chips.join('');
 
   if(mobileSummary){
     mobileSummary.textContent=isFallback
       ?'경로 API 실패 · 임시 직선 안내'
-      :'시설 '+safety.total+'개 · 시설 +'+safety.facilityScore+'/'+FACILITY_TOTAL_CAP+'점 · 짧은 길 +'+safety.shortBonus+'점';
+      :'시설 '+safety.total+'건 · 접근성 '+safety.score+'/100점'+(incomplete?' · 일부 자료만 반영':'');
   }
 
   document.getElementById('routeReason').innerHTML=
-    '기본 '+SCORE_BASE+'점 + 안전시설 접근성 '+safety.facilityScore+'점(최대 '+FACILITY_TOTAL_CAP+'점)'+
-    ' + 짧은 길 보정 '+safety.shortBonus+'점(최대 15점)'+
+    '시설 접근성 원점수 '+safety.facilityScore+'/'+FACILITY_TOTAL_CAP+'점을 100점 만점으로 환산합니다.'+
+    '<br>기본점수와 거리 보정은 더하지 않습니다. 정상 조회 결과 시설이 0건이면 0점입니다.'+
     '<br>우선순위별 상한: 치안시설 17점(1순위) · CCTV 11점 / 안전비상벨 11점(2순위) · 어린이안전지킴이집 6점(3순위)'+
     '<br>시설은 경로에서 30m·60m·100m·150m 이내에 따라 100%·75%·40%·15%로 차등 반영합니다.'+
     '<br>점수는 레이어 표시 여부와 무관하게 조회된 시설 전체를 기준으로 계산합니다.'+
     (partialFail?'<br><span class="snap-note">⚠️ 일부 시설 조회에 실패해 실제보다 낮게 계산되었을 수 있습니다.</span>':'')+
+    (corridor&&corridor.truncated?'<br><span class="snap-note">⚠️ 조회 건수 제한으로 일부 시설만 반영되었습니다.</span>':'')+
     (routeSnapNote?'<br><span class="snap-note">'+routeSnapNote+'</span>':'')+
-    '<br><span style="color:#94a3b8">공공데이터 기반 참고 점수이며 실제 안전을 보장하지 않습니다.</span>';
+    '<br><span style="color:#64748b">모든 이용자 유형에 같은 시설 가중치를 적용합니다. 범죄주의구간·즐겨찾기는 점수에 포함되지 않습니다. 공공데이터 기반 참고값이며 실제 안전이나 범죄 위험을 예측하지 않습니다.</span>';
 }
 function showRoutePanelLoading(){
   const panel=document.getElementById('routePanel');
   if(!panel)return;
+  panel.dataset.routeState='loading';
   panel.classList.add('show');
   document.body.classList.add('route-visible');
   resetRouteDetails();
   syncRoutePanelWithSheet();
   document.getElementById('routeTitle').textContent='🧭 경로 계산 중';
-  document.getElementById('routeSub').textContent='최단 보행 경로를 한 번 호출한 뒤 경로 주변 안전시설을 분석합니다.';
+  document.getElementById('routeSub').textContent='보행 경로를 한 번 호출한 뒤 경로 주변 안전시설을 분석합니다.';
   document.getElementById('routeDistance').textContent='계산 중';
   document.getElementById('routeDuration').textContent='계산 중';
   const scoreEl=document.getElementById('routeScore');
   scoreEl.classList.remove('na');
   scoreEl.textContent='-';
   document.getElementById('routeSafeList').innerHTML='';
-  document.getElementById('routeReason').textContent='안전시설을 강제 경유하지 않으며, 완성된 최단 경로 주변 시설만 점수화합니다.';
+  document.getElementById('routeReason').textContent='안전시설을 강제 경유하지 않으며, 완성된 보행 경로 주변 시설만 점수화합니다.';
   const mobileSummary=document.getElementById('routeMobileSummary');
-  if(mobileSummary)mobileSummary.textContent='최단 경로와 안전시설을 분석하고 있습니다.';
+  if(mobileSummary)mobileSummary.textContent='보행 경로와 안전시설을 분석하고 있습니다.';
   if(typeof clearSafeTimerOffer==='function')clearSafeTimerOffer();
 }
 function clearRoute(hidePanel=true){

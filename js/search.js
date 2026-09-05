@@ -20,7 +20,7 @@ function openSearchPanel(){
   document.body.classList.add('search-open');
   el.classList.add('show');
 
-  if(!routeOrigin&&myLat&&myLng)routeOrigin={lat:myLat,lng:myLng,label:'📍 현재 위치',src:'gps'};
+  if(!routeOrigin&&hasCurrentLocation())routeOrigin={lat:myLat,lng:myLng,label:'📍 현재 위치',src:'gps'};
   updateSlotUI();
   focusSlot(routeDest?'origin':'dest');
   requestAnimationFrame(syncViewportChrome);
@@ -74,7 +74,7 @@ function setSearchMsg(text){
   if(el)el.textContent=text;
 }
 function useCurrentLocation(){
-  if(!myLat||!myLng){showRouteToast('현재 위치를 아직 확인하지 못했습니다.');return;}
+  if(!hasCurrentLocation()){showRouteToast('현재 위치를 아직 확인하지 못했습니다. 내 위치 버튼으로 다시 확인해 주세요.');return;}
   setSlotValue(activeSlot,{lat:myLat,lng:myLng,label:'📍 현재 위치',src:'gps'});
   setSearchMsg((activeSlot==='origin'?'출발지':'도착지')+'를 현재 위치로 지정했습니다.');
 }

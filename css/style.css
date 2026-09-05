@@ -776,3 +776,7 @@ body.siren-flash::after{
 .audit-btn.sel{border-color:var(--blue);background:#eff6ff;color:#1d4ed8;font-weight:900;}
 .audit-btn:active{background:#f1f5f9;}
 .audit-submit{margin-top:4px;background:var(--blue);}
+
+#statsStatus:not([hidden]){display:block;margin-top:4px;color:#92400e;}
+
+.chat-privacy{padding:8px 14px;margin:0;color:var(--gray);font-size:11px;line-height:1.45;flex-shrink:0;}
