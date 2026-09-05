@@ -1773,50 +1773,9 @@ if(
    ============================================================ */
 
 function swWarmRestoreLocation(){
-
-  if(
-    Number.isFinite(myLat) &&
-    Number.isFinite(myLng)
-  ){
-    return;
-  }
-
-
-  if(
-    typeof readLastPos !==
-    'function'
-  ){
-    return;
-  }
-
-
-  try{
-
-    const pos =
-      readLastPos();
-
-
-    if(
-      pos &&
-      Number.isFinite(pos.lat) &&
-      Number.isFinite(pos.lng)
-    ){
-
-      myLat =
-        pos.lat;
-
-
-      myLng =
-        pos.lng;
-
-    }
-
-  }
-
-  catch(error){}
-
+  // 저장 좌표는 initMap의 지도 중심으로만 사용한다. GPS 측정값은 복원하지 않는다.
+  warmupLocation();
 }
-
 
 /* ============================================================
    저장된 route 자동 복원
@@ -2136,3 +2095,4 @@ else{
 console.log(
   '[SafeWalk v2.8] 경로 유지 UX 활성화'
 );
+

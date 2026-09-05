@@ -347,7 +347,10 @@ function safeWalkAgentDistanceText(value){
    좌표는 절대 넣지 않는다.
    ============================================================ */
 
-function safeWalkAgentBuildFacilityHistory(){
+function safeWalkAgentBuildFacilityHistory(outcome){
+  if(outcome?.status==='location_error')return '현재 GPS 위치를 확인하지 못해 시설 조회를 실행하지 못했습니다. 주변 시설 유무는 확인되지 않았습니다.';
+  if(!outcome||!['ok','partial'].includes(outcome.status))return '안전시설 조회에 실패했습니다. 주변 시설이 없다는 뜻이 아니며 시설 유무는 확인되지 않았습니다.';
+  if(outcome.status==='partial'&&!safeWalkAgentLastFacilityResults.length)return '일부 시설 조회에 실패했고 나머지 조회 범위에서는 요청한 시설을 찾지 못했습니다. 시설 유무를 확정할 수 없습니다.';
 
   const results =
     safeWalkAgentLastFacilityResults;
@@ -416,6 +419,7 @@ function safeWalkAgentBuildFacilityHistory(){
 
 
   return (
+    (outcome.status==='partial'?'일부 자료만 조회되었습니다. 가장 가까운 시설이라고 단정할 수 없습니다. ':'') +
     'SafeWalk가 현재 위치 기준 SafeMap 공공데이터를 직접 조회한 결과: ' +
     items.join(' / ')
   );
@@ -685,6 +689,11 @@ async function safeWalkAgentCallWorker(
   }
 
 
+  if(typeof data.answer==='string'){
+    data.answer=data.answer.replace(/<(think|analysis|reasoning)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi,'').trim();
+  }
+  if(!data.action||!['none','route','facility'].includes(data.action.type))throw new Error('AI 명령 형식이 올바르지 않습니다.');
+  if(data.action.type==='none'&&(typeof data.answer!=='string'||!data.answer))throw new Error('AI 답변을 확인하지 못했습니다.');
   return data;
 
 }
@@ -830,21 +839,6 @@ sendChatMessage =
           controller.signal
 
         );
-
-
-      console.log(
-
-        '[SafeWalk Agent]',
-
-        {
-          model:
-            data.model,
-
-          action:
-            data.action
-        }
-
-      );
 
 
       hideChatTyping();
@@ -1002,9 +996,8 @@ sendChatMessage =
           [];
 
 
-        await swBeginFacilityCommand(
-          command
-        );
+        const facilityOutcome=await swBeginFacilityCommand(command);
+        if(facilityOutcome?.status==='cancelled')return;
 
 
         /*
@@ -1013,7 +1006,7 @@ sendChatMessage =
         */
 
         const facilityMemory =
-          safeWalkAgentBuildFacilityHistory();
+          safeWalkAgentBuildFacilityHistory(facilityOutcome);
 
 
         safeWalkAgentRememberTurn(
