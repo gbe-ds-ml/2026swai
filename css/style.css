@@ -808,3 +808,25 @@ body.siren-flash::after{
   overflow: visible;
   text-overflow: clip;
 }
+/* 빠른 질문 버튼: 화면 폭에 맞춰 줄바꿈 */
+#chatPanel .chat-quick {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 8px 11px;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+#chatPanel .chat-quick-btn {
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 10.5px;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
+}
