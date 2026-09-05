@@ -893,11 +893,53 @@ function setChatBusy(busy){
   if(input)input.disabled=chatBusy;
 }
 
-function askChatQuick(message){
-  if(chatBusy)return;
+function askChatQuick(message) {
+  const isScoreHelp =
+    message === 'SafeWalk 시설 접근성 점수는 어떻게 계산하나요?';
+
+  if (chatBusy) return;
   openChatPanel();
-  const input=document.getElementById('chatInput');
-  if(input)input.value=message;
+
+  /* 점수 설명은 AI 서버를 호출하지 않습니다. */
+  if (isScoreHelp) {
+    const answer = [
+      '시설 접근성 점수 계산 안내',
+      '',
+      '현재 계산식: 시설 원점수 ÷ 45 × 100',
+      '현재 버전은 기본점수와 거리 보너스를 더하지 않습니다.',
+      '',
+      '시설별 최대 점수',
+      '• 치안시설: 17점',
+      '• CCTV: 11점',
+      '• 안전비상벨: 11점',
+      '• 아동안전지킴이집: 6점',
+      '',
+      '시설별 가중 점수에 경로와의 거리를 반영합니다.',
+      '• 30m 이내: 100%',
+      '• 30m 초과~60m 이내: 75%',
+      '• 60m 초과~100m 이내: 40%',
+      '• 100m 초과~150m 이내: 15%',
+      '• 150m 초과: 반영하지 않음',
+      '',
+      '정상 조회 결과 시설이 없으면 0점입니다. 모든 시설 조회가 실패하면 점수를 산출하지 않습니다.',
+      '일부 자료만 조회되면 실제보다 낮게 계산될 수 있습니다.',
+      '100점은 평가항목의 상한이며, 안전 확률이나 실제 안전을 보장하는 수치가 아닙니다.'
+    ].join('\n');
+
+    appendChatMessage('user', message);
+    appendChatMessage('bot', answer);
+
+    /* 후속 질문에서도 설명 내용을 참조하도록 기록합니다. */
+    if (typeof safeWalkAgentRememberTurn === 'function') {
+      safeWalkAgentRememberTurn(message, answer);
+    }
+
+    return;
+  }
+
+  /* 다른 빠른 질문은 기존 처리 유지 */
+  const input = document.getElementById('chatInput');
+  if (input) input.value = message;
   sendChatMessage();
 }
 
