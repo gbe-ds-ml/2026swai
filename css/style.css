@@ -780,3 +780,31 @@ body.siren-flash::after{
 #statsStatus:not([hidden]){display:block;margin-top:4px;color:#92400e;}
 
 .chat-privacy{padding:8px 14px;margin:0;color:var(--gray);font-size:11px;line-height:1.45;flex-shrink:0;}
+/* PC·모바일 공통: 상세 점수 버튼 표시 */
+#routePanel #routeDetailsToggle {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px;
+  border: 0;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* PC에서도 기존 점수 요약 표시 */
+#routePanel #routeMobileSummary {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
