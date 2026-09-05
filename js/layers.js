@@ -628,4 +628,6 @@ function updateStats(){
   });
   bar.style.display=items.length?'flex':'none';
   bar.innerHTML=items.join('');
+  const note=document.getElementById('statsNote');
+  if(note)note.hidden=!items.length;
 }
