@@ -437,11 +437,7 @@ function getSafeWalkCurrentOrigin(){
             SafeWalk 전역 현재 위치도 갱신
           */
 
-          myLat =
-            lat;
-
-          myLng =
-            lng;
+          if(!acceptGPSPosition(position)){reject(new Error('현재 위치를 확인하지 못했습니다.'));return;}
 
 
           /*
@@ -1812,3 +1808,4 @@ injectSafeWalkLongPressStyles();
 console.log(
   '[SafeWalk v2.6.1] 모바일 Long Press 경로 설정 활성화'
 );
+

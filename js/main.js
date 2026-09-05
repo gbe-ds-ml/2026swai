@@ -595,6 +595,7 @@ function goBack(){
   markerCache={};
 
   markerFetchBounds={};
+  markerFetchErrors={};
 
   markerFetchZoom={};
 
@@ -843,3 +844,4 @@ window.addEventListener(
 
   }
 );
+

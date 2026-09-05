@@ -99,6 +99,7 @@
      ========================================================== */
 
   function currentPosition(){
+    if(!hasCurrentLocation())return null;
 
     try{
 
@@ -327,9 +328,6 @@
         return null;
       }
 
-      const target =
-        routeColor();
-
       let best = null;
       let bestCount = 0;
 
@@ -354,18 +352,8 @@
           return;
         }
 
-        const color =
-          String(
-            layer.options?.color ||
-            ''
-          ).toLowerCase();
-
-        if(
-          color !== target &&
-          color !== '#ef4444'
-        ){
-          return;
-        }
+        // 실제 도로망 응답으로 생성된 선만 안내 대상으로 삼는다.
+        if(layer.options?.safeWalkRoute!==true)return;
 
         const pts =
           flattenLatLngs(
@@ -1724,7 +1712,7 @@
     if(btn){
 
       btn.disabled =
-        rerouting;
+        rerouting || (!navigationMode&&!findRoutePolyline());
 
       const text =
         rerouting
@@ -2830,6 +2818,7 @@
 
 
     if(!current){
+      setStatus('현재 위치를 다시 확인하고 있습니다. 위치 수신 상태를 확인해 주세요.','warn');
       return;
     }
 
@@ -2918,15 +2907,15 @@
        안내 상태
        ======================================== */
 
-    if(
-      remaining <=
-      ARRIVAL_M
-    ){
+    const destination=getConfiguredDestination()||routeLatLngs[routeLatLngs.length-1];
+    const destinationDistance=distanceM(current,destination);
+    const accurate=Number.isFinite(myPositionAccuracy)&&myPositionAccuracy<=50;
 
-      setStatus(
-        '🏁 목적지에 거의 도착했습니다. 도착 후 안내 종료를 눌러 주세요.'
-      );
-
+    if(!accurate){
+      setStatus('GPS 정확도가 낮아 도착 여부를 확인할 수 없습니다. 주변 지형과 목적지를 직접 확인해 주세요.','warn');
+    }
+    else if(remaining<=ARRIVAL_M&&destinationDistance<=ARRIVAL_M&&progress.offRouteM<OFF_ROUTE_WARN_M){
+      setStatus('🏁 목적지에 거의 도착했습니다. 도착 후 안내 종료를 눌러 주세요.');
     }
 
     else if(
@@ -3342,3 +3331,4 @@
   }
 
 })();
+

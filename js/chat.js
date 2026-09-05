@@ -121,6 +121,7 @@ function hideChatTyping(){
 function getSafeWalkChatContext(){
   const context={
     service:'SafeWalk',
+    safetyMethod:'시설 접근성 원점수/45*100. 기본점수·거리보정 없음. 0건은 0점, 조회 실패는 측정 불가.',
     selectedGroup:grp&&GROUP[grp]?GROUP[grp].label:null,
     currentArea:(document.getElementById('locTxt')?.textContent||'').trim()||null
   };
@@ -847,7 +848,7 @@ async function beginChatRouteCommand(command){
   }
 
   if(command.originType==='current'){
-    if(!Number.isFinite(myLat)||!Number.isFinite(myLng)){
+    if(!hasCurrentLocation()){
       appendChatRouteError('현재 위치를 아직 확인하지 못했습니다. 위치 권한을 허용하고 잠시 후 다시 요청해 주세요.');
       chatRouteFlow=null;
       return;
@@ -1016,3 +1017,4 @@ function bindChatInput(){
     input.style.height=Math.min(input.scrollHeight,92)+'px';
   });
 }
+

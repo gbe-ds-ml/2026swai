@@ -36,14 +36,14 @@ function saveGuardianFromInput(){
 
 /* ── 위치 문구 ── */
 function buildLocationMessage(prefix){
-  const area=(document.getElementById('locTxt')?.textContent||'').trim();
   let msg=prefix||'[SafeWalk] 지금 도움이 필요합니다.';
-  if(Number.isFinite(myLat)&&Number.isFinite(myLng)){
-    msg+='\n현재 위치: '+(area?area+' ':'')+
+  if(hasCurrentLocation()){
+    msg+='\n현재 위치: '+
       '(위도 '+myLat.toFixed(6)+', 경도 '+myLng.toFixed(6)+')'+
       '\n지도: https://maps.google.com/?q='+myLat.toFixed(6)+','+myLng.toFixed(6);
+    if(Number.isFinite(myPositionAccuracy))msg+='\nGPS 정확도: 약 '+Math.round(myPositionAccuracy)+'m';
   }else{
-    msg+='\n(위치를 아직 확인하지 못했습니다)';
+    msg+='\n(현재 위치를 확인하지 못했습니다. 주변 건물이나 도로명을 함께 알려 주세요.)';
   }
   return msg;
 }
@@ -56,10 +56,10 @@ async function copyMyLocation(){
   const text=buildLocationMessage('[SafeWalk] 내 위치 공유');
   try{
     await navigator.clipboard.writeText(text);
-    showRouteToast('현재 위치 정보를 복사했습니다. 메신저에 붙여넣어 공유하세요.');
+    showRouteToast(hasCurrentLocation()?'현재 위치 정보를 복사했습니다. 메신저에 붙여넣어 공유하세요.':'위치 미확인 안내를 복사했습니다. 주변 건물이나 도로명을 함께 알려 주세요.');
   }catch(e){
     showRouteToast('복사에 실패했습니다. 위치: '+
-      (Number.isFinite(myLat)?myLat.toFixed(5)+', '+myLng.toFixed(5):'확인 중'));
+      (hasCurrentLocation()?myLat.toFixed(5)+', '+myLng.toFixed(5):'확인 필요'));
   }
 }
 

@@ -440,7 +440,7 @@ const FACILITY_TOTAL_CAP=
   );
 
 
-const SCORE_BASE=40;
+const SCORE_BASE=0; // 호환 상수. 시설 접근성 점수에는 기본 가산점이 없다.
 
 
 const FACILITY_ROUTE_LABEL={
@@ -546,3 +546,4 @@ const HAVEN_MAX_ITEMS=200;
 let grp=null;
 
 let auditPickMode=false;
+

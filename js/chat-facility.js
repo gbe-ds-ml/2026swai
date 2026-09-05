@@ -766,211 +766,1349 @@ async function swFindNearestFacility(
     [
       500,
       1500,
-      …56927 tokens truncated…apped;
-    }
+      5000
+    ];
 
 
-    /* ========================================
-       메인 화면 ←
+  /*
+    작은 검색 반경부터 순차적으로 API를 호출한다.
 
-       안내만 종료하고
-       기존 경로 저장/복원 로직은 그대로 유지
-       ======================================== */
+    예:
+    CCTV
+    80m → 180m → 400m → ...
 
-    if(
-      typeof goBack ===
-      'function' &&
-      !goBack._swNavWrapped
-    ){
+    첫 번째로 데이터가 발견된 반경 안에서
+    가장 가까운 시설을 선택한다.
+  */
 
-      const prev =
-        goBack;
+  for(
+    const radiusM
+    of radii
+  ){
 
+    const bounds=
 
-      const wrapped =
-        function(...args){
+      swMakeFacilityBounds(
 
-          closeOriginMismatchDialog();
+        origin.lat,
 
+        origin.lng,
 
-          if(navigationMode){
+        radiusM
 
-            resetNavigationState();
-
-          }
-
-
-          return prev.apply(
-            this,
-            args
-          );
-
-        };
-
-
-      wrapped._swNavWrapped =
-        true;
-
-
-      window.goBack =
-        wrapped;
-    }
-  }
-
-
-  /* ==========================================================
-     초기화
-     ========================================================== */
-
-  function init(){
-
-    injectStyles();
-
-
-    ensureOriginMismatchDialog();
-
-
-    installWrappers();
-
-
-    buildUI();
-
-
-    watchRoute();
-
-
-    /*
-      다른 SafeWalk JS 초기화 순서에 대비
-    */
-
-    setTimeout(
-      installWrappers,
-      500
-    );
-
-
-    setTimeout(
-      installWrappers,
-      1500
-    );
-
-
-    /* ========================================
-       1초마다
-
-       - 경로 상태 확인
-       - 안내 중이면 GPS 진행도 갱신
-       ======================================== */
-
-    setInterval(
-
-      ()=>{
-
-        watchRoute();
-
-
-        if(navigationMode){
-
-          updateNavigation(
-            false
-          );
-
-        }
-
-      },
-
-      UPDATE_MS
-
-    );
-
-
-    /* ========================================
-       route-ux가 DOM을 다시 구성하더라도
-       안내 UI 복구
-       ======================================== */
-
-    const panel =
-      document.getElementById(
-        'routePanel'
       );
 
 
-    if(
-      panel &&
-      typeof MutationObserver !==
-      'undefined'
-    ){
+    const items=
 
-      let timer =
-        null;
+      await requestSafemapMarkers(
+
+        key,
+
+        bounds
+
+      );
 
 
-      const observer =
-        new MutationObserver(
-          ()=>{
+    const candidates=[];
 
-            clearTimeout(
-              timer
+
+    items.forEach(
+      item=>{
+
+        const point=
+          parseLayerPoint(
+            item
+          );
+
+
+        if(!point){
+          return;
+        }
+
+
+        const distanceM=
+
+          distM(
+
+            origin.lat,
+
+            origin.lng,
+
+            point.lat,
+
+            point.lng
+
+          );
+
+
+        /*
+          API 요청 영역은 사각형이다.
+
+          따라서 사각형 모서리 부분처럼
+          실제 반경 밖의 시설은 제외한다.
+        */
+
+        if(
+          distanceM>
+          radiusM*
+          1.03
+        ){
+
+          return;
+
+        }
+
+
+        /*
+          사용자가
+
+          "파출소"
+          "지구대"
+          "경찰서"
+
+          중 하나를 구체적으로 말한 경우
+          그 유형만 남긴다.
+        */
+
+        if(subtype){
+
+          const searchText=
+
+            swGetPoliceSearchText(
+              item
             );
 
 
-            timer =
-              setTimeout(
-                ()=>{
+          if(
+            !searchText
+              .includes(
+                subtype
+              )
+          ){
 
-                  buildUI();
-
-                  renderButtons();
-
-                },
-                60
-              );
+            return;
 
           }
+
+        }
+
+
+        candidates.push(
+
+          swNormalizeFacilityResult(
+
+            key,
+
+            item,
+
+            point,
+
+            distanceM,
+
+            radiusM
+
+          )
+
         );
 
+      }
+    );
 
-      observer.observe(
 
-        panel,
+    if(
+      candidates.length
+    ){
 
-        {
-          childList:true,
-          subtree:true
-        }
+      candidates.sort(
+
+        (
+          a,
+          b
+        )=>
+
+          a.distanceM-
+          b.distanceM
 
       );
 
+
+      candidates[0].dataIncomplete=Boolean(items.truncated);
+      return candidates[0];
+
     }
+    if(items.truncated)throw new Error('시설 자료가 일부만 조회되어 결과를 확인할 수 없습니다.');
+
   }
 
 
-  /* ==========================================================
-     DOM 준비 후 시작
-     ========================================================== */
+  return null;
+
+}
+
+
+/* ============================================================
+   거리 표시
+   ============================================================ */
+
+function swFormatFacilityDistance(
+  distanceM
+){
 
   if(
-    document.readyState ===
-    'loading'
+    !Number.isFinite(
+      distanceM
+    )
   ){
 
-    document.addEventListener(
+    return '-';
 
-      'DOMContentLoaded',
+  }
 
-      init,
 
-      {
-        once:true
-      }
+  if(
+    distanceM<
+    1000
+  ){
+
+    return (
+
+      Math.max(
+
+        1,
+
+        Math.round(
+          distanceM
+        )
+
+      )+
+
+      'm'
 
     );
 
-  }else{
+  }
 
-    init();
+
+  return (
+
+    (
+      distanceM/
+      1000
+    )
+
+    .toFixed(
+
+      distanceM>=
+        10000
+        ?0
+        :1
+
+    )+
+
+    'km'
+
+  );
+
+}
+
+
+/* ============================================================
+   시설 종류 텍스트
+   ============================================================ */
+
+function swGetFacilityTypeLabel(
+  result
+){
+
+  const meta=
+
+    SW_CHAT_FACILITY_META[
+      result.key
+    ];
+
+
+  return meta
+
+    ?meta.icon+
+      ' '+
+      meta.label
+
+    :'📍 안전시설';
+
+}
+
+
+/* ============================================================
+   채팅 결과 출력
+   ============================================================ */
+
+function swAppendFacilityResults(
+  results,
+  command
+){
+
+  hideChatTyping();
+
+
+  if(
+    !Array.isArray(
+      results
+    )||
+    !results.length
+  ){
+
+    appendChatMessage(
+
+      'bot',
+
+      '현재 위치 주변에서 요청한 안전시설을 찾지 못했습니다. 생활안전지도 데이터 제공 범위에 따라 일부 지역은 결과가 없을 수 있습니다.',
+
+      true
+
+    );
+
+    return;
 
   }
 
-})();
+
+  /*
+    기존 SafeWalk chat.js의
+    길찾기 결과 카드 디자인을 그대로 사용한다.
+  */
+
+  const bubble=
+
+    appendChatRouteBubble();
+
+
+  if(!bubble){
+    return;
+  }
+
+
+  const lead=
+
+    document.createElement(
+      'div'
+    );
+
+
+  lead.className=
+    'chat-route-lead';
+
+
+  if(
+    results.length===
+    1
+  ){
+
+    lead.textContent=
+
+      '조회된 시설 중 현재 위치에서 가까운 '+
+
+      SW_CHAT_FACILITY_META[
+        results[0].key
+      ].label+
+
+      '입니다.';
+
+  }
+
+  else{
+
+    lead.textContent=
+      '현재 위치 기준 가까운 안전시설을 종류별로 확인했습니다.';
+
+  }
+
+
+  bubble.appendChild(
+    lead
+  );
+
+
+  const sub=
+
+    document.createElement(
+      'div'
+    );
+
+
+  sub.className=
+    'chat-route-sub';
+
+
+  sub.textContent=
+    '거리는 GPS 좌표 기준 직선거리입니다. 실제 보행거리는 “여기로 길찾기”에서 확인해 주세요.';
+
+
+  bubble.appendChild(
+    sub
+  );
+
+
+  results.forEach(
+    (
+      result,
+      index
+    )=>{
+
+      /* ── 시설 정보 카드 ── */
+
+      const card=
+
+        document.createElement(
+          'div'
+        );
+
+
+      card.className=
+        'chat-route-summary';
+
+
+      card.style.marginTop=
+
+        index===0
+
+          ?'10px'
+
+          :'12px';
+
+
+      /* 시설 종류 */
+
+      const typeLabel=
+
+        document.createElement(
+          'div'
+        );
+
+
+      typeLabel.className=
+        'label';
+
+
+      typeLabel.textContent=
+
+        swGetFacilityTypeLabel(
+          result
+        );
+
+
+      /* 시설명 */
+
+      const name=
+
+        document.createElement(
+          'div'
+        );
+
+
+      name.className=
+        'value';
+
+
+      name.textContent=
+        result.name;
+
+
+      /* 거리 */
+
+      const distanceLabel=
+
+        document.createElement(
+          'div'
+        );
+
+
+      distanceLabel.className=
+        'label';
+
+
+      distanceLabel.textContent=
+        '직선거리';
+
+
+      const distance=
+
+        document.createElement(
+          'div'
+        );
+
+
+      distance.className=
+        'value';
+
+
+      distance.textContent=
+
+        swFormatFacilityDistance(
+          result.distanceM
+        );
+
+
+      card.append(
+
+        typeLabel,
+
+        name,
+
+        distanceLabel,
+
+        distance
+
+      );
+
+
+      /* 주소 */
+
+      if(
+        result.addr
+      ){
+
+        const addrLabel=
+
+          document.createElement(
+            'div'
+          );
+
+
+        addrLabel.className=
+          'label';
+
+
+        addrLabel.textContent=
+          '주소';
+
+
+        const addr=
+
+          document.createElement(
+            'div'
+          );
+
+
+        addr.className=
+          'value';
+
+
+        addr.textContent=
+          result.addr;
+
+
+        card.append(
+
+          addrLabel,
+
+          addr
+
+        );
+
+      }
+
+
+      bubble.appendChild(
+        card
+      );
+
+
+      /* ── 버튼 ── */
+
+      const actions=
+
+        document.createElement(
+          'div'
+        );
+
+
+      actions.className=
+        'chat-route-actions';
+
+
+      actions.style.marginTop=
+        '7px';
+
+
+      /* 지도에서 보기 */
+
+      const mapBtn=
+
+        document.createElement(
+          'button'
+        );
+
+
+      mapBtn.type=
+        'button';
+
+
+      mapBtn.className=
+        'chat-route-btn secondary';
+
+
+      mapBtn.textContent=
+        '지도에서 보기';
+
+
+      mapBtn.addEventListener(
+
+        'click',
+
+        ()=>
+
+          swShowFacilityOnMap(
+            result
+          )
+
+      );
+
+
+      /* 길찾기 */
+
+      const routeBtn=
+
+        document.createElement(
+          'button'
+        );
+
+
+      routeBtn.type=
+        'button';
+
+
+      routeBtn.className=
+        'chat-route-btn primary';
+
+
+      routeBtn.textContent=
+        '여기로 길찾기';
+
+
+      routeBtn.addEventListener(
+
+        'click',
+
+        ()=>
+
+          swRouteToFacility(
+            result
+          )
+
+      );
+
+
+      actions.append(
+
+        mapBtn,
+
+        routeBtn
+
+      );
+
+
+      bubble.appendChild(
+        actions
+      );
+
+    }
+  );
+
+
+  scrollChatToBottom();
+
+}
+
+
+/* ============================================================
+   시설 미리보기 마커 제거
+   ============================================================ */
+
+function swClearFacilityPreview(){
+
+  if(
+    swFacilityPreviewMarker&&
+    map
+  ){
+
+    try{
+
+      if(
+
+        map.hasLayer(
+          swFacilityPreviewMarker
+        )
+
+      ){
+
+        map.removeLayer(
+          swFacilityPreviewMarker
+        );
+
+      }
+
+    }catch(e){}
+
+  }
+
+
+  swFacilityPreviewMarker=
+    null;
+
+}
+
+
+/* ============================================================
+   지도에서 보기
+   ============================================================ */
+
+function swShowFacilityOnMap(
+  result
+){
+
+  if(!map){
+
+    appendChatMessage(
+
+      'bot',
+
+      '지도가 아직 준비되지 않았습니다.',
+
+      true
+
+    );
+
+    return;
+
+  }
+
+
+  swClearFacilityPreview();
+
+
+  /*
+    기존 layers.js의 mkMarker()를 사용하므로
+    SafeWalk 기존 시설 마커와 동일한 팝업을 사용한다.
+  */
+
+  try{
+
+    swFacilityPreviewMarker=
+
+      mkMarker(
+
+        result.key,
+
+        result.lat,
+
+        result.lng,
+
+        result.raw
+
+      )
+
+      .addTo(
+        map
+      );
+
+  }
+
+  catch(error){
+
+    console.warn(
+
+      '안전시설 미리보기 마커 생성 실패:',
+
+      error
+
+    );
+
+
+    swFacilityPreviewMarker=
+
+      L.marker(
+
+        [
+          result.lat,
+          result.lng
+        ]
+
+      )
+
+      .addTo(
+        map
+      );
+
+  }
+
+
+  /*
+    CCTV처럼 밀집된 시설은
+    충분히 확대해서 보여준다.
+  */
+
+  const zoom=
+
+    Math.max(
+
+      map.getZoom(),
+
+      result.key===
+        'cctv'
+
+        ?17
+
+        :16
+
+    );
+
+
+  closeChatPanel();
+
+
+  map.flyTo(
+
+    [
+      result.lat,
+      result.lng
+    ],
+
+    zoom,
+
+    {
+      duration:.8
+    }
+
+  );
+
+
+  setTimeout(
+
+    ()=>{
+
+      if(
+
+        swFacilityPreviewMarker&&
+        map&&
+        map.hasLayer(
+          swFacilityPreviewMarker
+        )
+
+      ){
+
+        try{
+
+          swFacilityPreviewMarker
+            .openPopup();
+
+        }catch(e){}
+
+      }
+
+    },
+
+    850
+
+  );
+
+}
+
+
+/* ============================================================
+   시설까지 길찾기
+   ============================================================ */
+
+function swRouteToFacility(
+  result
+){
+
+  if(!map){
+
+    appendChatMessage(
+
+      'bot',
+
+      '지도가 아직 준비되지 않았습니다.',
+
+      true
+
+    );
+
+    return;
+
+  }
+
+
+  /*
+    기존 SafeWalk 정책:
+    CPTED 전용 화면에서는 일반 보행 길찾기 미지원
+  */
+
+  if(
+    grp===
+    'cpted'
+  ){
+
+    appendChatMessage(
+
+      'bot',
+
+      'CPTED 화면에서는 일반 보행 길찾기를 실행할 수 없습니다. 어린이·여성·청소년·노인 안전지도로 이동한 뒤 다시 시도해 주세요.',
+
+      true
+
+    );
+
+    return;
+
+  }
+
+
+  if(
+
+    !hasCurrentLocation()
+
+  ){
+
+    appendChatMessage(
+
+      'bot',
+
+      '현재 위치를 확인하지 못했습니다. 위치 권한을 허용한 뒤 다시 시도해 주세요.',
+
+      true
+
+    );
+
+    return;
+
+  }
+
+
+  swClearFacilityPreview();
+
+
+  /*
+    기존 SafeWalk 길찾기 시스템의
+    출발지 / 도착지를 직접 설정한다.
+  */
+
+  routeOrigin={
+
+    lat:
+      myLat,
+
+    lng:
+      myLng,
+
+    label:
+      '📍 현재 위치',
+
+    addr:
+      (
+        document
+          .getElementById(
+            'locTxt'
+          )
+          ?.textContent||
+        ''
+      )
+      .trim(),
+
+    src:
+      'gps'
+
+  };
+
+
+  routeDest={
+
+    lat:
+      result.lat,
+
+    lng:
+      result.lng,
+
+    label:
+      result.name,
+
+    addr:
+      result.addr||
+      '',
+
+    src:
+      'safemap-nearest-facility'
+
+  };
+
+
+  activeSlot=
+    'dest';
+
+
+  updateSlotUI();
+
+
+  appendChatMessage(
+
+    'bot',
+
+    result.name+
+    '까지 SafeWalk 보행 경로를 계산합니다.'
+
+  );
+
+
+  closeChatPanel();
+
+
+  setTimeout(
+
+    ()=>
+      runSearchRoute(),
+
+    120
+
+  );
+
+}
+
+
+/* ============================================================
+   안전시설 검색 실행
+   ============================================================ */
+
+async function swBeginFacilityCommand(command){
+  if(!command?.keys?.length)return {status:'error'};
+  if(typeof requestSafemapMarkers!=='function'){
+    hideChatTyping();
+    appendChatMessage('bot','시설 조회 기능을 사용할 수 없습니다. 페이지를 새로고침해 주세요.',true);
+    return {status:'error'};
+  }
+  const token=++swFacilityRequestToken;
+  let origin;
+  try{origin=await swResolveFacilityOrigin();}
+  catch(error){
+    if(token!==swFacilityRequestToken)return {status:'cancelled'};
+    hideChatTyping();
+    appendChatMessage('bot','가까운 안전시설을 찾으려면 실제 현재 위치가 필요합니다. 브라우저의 위치 권한을 허용한 뒤 다시 질문해 주세요.',true);
+    return {status:'location_error'};
+  }
+  if(token!==swFacilityRequestToken)return {status:'cancelled'};
+  try{
+    const settled=await Promise.allSettled(command.keys.map(key=>
+      swFindNearestFacility(key,origin,{policeSubtype:command.policeSubtype})));
+    if(token!==swFacilityRequestToken)return {status:'cancelled'};
+    const failed=settled.filter(item=>item.status==='rejected').length;
+    if(failed===settled.length)throw new Error('모든 시설 조회 실패');
+    const results=settled.filter(item=>item.status==='fulfilled'&&item.value)
+      .map(item=>item.value).sort((a,b)=>a.distanceM-b.distanceM);
+    const incomplete=results.some(item=>item.dataIncomplete);
+    if(failed||incomplete){
+      hideChatTyping();
+      appendChatMessage('bot','일부 시설 자료를 확인하지 못했습니다. 조회된 결과를 안내하며, 더 가까운 시설이 있을 수 있습니다.',true);
+    }
+    swAppendFacilityResults(results,command);
+    return {status:failed||incomplete?'partial':'ok',failed,incomplete};
+  }catch(error){
+    if(token!==swFacilityRequestToken)return {status:'cancelled'};
+    hideChatTyping();
+    appendChatMessage('bot','생활안전지도에서 주변 시설을 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.',true);
+    return {status:'error'};
+  }
+}
+
+/* ============================================================
+   기존 sendChatMessage 확장
+   ============================================================ */
+
+/*
+  기존 chat.js의 sendChatMessage()를 저장한다.
+
+  시설 검색 질문이 아니면
+  기존 함수에 그대로 넘긴다.
+
+  따라서 기존 기능:
+
+  - Workers AI
+  - 일반 안전 질문
+  - 자연어 길찾기
+  - VWorld 후보 선택
+  - 경로 설명
+
+  모두 그대로 유지된다.
+*/
+
+const swBaseSendChatMessage=
+  sendChatMessage;
+
+
+/*
+  기존 전역 함수를 새 함수로 교체
+*/
+
+sendChatMessage=
+
+  async function(){
+
+
+    if(
+      chatBusy
+    ){
+
+      return;
+
+    }
+
+
+    const input=
+
+      document
+        .getElementById(
+          'chatInput'
+        );
+
+
+    const message=
+
+      String(
+
+        input
+          ?input.value
+          :''
+
+      )
+
+      .trim();
+
+
+    /*
+      빈 메시지나 글자수 초과는
+      기존 함수가 처리한다.
+    */
+
+    if(
+
+      !message||
+
+      message.length>
+        CHAT_MAX_LENGTH
+
+    ){
+
+      return swBaseSendChatMessage();
+
+    }
+
+
+    /*
+      주변 안전시설 질문인지 확인
+    */
+
+    const facilityCommand=
+
+      swParseNearbyFacilityCommand(
+        message
+      );
+
+
+    /*
+      안전시설 위치 질문이 아니면
+      기존 chat.js로 그대로 전달
+    */
+
+    if(
+      !facilityCommand
+    ){
+
+      return swBaseSendChatMessage();
+
+    }
+
+
+    /*
+      여기부터는 안전시설 직접 조회
+    */
+
+    appendChatMessage(
+
+      'user',
+
+      message
+
+    );
+
+
+    if(input){
+
+      input.value='';
+
+      input.style.height=
+        '44px';
+
+    }
+
+
+    if(
+
+      typeof dismissMobileKeyboard===
+      'function'
+
+    ){
+
+      dismissMobileKeyboard();
+
+    }
+
+
+    setChatBusy(
+      true
+    );
+
+
+    showChatTyping();
+
+
+    try{
+
+      await swBeginFacilityCommand(
+        facilityCommand
+      );
+
+    }
+
+    finally{
+
+      setChatBusy(
+        false
+      );
+
+
+      if(
+
+        typeof syncViewportChrome===
+        'function'
+
+      ){
+
+        requestAnimationFrame(
+          syncViewportChrome
+        );
+
+      }
+
+    }
+
+  };
+
+
+/* ============================================================
+   빠른 질문 버튼 추가
+   ============================================================ */
+
+function swAddFacilityQuickButton(){
+
+  const quick=
+
+    document.querySelector(
+      '#chatPanel .chat-quick'
+    );
+
+
+  if(
+
+    !quick||
+
+    quick.querySelector(
+      '[data-sw-facility-quick="1"]'
+    )
+
+  ){
+
+    return;
+
+  }
+
+
+  const btn=
+
+    document.createElement(
+      'button'
+    );
+
+
+  btn.type=
+    'button';
+
+
+  btn.className=
+    'chat-quick-btn';
+
+
+  btn.dataset
+    .swFacilityQuick=
+    '1';
+
+
+  btn.textContent=
+    '가까운 안전시설';
+
+
+  btn.addEventListener(
+
+    'click',
+
+    ()=>{
+
+      askChatQuick(
+        '내 주변 안전시설 알려줘'
+      );
+
+    }
+
+  );
+
+
+  /*
+    가장 앞쪽에 추가
+  */
+
+  quick.prepend(
+    btn
+  );
+
+}
+
+
+/* ============================================================
+   DOM 준비 후 빠른 질문 버튼 생성
+   ============================================================ */
+
+if(
+
+  document.readyState===
+  'loading'
+
+){
+
+  document.addEventListener(
+
+    'DOMContentLoaded',
+
+    swAddFacilityQuickButton,
+
+    {
+      once:true
+    }
+
+  );
+
+}
+
+else{
+
+  swAddFacilityQuickButton();
+
+}
 

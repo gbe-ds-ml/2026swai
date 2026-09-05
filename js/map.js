@@ -32,6 +32,26 @@ let myLat=null;
 
 let myLng=null;
 
+let myPositionTimestamp=0;
+let myPositionAccuracy=null;
+let initializedLocationMap=null;
+
+function hasCurrentLocation(maxAgeMs=120000){
+  return Number.isFinite(myLat)&&Number.isFinite(myLng)&&
+    myPositionTimestamp>0&&Date.now()-myPositionTimestamp<=maxAgeMs;
+}
+
+function acceptGPSPosition(position){
+  const lat=position?.coords?.latitude,lng=position?.coords?.longitude;
+  const timestamp=Number.isFinite(position?.timestamp)?position.timestamp:Date.now();
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180||
+    Date.now()-timestamp>120000||timestamp<myPositionTimestamp)return false;
+  myLat=lat;myLng=lng;myPositionTimestamp=timestamp;
+  myPositionAccuracy=Number.isFinite(position.coords.accuracy)?position.coords.accuracy:null;
+  writeLastPos(lat,lng);
+  return true;
+}
+
 let watchId=null;
 
 let mapDomCleanups=[];
@@ -797,12 +817,7 @@ function warmupLocation(){
 
       position=>{
 
-        myLat=
-          position.coords.latitude;
-
-
-        myLng=
-          position.coords.longitude;
+        if(!acceptGPSPosition(position))return;
 
 
         writeLastPos(
@@ -1883,8 +1898,7 @@ function getGPS(){
   */
 
   if(
-    Number.isFinite(myLat) &&
-    Number.isFinite(myLng)
+    hasCurrentLocation()
   ){
 
     onLocated();
@@ -1898,12 +1912,7 @@ function getGPS(){
 
         position=>{
 
-          myLat=
-            position.coords.latitude;
-
-
-          myLng=
-            position.coords.longitude;
+          if(!acceptGPSPosition(position))return;
 
 
           writeLastPos(
@@ -1946,27 +1955,15 @@ function getGPS(){
     이후 고정밀 위치 보정
   */
 
+  if(watchId!==null)navigator.geolocation.clearWatch(watchId);
   watchId=
     navigator.geolocation
       .watchPosition(
 
         position=>{
-
-          myLat=
-            position.coords.latitude;
-
-
-          myLng=
-            position.coords.longitude;
-
-
-          writeLastPos(
-            myLat,
-            myLng
-          );
-
-
-          drawMe();
+          const firstFix=!hasCurrentLocation();
+          if(!acceptGPSPosition(position))return;
+          if(firstFix)onLocated();else drawMe();
 
         },
 
@@ -1992,21 +1989,18 @@ function getGPS(){
 /* ============================================================
    GPS 실패 fallback
 
-   기존 포항 기본 좌표 유지.
+   기본 좌표는 지도 중심에만 사용하며 현재 위치로 저장하지 않는다.
    ============================================================ */
 
 function useDefault(){
-
-  myLat=
-    36.0190;
-
-
-  myLng=
-    129.3435;
-
-
+  if(!hasCurrentLocation()){
+    myLat=null;myLng=null;myPositionTimestamp=0;myPositionAccuracy=null;
+    if(myMark&&map)map.removeLayer(myMark);
+    myMark=null;
+    const label=document.getElementById('locTxt');
+    if(label)label.textContent='현재 위치 미확인';
+  }
   onLocated();
-
 }
 
 
@@ -2015,31 +2009,14 @@ function useDefault(){
    ============================================================ */
 
 function onLocated(){
-
-  if(
-    !map
-  ){
-
-    return;
-
-  }
-
-
-  map.setView(
-
-    [
-      myLat,
-      myLng
-    ],
-
-    DEFAULT_ZOOM
-
-  );
-
-
-  drawMe();
-
-  revGeo();
+  if(!map)return;
+  const located=hasCurrentLocation();
+  const saved=readLastPos();
+  const center=located?[myLat,myLng]:(saved?[saved.lat,saved.lng]:[36.0190,129.3435]);
+  map.setView(center,DEFAULT_ZOOM);
+  if(located){drawMe();revGeo();}
+  if(initializedLocationMap===map)return;
+  initializedLocationMap=map;
 
   addWMS();
 
@@ -2433,6 +2410,7 @@ function onLocated(){
    ============================================================ */
 
 function drawMe(){
+  if(!hasCurrentLocation())return;
 
   if(
     !map ||
@@ -2577,6 +2555,7 @@ function drawMe(){
    ============================================================ */
 
 function flyHome(){
+  if(!hasCurrentLocation()){showRouteToast('현재 위치를 다시 확인합니다. 위치 권한과 수신 상태를 확인해 주세요.');getGPS();return;}
 
   if(
     Number.isFinite(myLat) &&
@@ -2622,6 +2601,7 @@ function flyHome(){
    ============================================================ */
 
 function revGeo(){
+  if(!hasCurrentLocation())return;
 
   fetch(
 

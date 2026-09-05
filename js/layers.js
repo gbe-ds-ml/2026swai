@@ -21,6 +21,7 @@ let markerCache={};
 let markerFetchBounds={};
 let markerFetchZoom={};
 let markerFetchTruncated={};
+let markerFetchErrors={};
 
 let safeFacilityPoints=[];
 let safeFacilitySeen=new Set();
@@ -50,21 +51,34 @@ async function requestSafemapMarkers(key,bounds){
   const nw=L.CRS.EPSG3857.project(bounds.getNorthWest());
   const se=L.CRS.EPSG3857.project(bounds.getSouthEast());
   const area3857=[nw.y,se.y,nw.x,se.x].join(',');
-  const params=new URLSearchParams({
-    layerName:cfg.layer,style:cfg.style,area4326,area3857,
-    currentPage:'1',perPage:String(MARKER_PAGE_SIZE)
-  });
   const ctrl=new AbortController();
   const abortTimer=setTimeout(()=>ctrl.abort(),10000);
   try{
-    const res=await fetch(MARKER_API,{
-      method:'POST',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:params,
-      signal:ctrl.signal
-    });
-    const data=await res.json();
-    return data.resultList||[];
+    const items=[],seenPages=new Set();
+    items.truncated=false;
+    for(let page=1;page<=4;page++){
+      const params=new URLSearchParams({
+        layerName:cfg.layer,style:cfg.style,area4326,area3857,
+        currentPage:String(page),perPage:String(MARKER_PAGE_SIZE)
+      });
+      const res=await fetch(MARKER_API,{
+        method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:params,signal:ctrl.signal
+      });
+      if(!res.ok)throw new Error('시설 조회 실패: HTTP '+res.status);
+      const data=await res.json();
+      if(!data||data.error||data.ok===false||!Array.isArray(data.resultList)){
+        throw new Error('시설 조회 응답 형식이 올바르지 않습니다.');
+      }
+      const rows=data.resultList;
+      const signature=JSON.stringify(rows);
+      if(rows.length&&seenPages.has(signature)){items.truncated=true;break;}
+      seenPages.add(signature);
+      items.push(...rows);
+      items.truncated=rows.length>=MARKER_PAGE_SIZE;
+      if(!items.truncated)break;
+    }
+    return items;
   }finally{
     clearTimeout(abortTimer);
   }
@@ -504,11 +518,15 @@ async function fetchLayer(key,token=null,force=false){
     pruneMarkerCache(key,keepIds,requestBounds);
     markerFetchBounds[key]=requestBounds;
     markerFetchZoom[key]=map.getZoom();
-    markerFetchTruncated[key]=items.length>=MARKER_PAGE_SIZE;
-    updateLayerMinZoom(key,markerFetchTruncated[key],map.getZoom());
+    markerFetchErrors[key]=false;
+    markerFetchTruncated[key]=Boolean(items.truncated);
+    updateLayerMinZoom(key,markerFetchTruncated[key]||items.length>=MARKER_PAGE_SIZE,map.getZoom());
     counts[key]=(chipOn[key]&&!zoomBlocked&&!isLayerDensitySuppressed(key))?countVisibleMarkers(key):0;
     if(chipOn[key]&&!zoomBlocked&&!isLayerDensitySuppressed(key)&&map&&layers[key]&&!map.hasLayer(layers[key]))layers[key].addTo(map);
   }catch(e){
+    if(token!==null&&token!==fetchRunToken)return;
+    markerFetchErrors[key]=true;
+    markerFetchBounds[key]=null;
     console.warn('['+key+'] 실패:',e.message);
   }
 }
@@ -615,12 +633,13 @@ function updateStats(){
     if(!m)return;
     const on=Boolean(chipOn[key])&&!zoomBlocked&&!isLayerDensitySuppressed(key);
     const cnt=counts[key]||0;
+    const failed=Boolean(markerFetchErrors[key]);
     const suffix=(on&&markerFetchTruncated[key])?'+':'';
     items.push(
       '<div class="stat-item'+(on?'':' off')+'">'+
         '<span class="stat-emoji">'+m.emoji+'</span>'+
         '<div class="stat-info">'+
-          '<span class="stat-num" style="color:'+m.color+'">'+(on?cnt+suffix:'–')+'</span>'+
+          '<span class="stat-num" style="color:'+m.color+'">'+(on?(failed?'조회 실패':cnt+suffix):'–')+'</span>'+
           '<span class="stat-lbl">'+m.label+'</span>'+
         '</div>'+
       '</div>'
@@ -630,4 +649,13 @@ function updateStats(){
   bar.innerHTML=items.join('');
   const note=document.getElementById('statsNote');
   if(note)note.hidden=!items.length;
+  const status=document.getElementById('statsStatus');
+  if(status){
+    const visible=g.xml.filter(key=>chipOn[key]&&!zoomBlocked&&!isLayerDensitySuppressed(key));
+    const messages=[];
+    if(visible.some(key=>markerFetchErrors[key]))messages.push('일부 시설 조회에 실패했습니다. 지도를 이동하거나 다시 시도해 주세요.');
+    if(visible.some(key=>markerFetchTruncated[key]))messages.push('+ 표시는 조회 제한으로 일부 데이터만 집계되었음을 뜻합니다.');
+    status.textContent=messages.join(' ');
+    status.hidden=!messages.length;
+  }
 }
