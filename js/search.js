@@ -259,3 +259,146 @@ function bindSearchInput(){
     if(e.key==='Enter'){e.preventDefault();runPlaceSearch();}
   });
 }
+/* SafeWalk: 길찾기 출발지 GPS 재요청 및 상태 표시 수정 */
+(function () {
+  let pending = null;
+  let requestId = 0;
+
+  const previousOpen = openSearchPanel;
+  const previousUpdate = updateSlotUI;
+
+  updateSlotUI = function () {
+    previousUpdate();
+
+    const origin = document.getElementById('slotOriginVal');
+    const dest = document.getElementById('slotDestVal');
+
+    if (origin && !routeOrigin) {
+      origin.textContent = pending === 'origin'
+        ? '현재 위치 확인 중…'
+        : '출발지를 지정하세요';
+    }
+
+    if (dest && !routeDest && pending === 'dest') {
+      dest.textContent = '현재 위치 확인 중…';
+    }
+  };
+
+  function requestLocation(slot) {
+    const id = ++requestId;
+    const originalValue =
+      slot === 'origin' ? routeOrigin : routeDest;
+
+    pending = slot;
+    updateSlotUI();
+
+    setSearchMsg(
+      '현재 위치를 확인하고 있습니다. 위치 권한 요청을 허용해 주세요.'
+    );
+
+    function unchanged() {
+      return (
+        slot === 'origin' ? routeOrigin : routeDest
+      ) === originalValue;
+    }
+
+    function fail(error) {
+      if (id !== requestId) return;
+
+      pending = null;
+      updateSlotUI();
+
+      if (!unchanged()) return;
+
+      const reason = error && error.code === 1
+        ? '위치 권한이 차단되어 있습니다. 브라우저의 사이트 위치 권한을 허용해 주세요.'
+        : '현재 위치를 확인하지 못했습니다. 다시 시도하거나 장소 검색·지도 선택으로 지정해 주세요.';
+
+      setSearchMsg(reason);
+      showRouteToast(reason);
+    }
+
+    function finish() {
+      if (id !== requestId) return;
+
+      pending = null;
+
+      // 위치를 기다리는 동안 직접 선택한 장소는 유지합니다.
+      if (!unchanged()) {
+        updateSlotUI();
+        return;
+      }
+
+      setSlotValue(slot, {
+        lat: myLat,
+        lng: myLng,
+        label: '📍 현재 위치',
+        src: 'gps'
+      });
+
+      if (routeOrigin && routeDest) {
+        setSearchMsg(
+          '출발지·도착지가 모두 지정되었습니다. 길찾기를 시작하세요.'
+        );
+      } else {
+        focusSlot(routeOrigin ? 'dest' : 'origin');
+      }
+    }
+
+    if (hasCurrentLocation()) {
+      finish();
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      fail();
+      return;
+    }
+
+    try {
+      navigator.geolocation.getCurrentPosition(
+        function (position) {
+          if (id !== requestId) return;
+
+          if (
+            !acceptGPSPosition(position) &&
+            !hasCurrentLocation()
+          ) {
+            fail();
+            return;
+          }
+
+          finish();
+        },
+        fail,
+        {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    } catch (error) {
+      fail(error);
+    }
+  }
+
+  useCurrentLocation = function () {
+    requestLocation(activeSlot);
+  };
+
+  openSearchPanel = function () {
+    if (
+      routeOrigin &&
+      routeOrigin.src === 'gps' &&
+      !hasCurrentLocation()
+    ) {
+      routeOrigin = null;
+    }
+
+    previousOpen();
+
+    if (!routeOrigin && pending === null) {
+      requestLocation('origin');
+    }
+  };
+})();
