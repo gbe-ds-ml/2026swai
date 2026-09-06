@@ -19,46 +19,49 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
       integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw=="
       crossorigin="anonymous" referrerpolicy="no-referrer"/>
-<link rel="stylesheet" href="css/style.css?v=20260905.1">
+<link rel="stylesheet" href="css/style.css?v=20260906.1">
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
         integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
 <!-- 기능별로 분리된 SafeWalk 코드 (defer는 선언 순서대로 실행이 보장됨. 순서를 바꾸지 마세요) -->
-<script defer src="js/config.js?v=20260905.1"></script>
-<script defer src="js/utils.js?v=20260905.1"></script>
-<script defer src="js/viewport.js?v=20260905.1"></script>
+<script defer src="js/config.js?v=20260906.1"></script>
+<script defer src="js/utils.js?v=20260906.1"></script>
+<script defer src="js/viewport.js?v=20260906.1"></script>
 
-<script defer src="js/mobile-ui-zoom-lock.js?v=20260905.1"></script>
+<script defer src="js/mobile-ui-zoom-lock.js?v=20260906.1"></script>
 
-<script defer src="js/ui.js?v=20260905.1"></script>
+<script defer src="js/ui.js?v=20260906.1"></script>
 
-<script defer src="js/map.js?v=20260905.1"></script>
-<script defer src="js/layers.js?v=20260905.1"></script>
-<script defer src="js/search.js?v=20260905.1"></script>
-<script defer src="js/route.js?v=20260905.1"></script>
+<script defer src="js/map.js?v=20260906.1"></script>
+<script defer src="js/layers.js?v=20260906.1"></script>
+<script defer src="js/search.js?v=20260906.1"></script>
+<script defer src="js/route.js?v=20260906.1"></script>
 
-<script defer src="js/map-longpress.js?v=20260905.1"></script>
-<script defer src="js/map-longpress-stable.js?v=20260905.1"></script>
+<script defer src="js/map-longpress.js?v=20260906.1"></script>
+<script defer src="js/map-longpress-stable.js?v=20260906.1"></script>
 
-<script defer src="js/chat.js?v=20260905.1"></script>
-<script defer src="js/chat-facility.js?v=20260905.1"></script>
-<script defer src="js/chat-agent.js?v=20260905.1"></script>
+<script defer src="js/chat.js?v=20260906.1"></script>
+<script defer src="js/chat-facility.js?v=20260906.1"></script>
+<script defer src="js/chat-agent.js?v=20260906.1"></script>
 
-<script defer src="js/emergency.js?v=20260905.1"></script>
-<script defer src="js/timer.js?v=20260905.1"></script>
-<script defer src="js/audit.js?v=20260905.1"></script>
+<script defer src="js/emergency.js?v=20260906.1"></script>
+<script defer src="js/timer.js?v=20260906.1"></script>
+<script defer src="js/audit.js?v=20260906.1"></script>
 
-<script defer src="js/safewalk-ui-patch.js?v=20260905.1"></script>
-<script defer src="js/havens.js?v=20260905.1"></script>
+<script defer src="js/safewalk-ui-patch.js?v=20260906.1"></script>
+<script defer src="js/havens.js?v=20260906.1"></script>
 
-<script defer src="js/main.js?v=20260905.1"></script>
+<script defer src="js/main.js?v=20260906.1"></script>
 
-<script defer src="js/route-ux.js?v=20260905.1"></script>
-<script defer src="js/route-group-restore.js?v=20260905.1"></script>
-<script defer src="js/route-back-guard.js?v=20260905.1"></script>
-<script defer src="js/route-navigation.js?v=20260905.1"></script>
+<script defer src="js/route-ux.js?v=20260906.1"></script>
+<script defer src="js/route-group-restore.js?v=20260906.1"></script>
+<script defer src="js/route-back-guard.js?v=20260906.1"></script>
+<script defer src="js/route-navigation.js?v=20260906.1"></script>
+
+<!-- v2.2 안정화: 현재 GPS 재사용·stale GPS 차단·위치 오류 메시지 분리 -->
+<script defer src="js/safewalk-stability.js?v=20260906.1"></script>
 
 </head>
 <body>
@@ -100,14 +103,14 @@
       <div class="route-guide-summary">
         <div class="route-guide-title"><span>🧭 경로·점수 산정 기준</span></div>
         <div class="route-guide-row"><span class="num">1</span><span>보행 도로망을 따라 <strong>경로를 안내</strong>하고 주변 시설을 평가합니다.</span></div>
-        <div class="route-guide-row"><span class="num">2</span><span>경로 주변 시설을 <strong>치안시설(1순위) → CCTV·안전비상벨(2순위) → 어린이안전지킴이집(3순위)</strong> 순으로 가중 반영합니다.</span></div>
+        <div class="route-guide-row"><span class="num">2</span><span>경로 주변 시설을 <strong>치안시설(1순위) → CCTV·안전비상벨(2순위) → 아동안전지킴이집(3순위)</strong> 순으로 가중 반영합니다.</span></div>
         <div class="route-guide-row"><span class="num">3</span><span>조회된 시설 접근성을 0~100점의 참고값으로 보여드립니다.</span></div>
       </div>
       <button type="button" class="route-guide-more" onclick="toggleRouteGuide()">점수 계산 자세히 보기</button>
       <div class="route-guide-detail">
         <div><strong>시설 근접도</strong>: 30m 이내 100% · 60m 75% · 100m 40% · 150m 15%</div>
-        <div><strong>우선순위별 최대점수</strong>: 1순위 치안시설 17점 · 2순위 CCTV 11점 / 안전비상벨 11점 · 3순위 어린이안전지킴이집 6점 (합계 45점)</div>
-        <div><strong>종합점수</strong>: 시설 접근성 원점수 ÷ 45 × 100 (시설 0건은 0점, 조회 실패는 측정 불가)</div>
+        <div><strong>우선순위별 최대점수</strong>: 1순위 치안시설 17점 · 2순위 CCTV 11점 / 안전비상벨 11점 · 3순위 아동안전지킴이집 6점 (합계 45점)</div>
+        <div><strong>시설 접근성 점수</strong>: 시설 접근성 원점수 ÷ 45 × 100 (시설 0건은 0점, 조회 실패는 측정 불가)</div>
         <div class="route-guide-note">점수는 레이어 표시 여부와 무관하게 조회된 시설 전체를 기준으로 계산합니다. 공공데이터 기반 참고 지표이며 실제 안전을 보장하지 않습니다. 범죄주의구간 레이어는 현재 점수에 직접 반영하지 않습니다.</div>
       </div>
     </div>
