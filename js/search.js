@@ -168,7 +168,7 @@ async function requestVworldSearchOnce(query,type,category){
   validateVworldResponse(json);
   return normalizeVworldItems(json);
 }
-async function requestVworldSearch(query,type){
+async function requestVworldSearchCore(query,type){
   const searchType=String(type||'PLACE').toUpperCase();
   if(searchType==='PLACE')return requestVworldSearchOnce(query,'PLACE','');
   if(searchType==='ADDRESS'){
@@ -177,6 +177,117 @@ async function requestVworldSearch(query,type){
     return requestVworldSearchOnce(query,'ADDRESS','PARCEL');
   }
   throw new Error('지원하지 않는 VWorld 검색 유형입니다: '+searchType);
+}
+
+const SAFEWALK_PLACE_NORMALIZE_CACHE=new Map();
+
+function safeWalkSearchLanguage(){
+  try{
+    if(typeof getSafeWalkLanguage==='function')return getSafeWalkLanguage();
+  }catch(error){}
+  return 'ko';
+}
+
+function safeWalkNeedsPlaceNormalization(query){
+  return /[A-Za-z]/.test(String(query||''));
+}
+
+function safeWalkPlaceNormalizeUrl(){
+  const base=String(typeof CHAT_API_URL==='string'?CHAT_API_URL:'').trim();
+  if(!base)return '';
+  return base.replace(/\/chat\/?(?:\?.*)?$/i,'/place-normalize');
+}
+
+async function requestSafeWalkPlaceCandidates(query){
+  const q=String(query||'').trim();
+  if(!q||!safeWalkNeedsPlaceNormalization(q))return [];
+
+  const cacheKey=safeWalkSearchLanguage()+'|'+q.toLowerCase();
+  if(SAFEWALK_PLACE_NORMALIZE_CACHE.has(cacheKey)){
+    return SAFEWALK_PLACE_NORMALIZE_CACHE.get(cacheKey).slice();
+  }
+
+  const url=safeWalkPlaceNormalizeUrl();
+  if(!url)return [];
+
+  const currentArea=String(
+    document.getElementById('locTxt')?.textContent||''
+  ).trim();
+
+  try{
+    const response=await fetch(url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        query:q,
+        language:safeWalkSearchLanguage(),
+        currentArea:currentArea.slice(0,80)
+      })
+    });
+
+    const raw=await response.text();
+    let data=null;
+    try{data=JSON.parse(raw);}catch(error){}
+
+    if(!response.ok||!data||data.ok!==true||!Array.isArray(data.candidates)){
+      console.warn('영문 장소명 정규화 실패:',data?.error||('HTTP '+response.status));
+      SAFEWALK_PLACE_NORMALIZE_CACHE.set(cacheKey,[]);
+      return [];
+    }
+
+    const seen=new Set();
+    const candidates=data.candidates
+      .map(value=>String(value||'').replace(/\s+/g,' ').trim())
+      .filter(value=>{
+        if(value.length<2||value.length>100)return false;
+        const key=value.toLowerCase();
+        if(seen.has(key))return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0,3);
+
+    SAFEWALK_PLACE_NORMALIZE_CACHE.set(cacheKey,candidates);
+    return candidates.slice();
+  }catch(error){
+    console.warn('영문 장소명 정규화 서버 연결 실패:',error);
+    return [];
+  }
+}
+
+async function requestVworldSearch(query,type){
+  const q=String(query||'').trim();
+
+  // 1. 원문을 VWorld에 먼저 확인한다.
+  const directItems=await requestVworldSearchCore(q,type);
+  if(directItems.length||!safeWalkNeedsPlaceNormalization(q)){
+    return directItems;
+  }
+
+  // 2. 영문/로마자 입력이 VWorld에서 검색되지 않은 경우에만
+  //    AI가 한국어 검색어 후보를 만든다.
+  const candidates=await requestSafeWalkPlaceCandidates(q);
+
+  // 3. AI 후보는 목적지가 아니다. VWorld에서 실제 결과가 확인된 후보만 사용한다.
+  for(const candidate of candidates){
+    if(candidate.toLowerCase()===q.toLowerCase())continue;
+
+    try{
+      const items=await requestVworldSearchCore(candidate,type);
+      if(items.length){
+        return items.map(item=>({
+          ...item,
+          originalQuery:q,
+          verifiedQuery:candidate,
+          verifiedBy:'vworld'
+        }));
+      }
+    }catch(error){
+      console.warn('VWorld 정규화 후보 검색 실패:',candidate,error);
+    }
+  }
+
+  return [];
 }
 async function runPlaceSearch(){
   const inp=document.getElementById('spInput');
