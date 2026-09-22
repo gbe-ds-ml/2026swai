@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
       integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw=="
       crossorigin="anonymous" referrerpolicy="no-referrer"/>
-<link rel="stylesheet" href="css/style.css?v=20260906.1">
+<link rel="stylesheet" href="css/style.css?v=20260922.3">
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
         integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g=="
@@ -36,7 +36,7 @@
 
 <script defer src="js/map.js?v=20260906.1"></script>
 <script defer src="js/layers.js?v=20260906.1"></script>
-<script defer src="js/search.js?v=20260921.1"></script>
+<script defer src="js/search.js?v=20260922.3"></script>
 <script defer src="js/route.js?v=20260906.1"></script>
 
 <script defer src="js/map-longpress.js?v=20260906.1"></script>
@@ -46,7 +46,7 @@
 <script defer src="js/chat-facility.js?v=20260906.2"></script>
 <script defer src="js/chat-agent.js?v=20260906.1"></script>
 
-<script defer src="js/emergency.js?v=20260906.1"></script>
+<script defer src="js/emergency.js?v=20260922.3"></script>
 <script defer src="js/timer.js?v=20260906.1"></script>
 <script defer src="js/audit.js?v=20260906.1"></script>
 
@@ -58,16 +58,16 @@
 <script defer src="js/route-ux.js?v=20260906.1"></script>
 <script defer src="js/route-group-restore.js?v=20260906.1"></script>
 <script defer src="js/route-back-guard.js?v=20260906.1"></script>
-<script defer src="js/route-navigation.js?v=20260906.1"></script>
+<script defer src="js/route-navigation.js?v=20260922.3"></script>
 
 <!-- v2.2 안정화: 현재 GPS 재사용·stale GPS 차단·위치 오류 메시지 분리 -->
 <script defer src="js/safewalk-stability.js?v=20260906.2"></script>
 
 <!-- KOR/ENG UI + English place-search support -->
-<script defer src="js/safewalk-i18n.js?v=20260921.1"></script>
+<script defer src="js/safewalk-i18n.js?v=20260922.3"></script>
 
 <!-- 2026-09-22: English dynamic UI + verified English search hotfix -->
-<script defer src="js/safewalk-en-fix.js?v=20260922.2"></script>
+<script defer src="js/safewalk-en-fix.js?v=20260922.3"></script>
 
 </head>
 <body>
@@ -190,12 +190,17 @@
     <span class="sp-title">🚨 긴급 도움</span>
     <button type="button" class="route-close" onclick="closeEmergencyPanel()" aria-label="긴급 패널 닫기">×</button>
   </div>
+  <div class="em-report-notice" id="emReportNotice" role="note">
+    <p class="em-report-title">신고 전 확인해 주세요</p>
+    <p class="em-report-warning">고의적인 허위 신고는 관련 법령에 따라 처벌 또는 과태료 부과 대상이 될 수 있습니다.</p>
+    <p class="em-report-reassurance">실제 긴급 상황에서는 즉시 112 또는 119로 신고해 주세요.</p>
+  </div>
   <div class="em-call-row">
     <a class="em-call police" href="tel:112">🚔 112<span>경찰</span></a>
     <a class="em-call fire" href="tel:119">🚒 119<span>소방·구급</span></a>
   </div>
   <button type="button" class="em-action" id="guardianSmsBtn" onclick="openGuardianSms()">💬 문자로 내 위치 보내기</button>
-  <button type="button" class="em-action" onclick="copyMyLocation()">📋 현재 위치 복사 (메신저 붙여넣기용)</button>
+  <button type="button" class="em-action" id="copyLocationBtn" onclick="copyMyLocation()">📋 현재 위치 복사 (메신저 붙여넣기용)</button>
   <button type="button" class="em-action siren" id="sirenBtn" onclick="toggleSiren()">📢 사이렌 + 화면 점멸</button>
   <div class="em-guardian">
     <label for="guardianInput">보호자 전화번호 (이 기기에만 저장)</label>
@@ -204,7 +209,7 @@
       <button type="button" class="sp-go" onclick="saveGuardianFromInput()">저장</button>
     </div>
   </div>
-  <div class="em-note">긴급 상황에서는 현재 화면에서 112·119로 직접 신고해 주세요.</div>
+  <div class="em-note">전화 버튼은 기기의 전화 기능을, 문자 버튼은 문자 작성 화면을 엽니다. 문자 내용과 수신자를 확인한 뒤 직접 전송해 주세요.</div>
 </div>
 
 <!-- v2.1: 시민 안전 평가 입력 패널 -->
