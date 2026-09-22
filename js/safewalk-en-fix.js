@@ -1,11 +1,10 @@
 /* ============================================================
-   SafeWalk English hotfix v1.2 — 2026-09-22
+   SafeWalk English hotfix v1.3 — 2026-09-22
 
    목적
    1) 영어 모드에서 경로 결과/타이머/안내/토스트 등
       실행 중 동적으로 생성되는 한글 UI까지 영어로 변환
-   2) 영어 목적지 검색 시
-      AI 한국어 검색어 후보 -> VWorld 실제 검증 순서를 우선 적용
+   2) search.js가 영문 검색을 담당하고, 이 파일은 추가 UI 번역만 제공
    3) AI 채팅 요청에 현재 UI 언어(ko/en)를 명시적으로 전달
    4) 여성·청소년 카드의 표시 구조를 안정적으로 통일
 
@@ -29,6 +28,82 @@
   }
 
   const EXACT_EN = new Map(Object.entries({
+    "신고 전 확인해 주세요":"Before you report",
+    "고의적인 허위 신고는 관련 법령에 따라 처벌 또는 과태료 부과 대상이 될 수 있습니다.":"Deliberately making a false report may result in criminal penalties or an administrative fine under applicable law.",
+    "실제 긴급 상황에서는 즉시 112 또는 119로 신고해 주세요.":"In a real emergency, call 112 or 119 immediately.",
+    "경찰 신고":"Police",
+    "112 문자 신고":"Text 112",
+    "현재위치 보내기":"Share current location",
+    "보호자 문자":"Text guardian",
+    "번호 입력 필요":"Phone number required",
+    "💬 보호자에게 내 위치 문자":"💬 Text my location to guardian",
+    "💬 문자로 내 위치 보내기 (받는 사람 직접 선택)":"💬 Text my location (choose recipient)",
+    "🔇 사이렌 끄기":"🔇 Turn siren off",
+    "보호자 번호를 저장했습니다.":"Guardian phone number saved.",
+    "보호자 번호를 지웠습니다.":"Guardian phone number removed.",
+    "보호자 전화번호를 먼저 입력하고 저장해 주세요.":"Enter and save a guardian phone number first.",
+    "현재 위치 정보를 복사했습니다. 메신저에 붙여넣어 공유하세요.":"Location copied. Paste it into a message to share it.",
+    "위치 미확인 안내를 복사했습니다. 주변 건물이나 도로명을 함께 알려 주세요.":"Location-unavailable message copied. Include a nearby building or street name.",
+    "이 기기에서는 사이렌 소리를 재생할 수 없습니다.":"This device cannot play the siren.",
+    "[SafeWalk] 지금 도움이 필요합니다.":"[SafeWalk] I need help now.",
+    "[SafeWalk] 내 위치 공유":"[SafeWalk] My location",
+    "[SafeWalk] 보호자에게 긴급 위치를 공유합니다.":"[SafeWalk] Sharing my emergency location with my guardian.",
+    "[SafeWalk 112 문자신고]\n현재 위치에서 긴급 도움이 필요합니다.\n상황을 추가로 입력한 뒤 전송해 주세요.":"[SafeWalk 112 emergency text]\nI need urgent help at my current location.\nPlease describe the situation before sending.",
+    "긴급 패널 닫기":"Close emergency panel",
+    "질문 보내기":"Send question",
+    "경로 정보 닫기":"Close route details",
+    "보행 안내 시작":"Start walking guidance",
+    "현재 위치 기준 경로 재계산 중":"Recalculating from current location",
+    "⚠️ 보행 경로 조회 실패":"⚠️ Walking route unavailable",
+    "점선은 출발지와 목적지를 연결한 참고선입니다. 실제 이동 경로로 이용하지 마세요.":"The dotted line only connects the origin and destination for reference. Do not use it as a walking route.",
+    "산출 불가":"Unavailable",
+    "측정 불가":"Unavailable",
+    "현재 위치 미확인":"Location unavailable",
+    "현재 위치 확인 중...":"Checking current location...",
+    "위치 확인 필요":"Location needed",
+    "안전시설을 조회하고 있습니다.":"Looking up safety facilities.",
+    "🔍 지도를 확대하면 안전시설이 표시됩니다":"🔍 Zoom in to display safety facilities",
+    "닫기":"Close",
+    "출발지":"Origin",
+    "목적지":"Destination",
+    "도착지":"Destination",
+    "출발지로 지정":"Set as origin",
+    "도착지로 지정":"Set as destination",
+    "목적지로 지정":"Set as destination",
+    "지도에서 선택":"Select on map",
+    "여기로 출발":"Start here",
+    "여기로 도착":"Go here",
+    "🌐 한국어":"🌐 한국어",
+    "여성":"Women",
+    "청소년":"Youth",
+    "⭐ 즐겨찾는 장소 추가":"⭐ Add favorite place",
+    "지도에서 선택한 장소를 이 기기에 저장합니다. 저장한 장소는 지도에서 다시 확인하고 삭제할 수 있습니다.":"Save the selected place on this device. You can view it again on the map or delete it.",
+    "장소 이름":"Place name",
+    "선택한 위치":"Selected location",
+    "위치를 확인하고 있습니다.":"Checking location...",
+    "⭐ 즐겨찾기에 저장":"⭐ Save to favorites",
+    "📍 현재 위치와 출발지가 다릅니다":"📍 Your location differs from the route origin",
+    "설정한 출발지에서 바로 안내를 시작하기에는 현재 위치가 멀리 떨어져 있습니다.":"You are too far from the selected origin to start guidance there.",
+    "경로는 그대로 미리보기 할 수 있고, 실제 안내를 시작하려면 현재 위치를 출발지로 다시 계산할 수 있습니다.":"You can preview this route, or recalculate it from your current location to start guidance.",
+    "현재 위치와 출발지 거리 확인 중...":"Checking the distance to the route origin...",
+    "기존 경로 보기":"Preview existing route",
+    "📍 현재 위치에서 안내":"📍 Start from my location",
+    "현재 위치에서 안내를 선택하면 경로와 주변 안전시설, 안전도 점수를 다시 계산합니다.":"Starting from your location recalculates the route and nearby infrastructure accessibility score.",
+    "현재 위치에서 안내를 선택하면 경로와 주변 안전시설, 시설 접근성 점수를 다시 계산합니다.":"Starting from your location recalculates the route and nearby infrastructure accessibility score.",
+    "내 위치로":"Go to my location",
+    "예: 집, 학교, 자주 가는 곳":"e.g. Home, school, or a place you visit often",
+    "🚶 안내를 시작합니다. 현재 위치를 따라가며 남은 거리와 시간을 안내합니다.":"🚶 Guidance started. SafeWalk follows your location and shows the remaining distance and time.",
+    "안내를 종료할까요? 현재 경로도 함께 삭제됩니다.":"End guidance? The current route will also be removed.",
+    "안내를 종료하고 경로를 삭제했습니다.":"Guidance ended and the route was removed.",
+    "현재 위치를 확인하지 못했습니다.":"Could not determine your current location.",
+    "📍 현재 위치를 기준으로 경로와 안전도를 다시 계산합니다.":"📍 Recalculating the route and infrastructure accessibility from your current location.",
+    "🚶 현재 위치에서 목적지까지 새 경로로 안내를 시작합니다. 안전시설과 안전도도 새 경로 기준으로 다시 반영했습니다.":"🚶 Starting a new route from your location. Infrastructure accessibility has been recalculated for this route.",
+    "현재 위치 기준 경로 재계산에 실패했습니다. 기존 경로를 유지합니다.":"Could not recalculate from your location. The existing route is retained.",
+    "현재 위치를 다시 확인하고 있습니다. 위치 수신 상태를 확인해 주세요.":"Checking your location again. Please check your location signal.",
+    "GPS 정확도가 낮아 도착 여부를 확인할 수 없습니다. 주변 지형과 목적지를 직접 확인해 주세요.":"GPS accuracy is too low to confirm arrival. Check your surroundings and destination directly.",
+    "🏁 목적지에 거의 도착했습니다. 도착 후 안내 종료를 눌러 주세요.":"🏁 You are almost at your destination. Tap “End guidance” after arriving.",
+    "⚠️ 안내 경로에서 조금 벗어나 있습니다. 지도의 경로를 확인해 주세요.":"⚠️ You are slightly off the route. Check the route on the map.",
+    "🔍 지도를 조금 더 확대하면 안전시설이 표시됩니다 (현재 축소 상태)":"🔍 Zoom in a little more to display safety facilities",
     /* 사용자 유형 / 상단 */
     '👴 노인':'👴 Senior',
     '노인':'Senior',
@@ -118,11 +193,33 @@
     const text=raw.trim();
     if(!text)return raw;
 
-    if(EXACT_EN.has(text)){
-      return raw.replace(text,EXACT_EN.get(text));
-    }
+    const exact=EXACT_EN.get(text)||EXACT_EN.get(text.replace(/\s+/g,' '))||EXACT_EN.get(text.replace(/아동안전지킴이집/g,'어린이안전지킴이집'));
+    if(exact)return raw.replace(text,exact);
 
     let m;
+
+    /* Dynamic status values and complete messages (never rewrite place names). */
+    m=text.match(/^(?:목적지 "(.+)" )?도착 예정 시간이 지났습니다\. 괜찮다면 "무사히 도착했어요"를 눌러 주세요\.$/);
+    if(m)return raw.replace(text,'Your expected arrival time'+(m[1]?' at “'+m[1]+'”':'')+' has passed. If you are safe, tap “I arrived safely”.');
+    m=text.match(/^\[SafeWalk 안심 타이머\] 도착 예정 시간이 지났습니다\.(?: \(목적지: (.+)\))?$/);
+    if(m)return raw.replace(text,'[SafeWalk safety timer] My expected arrival time has passed.'+(m[1]?' (Destination: '+m[1]+')':''));
+    m=text.match(/^복사에 실패했습니다\. 위치: (.+)$/);
+    if(m)return raw.replace(text,'Copy failed. Location: '+(m[1]==='확인 필요'?'unavailable':m[1]));
+    m=text.match(/^🗺 지도에서 (출발지|도착지)를 한 번 터치하세요\.$/);
+    if(m)return raw.replace(text,'🗺 Tap the '+(m[1]==='출발지'?'origin':'destination')+' on the map.');
+    m=text.match(/^(\d+)개$/);
+    if(m)return raw.replace(text,m[1]+' found');
+    m=text.match(/^(\d+)건$/);
+    if(m)return raw.replace(text,m[1]+' found');
+    m=text.match(/^(\d+)분$/);
+    if(m)return raw.replace(text,m[1]+' min');
+    m=text.match(/^출발지 (.+?) · 목적지 (.+)$/);
+    if(m)return raw.replace(text,'Origin '+m[1]+' · Destination '+m[2]);
+
+    m=text.match(/^(.*?)\s*(치안시설|안전비상벨|아동안전지킴이집|어린이안전지킴이집|범죄주의구간)$/u);
+    if(m&&/^[^\p{L}\p{N}]*$/u.test(m[1]))return raw.replace(text,m[1]+(m[1]?' ':'')+(FACILITY_EN[m[2]]||'Crime caution area'));
+    m=text.match(/^(이 지역 시설 밀집 · )?zoom (\d+)↑ 확대 필요$/);
+    if(m)return raw.replace(text,(m[1]?'Dense facility area · ':'')+'Zoom in to level '+m[2]+'+');
 
     /* 상단 사용자 유형 */
     m=text.match(/^([👴🧒👩🧍‍♂️🧍‍♀️]?\s*)(어린이|여성·청소년|노인)$/);
@@ -140,6 +237,7 @@
       let tail=m[1]
         .replace(/이 지역 시설 밀집/g,'dense facility area')
         .replace(/이 지역 시설이 많음/g,'many facilities in this area');
+      for(const [ko,en] of Object.entries(FACILITY_EN))tail=tail.replaceAll(ko,en);
       return raw.replace(text,'🔍 Zoom in — '+tail);
     }
 
@@ -270,29 +368,10 @@
     return raw;
   }
 
-  function translateNode(node){
-    if(!isEnglish()||!node)return;
-
-    if(node.nodeType===Node.TEXT_NODE){
-      const parent=node.parentElement;
-      if(!parent)return;
-      if(parent.closest('script,style,textarea,input,option'))return;
-
-      const next=translateDynamic(node.nodeValue);
-      if(next!==node.nodeValue){
-        node.nodeValue=next;
-      }
-      return;
-    }
-
-    if(node.nodeType!==Node.ELEMENT_NODE)return;
-
-    node.childNodes.forEach(translateNode);
-  }
+  window.safeWalkExtraTranslation=translateDynamic;
 
   function translateWholePage(){
-    if(!isEnglish()||!document.body)return;
-    translateNode(document.body);
+    if(typeof window.refreshSafeWalkTranslations==='function')window.refreshSafeWalkTranslations();
   }
 
   /* ----------------------------------------------------------
@@ -314,101 +393,6 @@
       (isEnglish()?'Women · Youth':'여성·청소년')+
       '</span>'+
       '<span class="age-desc" aria-hidden="true">&nbsp;<br>&nbsp;</span>';
-  }
-
-  /* ----------------------------------------------------------
-     영어 검색:
-     영문 입력이면 AI 정규화를 먼저 시도한 뒤 VWorld로 검증.
-     AI 후보 문자열 자체는 절대 결과로 사용하지 않는다.
-     ---------------------------------------------------------- */
-  function installEnglishSearchFix(){
-    if(
-      typeof requestVworldSearch!=='function' ||
-      typeof requestVworldSearchCore!=='function'
-    ){
-      return;
-    }
-
-    requestVworldSearch=async function(query,type){
-      const q=String(query||'').trim();
-      const hasLatin=/[A-Za-z]/.test(q);
-
-      /*
-        영어 모드 + 영문/로마자:
-        1) AI가 한국어 검색어 후보 생성
-        2) 후보를 VWorld에서 실제 검색
-        3) VWorld 결과가 있을 때만 반환
-      */
-      if(isEnglish()&&hasLatin){
-        let candidates=[];
-
-        try{
-          if(typeof setSearchMsg==='function'){
-            setSearchMsg('Translating and verifying the place...');
-          }
-
-          if(typeof requestSafeWalkPlaceCandidates==='function'){
-            candidates=await requestSafeWalkPlaceCandidates(q);
-          }
-
-          console.info('[SafeWalk EN search] normalized candidates:',q,candidates);
-        }catch(error){
-          console.warn('[SafeWalk EN search] normalization failed:',error);
-        }
-
-        for(const candidate of candidates){
-          if(!candidate)continue;
-
-          try{
-            const items=await requestVworldSearchCore(candidate,type);
-
-            console.info(
-              '[SafeWalk EN search] VWorld verification:',
-              candidate,
-              items.length
-            );
-
-            if(items.length){
-              return items.map(item=>({
-                ...item,
-                originalQuery:q,
-                verifiedQuery:candidate,
-                verifiedBy:'vworld'
-              }));
-            }
-          }catch(error){
-            console.warn(
-              '[SafeWalk EN search] VWorld candidate failed:',
-              candidate,
-              error
-            );
-          }
-        }
-
-        /*
-          AI 서비스가 잠시 실패해도 검색 UI 전체가 죽지 않도록
-          원문 VWorld 검색을 마지막 fallback으로 사용.
-        */
-        try{
-          return await requestVworldSearchCore(q,type);
-        }catch(error){
-          console.warn('[SafeWalk EN search] direct fallback failed:',error);
-          return [];
-        }
-      }
-
-      /*
-        한국어 모드 / 한국어 검색어:
-        기존 VWorld 동작 유지.
-        단, VWorld 오류가 UI 전체를 깨지 않도록 빈 결과로 처리.
-      */
-      try{
-        return await requestVworldSearchCore(q,type);
-      }catch(error){
-        console.warn('[SafeWalk search] VWorld request failed:',error);
-        return [];
-      }
-    };
   }
 
   /* ----------------------------------------------------------
@@ -511,35 +495,24 @@
   /* ----------------------------------------------------------
      동적 UI 감시
      ---------------------------------------------------------- */
-  function installTranslationObserver(){
-    if(!isEnglish()||!document.body)return;
-
-    const observer=new MutationObserver(mutations=>{
-      for(const mutation of mutations){
-        if(mutation.type==='characterData'){
-          translateNode(mutation.target);
-          continue;
-        }
-
-        mutation.addedNodes.forEach(translateNode);
-      }
-    });
-
-    observer.observe(document.body,{
-      childList:true,
-      subtree:true,
-      characterData:true
-    });
+  function installDialogTranslation(){
+    for(const name of ['alert','confirm']){
+      const original=window[name];
+      if(typeof original!=='function')continue;
+      window[name]=function(message){
+        const text=typeof window.safeWalkTranslate==='function'?window.safeWalkTranslate(message):message;
+        return original.call(window,text);
+      };
+    }
   }
 
   function boot(){
     normalizeYouthCard();
-    installEnglishSearchFix();
+    installDialogTranslation();
     installAgentLanguageFix();
 
     if(isEnglish()){
       translateWholePage();
-      installTranslationObserver();
 
       /* 다른 SafeWalk 초기화 함수가 직후 DOM을 다시 쓰는 경우 한 번 더 보정 */
       setTimeout(translateWholePage,100);

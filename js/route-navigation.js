@@ -1702,6 +1702,10 @@
      버튼 상태 렌더링
      ========================================================== */
 
+  function navText(text){
+    return typeof window.safeWalkTranslate==='function'?window.safeWalkTranslate(text):text;
+  }
+
   function renderButtons(){
 
     const btn =
@@ -1714,23 +1718,23 @@
       btn.disabled =
         rerouting || (!navigationMode&&!findRoutePolyline());
 
-      const text =
+      const text = navText(
         rerouting
           ? '경로 재계산 중...'
           : (
               navigationMode
                 ? '■ 안내 종료'
                 : '🚶 안내 시작'
-            );
+            ));
 
-      const label =
+      const label = navText(
         rerouting
           ? '현재 위치 기준 경로 재계산 중'
           : (
               navigationMode
                 ? '안내 종료'
                 : '보행 안내 시작'
-            );
+            ));
 
       if(
         btn.textContent !== text
@@ -1773,11 +1777,9 @@
           'routeSub'
         );
 
-      const titleText =
-        '🚶 안전 경로 안내 중';
+      const titleText = navText('🚶 안전 경로 안내 중');
 
-      const subText =
-        '현재 위치를 따라가며 남은 거리와 예상 시간을 안내합니다.';
+      const subText = navText('현재 위치를 따라가며 남은 거리와 예상 시간을 안내합니다.');
 
       if(
         title &&
@@ -1812,6 +1814,7 @@
     text,
     level=''
   ){
+    text=navText(text);
 
     const el =
       document.getElementById(

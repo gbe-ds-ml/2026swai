@@ -36,14 +36,16 @@ function saveGuardianFromInput(){
 
 /* ── 위치 문구 ── */
 function buildLocationMessage(prefix){
+  const english=typeof safeWalkIsEnglish==='function'&&safeWalkIsEnglish();
   let msg=prefix||'[SafeWalk] 지금 도움이 필요합니다.';
+  if(english&&typeof safeWalkTranslate==='function')msg=safeWalkTranslate(msg);
   if(hasCurrentLocation()){
-    msg+='\n현재 위치: '+
-      '(위도 '+myLat.toFixed(6)+', 경도 '+myLng.toFixed(6)+')'+
-      '\n지도: https://maps.google.com/?q='+myLat.toFixed(6)+','+myLng.toFixed(6);
-    if(Number.isFinite(myPositionAccuracy))msg+='\nGPS 정확도: 약 '+Math.round(myPositionAccuracy)+'m';
+    msg+=(english?'\nCurrent location: ':'\n현재 위치: ')+
+      (english?'(Latitude ':'(위도 ')+myLat.toFixed(6)+(english?', longitude ':', 경도 ')+myLng.toFixed(6)+')'+
+      (english?'\nMap: https://maps.google.com/?q=':'\n지도: https://maps.google.com/?q=')+myLat.toFixed(6)+','+myLng.toFixed(6);
+    if(Number.isFinite(myPositionAccuracy))msg+=(english?'\nGPS accuracy: approx. ':'\nGPS 정확도: 약 ')+Math.round(myPositionAccuracy)+'m';
   }else{
-    msg+='\n(현재 위치를 확인하지 못했습니다. 주변 건물이나 도로명을 함께 알려 주세요.)';
+    msg+=english?'\n(Current location unavailable. Include a nearby building or street name.)':'\n(현재 위치를 확인하지 못했습니다. 주변 건물이나 도로명을 함께 알려 주세요.)';
   }
   return msg;
 }

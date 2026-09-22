@@ -175,6 +175,12 @@
       return raw.replace(trimmed,EXACT.get(trimmed));
     }
 
+    const extra=window.safeWalkExtraTranslation;
+    if(typeof extra==='function'){
+      const translated=extra(raw);
+      if(translated!==raw)return translated;
+    }
+
     let m;
 
     m=trimmed.match(/^(\d+)건을 찾았습니다\. 항목을 선택하세요\.$/);
@@ -219,11 +225,18 @@
     return raw;
   }
 
+  window.safeWalkTranslate=function(text){
+    return currentLanguage==='en'?dynamicTranslation(text):String(text??'');
+  };
+  window.refreshSafeWalkTranslations=function(){
+    if(document.body)translateNode(document.body);
+  };
+
   function translateAttribute(el,name){
     if(currentLanguage!=='en'||!el?.getAttribute)return;
     const value=el.getAttribute(name);
     if(!value)return;
-    const mapped=ATTR_EXACT.get(value);
+    const mapped=ATTR_EXACT.get(value)||dynamicTranslation(value);
     if(mapped&&mapped!==value)el.setAttribute(name,mapped);
   }
 
@@ -233,7 +246,7 @@
     if(node.nodeType===Node.TEXT_NODE){
       const parent=node.parentElement;
       if(!parent)return;
-      if(parent.closest('script,style,textarea,input,option'))return;
+      if(parent.closest('script,style,textarea,input,.chat-row.user,[translate="no"],.sp-item .nm,.sp-item .ad,.chat-place-name,.chat-place-addr'))return;
       const translated=dynamicTranslation(node.nodeValue);
       if(translated!==node.nodeValue)node.nodeValue=translated;
       return;
@@ -303,7 +316,7 @@
 
     setText('#safeTimerPill .safe-timer-done','I arrived');
     setText('#safeTimerAlert .safe-timer-alert-title','⏰ Arrival confirmation needed');
-    setText('#safeTimerAlertSub','Your expected arrival time has passed.');
+    if(!document.getElementById('safeTimerAlert')?.classList.contains('show'))setText('#safeTimerAlertSub','Your expected arrival time has passed.');
     const timerButtons=document.querySelectorAll('#safeTimerAlert .sta-btn');
     if(timerButtons[0])timerButtons[0].textContent='✅ I arrived safely';
     if(timerButtons[1])timerButtons[1].textContent='💬 Send my location to guardian';
@@ -316,14 +329,13 @@
     if(calls[0])calls[0].textContent='Police';
     if(calls[1])calls[1].textContent='Fire · EMS';
     setText('#guardianSmsBtn','💬 Send my location by text');
-    const emActions=document.querySelectorAll('#emergencyPanel .em-action');
-    if(emActions[1])emActions[1].textContent='📋 Copy current location';
-    if(emActions[2])emActions[2].textContent='📢 Siren + screen flash';
+    setText('#copyLocationBtn','📋 Copy current location');
+    setText('#sirenBtn',typeof sirenOn!=='undefined'&&sirenOn?'🔇 Turn siren off':'📢 Siren + screen flash');
     setText('#emergencyPanel .em-guardian label','Guardian phone number (stored only on this device)');
     const guardian=document.getElementById('guardianInput');
     if(guardian)guardian.placeholder='e.g. 01012345678';
     setText('#emergencyPanel .em-guardian .sp-go','Save');
-    setText('#emergencyPanel .em-note','In an emergency, call 112 or 119 directly from this screen.');
+    setText('#emergencyPanel .em-note','Call buttons open your device’s phone function. Text buttons open a message draft. Check the message and recipient, then send it yourself.');
 
     setText('#auditPanel .sp-title','⭐ Safety feedback for this location');
     setText('#auditPanel .audit-sub','Record perceived safety factors that public data may not capture. Select all three items.');
@@ -333,8 +345,7 @@
     const slotTags=document.querySelectorAll('#searchPanel .sp-slot .tag');
     if(slotTags[0])slotTags[0].textContent='From';
     if(slotTags[1])slotTags[1].textContent='To';
-    setText('#slotOriginVal','Current location');
-    setText('#slotDestVal','Set a destination');
+    if(typeof updateSlotUI==='function')updateSlotUI();
     setText('#searchPanel .sp-swap','⇅ Swap origin and destination');
 
     const searchInput=document.getElementById('spInput');
@@ -371,7 +382,7 @@
     setText('#chatPanel .chat-privacy','Your question, recent conversation, and summarized area/route context are sent to the AI service. GPS coordinates and guardian phone numbers are not sent automatically.');
 
     const firstBubble=document.querySelector('#chatMessages .chat-row.bot .chat-bubble');
-    if(firstBubble)firstBubble.textContent='Hello. I can explain SafeWalk, find nearby safety facilities, and help with walking directions. You can type “Take me to Pohang Station” or search a destination in English. SafeWalk verifies places through VWorld before starting directions. In an emergency, call 112 or 119 instead of waiting for an AI response.';
+    if(firstBubble&&firstBubble.textContent.startsWith('안녕하세요. SafeWalk 이용 방법'))firstBubble.textContent='Hello. I can explain SafeWalk, find nearby safety facilities, and help with walking directions. You can type “Take me to Pohang Station” or search a destination in English. SafeWalk verifies places through VWorld before starting directions. In an emergency, call 112 or 119 instead of waiting for an AI response.';
 
     const quickBtns=document.querySelectorAll('#chatPanel .chat-quick-btn');
     if(quickBtns[0]){
