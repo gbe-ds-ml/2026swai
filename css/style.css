@@ -835,6 +835,9 @@ body.siren-flash::after{
 .em-report-notice{margin:0 0 12px;padding:11px 12px;border:1px solid #fed7aa;border-radius:12px;background:#fff7ed;color:#7c2d12;font-size:12px;line-height:1.55;overflow-wrap:anywhere;}
 .em-report-notice p{margin:0;}
 .em-report-notice .em-report-title{font-weight:800;margin-bottom:4px;}
-.em-report-notice .em-report-reassurance{margin-top:5px;color:#334155;}
+.em-report-notice .em-report-reassurance{margin-top:5px;}
+.em-report-notice .em-report-warning,
+.em-report-notice .em-report-reassurance{color:#dc2626;}
 .em-note{color:#64748b;font-size:11px;}
 html[lang="en"] .em-sms-main{line-height:1.35;white-space:normal;}
+
