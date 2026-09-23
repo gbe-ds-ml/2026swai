@@ -280,7 +280,8 @@
     document.documentElement.lang='en';
 
     setHtml('#intro .badge','<span class="badge-dot"></span>Based on SafeMap public safety data');
-    setText('#intro .app-sub','Check safety infrastructure around you');
+    setText('#serviceTitle','AI-Assisted Walking Directions');
+    setText('#intro .app-sub','Walking directions using public safety infrastructure data');
     setText('#intro .section-lbl','Who are you?');
 
     setText('.age-card[data-group="child"] .age-name','Child');
@@ -505,3 +506,4 @@
     boot();
   }
 })();
+
