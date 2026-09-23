@@ -29,7 +29,7 @@
 
   const EXACT_EN = new Map(Object.entries({
     "신고 전 확인해 주세요":"Before you report",
-    "고의적인 허위 신고는 관련 법령에 따라 처벌 또는 과태료 부과 대상이 될 수 있습니다.":"Deliberately making a false report may result in criminal penalties or an administrative fine under applicable law.",
+    "허위 신고는 관련 법령에 따라 처벌 또는 과태료 부과 대상이 될 수 있습니다.":"Making a false report may result in criminal penalties or an administrative fine under applicable law.",
     "실제 긴급 상황에서는 즉시 112 또는 119로 신고해 주세요.":"In a real emergency, call 112 or 119 immediately.",
     "경찰 신고":"Police",
     "112 문자 신고":"Text 112",
@@ -526,3 +526,4 @@
     boot();
   }
 })();
+
