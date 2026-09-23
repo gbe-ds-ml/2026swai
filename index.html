@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
-<title>SafeWalk · 내 주변 안전지도</title>
+<title>SafeWalk(세이프워크) | AI 안심길 찾기</title>
+<meta name="description" content="SafeWalk(세이프워크)는 공공 안전시설 정보를 활용한 AI 안심길 찾기 서비스입니다. 주변 치안시설·CCTV·안전비상벨을 확인하고, 보행 경로와 시설 접근성 정보를 안내받으세요.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="SafeWalk(세이프워크) | AI 안심길 찾기">
+<meta property="og:description" content="SafeWalk(세이프워크)는 공공 안전시설 정보를 활용한 AI 안심길 찾기 서비스입니다. 주변 치안시설·CCTV·안전비상벨을 확인하고, 보행 경로와 시설 접근성 정보를 안내받으세요.">
+<meta property="og:url" content="https://gbe-ds-ml.github.io/2026swai/">
+<link rel="canonical" href="https://gbe-ds-ml.github.io/2026swai/">
 <link rel="icon" href="assets/poi32.svg" type="image/svg+xml">
 
 <!-- 접속 속도: 외부 서버 3곳에 미리 연결(폰트 CSS·폰트 파일·CDN) -->
@@ -19,7 +25,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
       integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw=="
       crossorigin="anonymous" referrerpolicy="no-referrer"/>
-<link rel="stylesheet" href="css/style.css?v=20260923.1">
+<link rel="stylesheet" href="css/style.css?v=20260923.2">
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
         integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g=="
@@ -64,7 +70,7 @@
 <script defer src="js/safewalk-stability.js?v=20260906.2"></script>
 
 <!-- KOR/ENG UI + English place-search support -->
-<script defer src="js/safewalk-i18n.js?v=20260922.3"></script>
+<script defer src="js/safewalk-i18n.js?v=20260923.2"></script>
 
 <!-- 2026-09-22: English dynamic UI + verified English search hotfix -->
 <script defer src="js/safewalk-en-fix.js?v=20260923.1"></script>
@@ -82,7 +88,8 @@
     <div class="badge"><span class="badge-dot"></span>생활안전지도 기반</div>
     <div class="version-tag" id="versionTag">v.2.0.0</div>
     <div class="app-name">Safe<span>Walk</span></div>
-    <div class="app-sub">내 주변 안전 인프라, 미리 확인하세요</div>
+    <h1 class="service-title" id="serviceTitle">AI 안심길 찾기</h1>
+    <div class="app-sub">공공 안전시설 정보를 활용한 보행 경로 안내</div>
 
     <div class="section-lbl">나는 누구인가요?</div>
     <div class="age-cards">
@@ -364,4 +371,5 @@
 
 </body>
 </html>
+
 
