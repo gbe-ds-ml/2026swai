@@ -380,7 +380,7 @@
 
     setText('#chatPanel .chat-title','SafeWalk AI Safety Guide');
     setText('#chatPanel .chat-status','Cloudflare Workers AI · Public-data-based guidance');
-    setText('#chatPanel .chat-privacy','Your question, recent conversation, and summarized area/route context are sent to the AI service. GPS coordinates and guardian phone numbers are not sent automatically.');
+    setText('#chatPanel .chat-privacy','Your question, recent conversation, and summarized area/route context are sent to the AI service. GPS coordinates and guardian phone numbers are not sent to AI automatically. Weather questions send your current GPS coordinates to Open-Meteo.');
 
     const firstBubble=document.querySelector('#chatMessages .chat-row.bot .chat-bubble');
     if(firstBubble&&firstBubble.textContent.startsWith('안녕하세요. SafeWalk 이용 방법'))firstBubble.textContent='Hello. I can explain SafeWalk, find nearby safety facilities, and help with walking directions. You can type “Take me to Pohang Station” or search a destination in English. SafeWalk verifies places through VWorld before starting directions. In an emergency, call 112 or 119 instead of waiting for an AI response.';

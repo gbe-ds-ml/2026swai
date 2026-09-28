@@ -3,7 +3,7 @@
 
    Worker AI 중심 Agent Router
 
-   모든 자연어 질문을 먼저 Workers AI가 판단한다.
+   오늘 날씨는 Open-Meteo 실데이터로 처리하고, 그 밖의 질문은 Workers AI가 판단한다.
 
    Worker 판단 결과
    ├─ 일반 질문
@@ -708,7 +708,7 @@ async function safeWalkAgentCallWorker(
 
    둘 다 호출하지 않는다.
 
-   항상 AI Worker에게 먼저 묻는다.
+   날씨 질문은 chat-weather.js가 먼저 처리하고 나머지는 AI Worker에게 묻는다.
    ============================================================ */
 
 sendChatMessage =
@@ -827,8 +827,32 @@ sendChatMessage =
 
     try{
 
+      /* 날씨는 실제 GPS + Open-Meteo 응답만 사용한다. 실패해도 AI로 넘기지 않는다. */
+      if(window.safeWalkWeather?.matches(message)){
+        const weather=await window.safeWalkWeather.reply(message,controller.signal);
+        hideChatTyping();
+        const row=appendChatMessage('bot',weather.text,weather.error);
+        if(row){
+          row.setAttribute('translate','no');
+          const bubble=row.querySelector('.chat-bubble');
+          if(bubble&&!weather.error){
+            const source=document.createElement('a');
+            source.href='https://open-meteo.com/';
+            source.target='_blank';
+            source.rel='noopener noreferrer';
+            source.textContent='open-meteo.com';
+            bubble.appendChild(document.createTextNode(' · '));
+            bubble.appendChild(source);
+          }
+        }
+        // 위치 좌표와 과거 날씨 수치를 일반 AI 대화 이력에 넣지 않는다.
+        safeWalkAgentRememberTurn(message,
+          '날씨 질문을 처리했습니다. 날씨 수치는 대화 이력에 저장하지 않습니다. 이후 날씨 질문도 새로 조회해야 하며 추측하면 안 됩니다.');
+        return;
+      }
+
       /* ======================================================
-         모든 질문을 AI Worker에게 먼저 전달
+         그 밖의 질문을 AI Worker에게 전달
          ====================================================== */
 
       const data =
