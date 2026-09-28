@@ -72,7 +72,7 @@
 <script defer src="js/safewalk-stability.js?v=20260906.2"></script>
 
 <!-- KOR/ENG UI + English place-search support -->
-<script defer src="js/safewalk-i18n.js?v=20260928.1"></script>
+<script defer src="js/safewalk-i18n.js?v=20260928.2"></script>
 
 <!-- 2026-09-22: English dynamic UI + verified English search hotfix -->
 <script defer src="js/safewalk-en-fix.js?v=20260923.1"></script>
@@ -359,6 +359,8 @@
             onclick="askChatQuick('SafeWalk에서 길찾기는 어떻게 사용하나요?')">길찾기 사용법</button>
     <button type="button" class="chat-quick-btn"
             onclick="askChatQuick('현재 경로의 시설 접근성 평가 결과를 설명해 주세요.')">현재 경로 설명</button>
+    <button type="button" class="chat-quick-btn" id="chatWeatherQuick"
+            onclick="askChatQuick('오늘 날씨 알려줘')">날씨 정보</button>
   </div>
 
   <div class="chat-compose">
