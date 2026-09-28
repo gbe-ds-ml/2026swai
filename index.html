@@ -51,7 +51,8 @@
 
 <script defer src="js/chat.js?v=20260906.1"></script>
 <script defer src="js/chat-facility.js?v=20260906.2"></script>
-<script defer src="js/chat-agent.js?v=20260906.1"></script>
+<script defer src="js/chat-weather.js?v=20260928.1"></script>
+<script defer src="js/chat-agent.js?v=20260928.1"></script>
 
 <script defer src="js/emergency.js?v=20260922.3"></script>
 <script defer src="js/timer.js?v=20260906.1"></script>
@@ -71,7 +72,7 @@
 <script defer src="js/safewalk-stability.js?v=20260906.2"></script>
 
 <!-- KOR/ENG UI + English place-search support -->
-<script defer src="js/safewalk-i18n.js?v=20260923.2"></script>
+<script defer src="js/safewalk-i18n.js?v=20260928.1"></script>
 
 <!-- 2026-09-22: English dynamic UI + verified English search hotfix -->
 <script defer src="js/safewalk-en-fix.js?v=20260923.1"></script>
@@ -340,7 +341,7 @@
             aria-label="AI 안전 도우미 닫기">×</button>
   </div>
 
-  <p class="chat-privacy">질문·최근 대화·지역 및 경로 요약이 AI 서비스로 전송됩니다. GPS 좌표와 보호자 번호는 자동으로 전송하지 않습니다.</p>
+  <p class="chat-privacy">질문·최근 대화·지역 및 경로 요약이 AI 서비스로 전송됩니다. GPS 좌표와 보호자 번호는 AI에 자동 전송하지 않습니다. 날씨 질문 시 현재 GPS 좌표를 Open-Meteo로 전송합니다.</p>
   <div id="chatMessages" class="chat-messages" aria-live="polite">
     <div class="chat-row bot">
       <div class="chat-bubble">안녕하세요. SafeWalk 이용 방법과 안전시설을 안내해 드립니다. “포항여고에서 영일대까지”, “여기서 포항역 가자”처럼 입력하면 실제 장소 후보를 확인한 뒤 지도에 경로를 반영합니다. 긴급 상황이라면 AI 답변을 기다리지 말고 112 또는 119에 연락해 주세요.</div>
@@ -372,5 +373,4 @@
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "60cc9f82009b451caacf210483d5eff0"}'></script><!-- End Cloudflare Web Analytics -->
 </body>
 </html>
-
 
