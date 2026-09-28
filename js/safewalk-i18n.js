@@ -407,6 +407,9 @@
       quickBtns[4].setAttribute('onclick',"askChatQuick('Explain the infrastructure accessibility result for my current route.')");
     }
 
+    setText('#chatWeatherQuick','Weather');
+    setAttr('#chatWeatherQuick','onclick',"askChatQuick('What is the weather today?')");
+
     const chatInput=document.getElementById('chatInput');
     if(chatInput){
       chatInput.placeholder='e.g. Take me to Pohang Station / Where is the nearest CCTV?';
