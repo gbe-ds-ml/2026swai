@@ -2461,17 +2461,15 @@ function drawMe(){
   const locationLabel=(typeof window.safeWalkIsEnglish==='function' && window.safeWalkIsEnglish())
     ? 'My location' : '내 위치';
   const characterUrl=isCpted
-    ? 'assets/cpted-fighting.png' : 'assets/podori-pedestrian.svg?v=20261012.5';
-  // 파란 점의 중심(44,72)이 GPS 좌표입니다. 파동은 장식이며 정확도 반경이 아닙니다.
+    ? 'assets/cpted-fighting.png' : 'assets/podori-pedestrian-original.png';
+  // 캐릭터 하단 중앙(44,64)을 GPS 좌표에 맞추고 이름표만 표시합니다.
   const icon=L.divIcon({
-    html:'<span class="sw-location-pulse" aria-hidden="true"></span>'+
-      '<img class="sw-location-character'+(isCpted?' is-cpted':'')+'" src="'+characterUrl+'" alt="" aria-hidden="true" draggable="false">'+
-      '<span class="sw-location-dot" aria-hidden="true"></span>'+
+    html:'<img class="sw-location-character'+(isCpted?' is-cpted':'')+'" src="'+characterUrl+'" alt="" aria-hidden="true" draggable="false">'+
       '<span class="sw-location-label">'+locationLabel+'</span>',
     className:'sw-current-location-marker',
-    iconSize:[88,108],
-    iconAnchor:[44,72],
-    popupAnchor:[0,-72]
+    iconSize:[88,94],
+    iconAnchor:[44,64],
+    popupAnchor:[0,-64]
   });
 
 
