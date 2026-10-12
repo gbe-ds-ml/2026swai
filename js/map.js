@@ -2461,7 +2461,7 @@ function drawMe(){
   const locationLabel=(typeof window.safeWalkIsEnglish==='function' && window.safeWalkIsEnglish())
     ? 'My location' : '내 위치';
   const characterUrl=isCpted
-    ? 'assets/cpted-fighting.png' : 'assets/podori-pedestrian-original.png';
+    ? 'assets/cpted-fighting.png' : 'assets/police-podori-posuni.webp';
   // 캐릭터 하단 중앙(44,64)을 GPS 좌표에 맞추고 이름표만 표시합니다.
   const icon=L.divIcon({
     html:'<img class="sw-location-character'+(isCpted?' is-cpted':'')+'" src="'+characterUrl+'" alt="" aria-hidden="true" draggable="false">'+
