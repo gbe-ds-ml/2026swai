@@ -2466,56 +2466,13 @@ function drawMe(){
       popupAnchor:[0,-58],
       className:'safewalk-character-marker'
     })
-    : L.divIcon({
-
-      html:
-
-        '<div style="'+
-
-          'width:42px;'+
-
-          'height:42px;'+
-
-          'border-radius:50%;'+
-
-          'background:'+
-            group.color+
-            ';'+
-
-          'border:3px solid #fff;'+
-
-          'display:flex;'+
-
-          'align-items:center;'+
-
-          'justify-content:center;'+
-
-          'font-size:19px;'+
-
-          'box-shadow:0 3px 12px rgba(0,0,0,.25);'+
-
-        '">'+
-
-          group.emoji+
-
-        '</div>',
-
-
-      className:
-        '',
-
-
-      iconSize:[
-        42,
-        42
-      ],
-
-
-      iconAnchor:[
-        21,
-        21
-      ]
-
+    : L.icon({
+      iconUrl:'assets/podori-pedestrian.svg',
+      iconRetinaUrl:'assets/podori-pedestrian.svg',
+      iconSize:[64,48],
+      iconAnchor:[32,47],
+      popupAnchor:[0,-44],
+      className:'safewalk-character-marker'
     });
 
 
