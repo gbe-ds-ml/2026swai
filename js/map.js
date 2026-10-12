@@ -2457,23 +2457,22 @@ function drawMe(){
   }
 
 
-  const icon=grp==='cpted'
-    ? L.icon({
-      iconUrl:'assets/cpted-fighting.png',
-      iconRetinaUrl:'assets/cpted-fighting.png',
-      iconSize:[64,64],
-      iconAnchor:[32,61],
-      popupAnchor:[0,-58],
-      className:'safewalk-character-marker'
-    })
-    : L.icon({
-      iconUrl:'assets/podori-pedestrian.svg',
-      iconRetinaUrl:'assets/podori-pedestrian.svg',
-      iconSize:[64,48],
-      iconAnchor:[32,47],
-      popupAnchor:[0,-44],
-      className:'safewalk-character-marker'
-    });
+  const isCpted=grp==='cpted';
+  const locationLabel=(typeof window.safeWalkIsEnglish==='function' && window.safeWalkIsEnglish())
+    ? 'My location' : '내 위치';
+  const characterUrl=isCpted
+    ? 'assets/cpted-fighting.png' : 'assets/podori-pedestrian.svg?v=20261012.5';
+  // 파란 점의 중심(44,72)이 GPS 좌표입니다. 파동은 장식이며 정확도 반경이 아닙니다.
+  const icon=L.divIcon({
+    html:'<span class="sw-location-pulse" aria-hidden="true"></span>'+
+      '<img class="sw-location-character'+(isCpted?' is-cpted':'')+'" src="'+characterUrl+'" alt="" aria-hidden="true" draggable="false">'+
+      '<span class="sw-location-dot" aria-hidden="true"></span>'+
+      '<span class="sw-location-label">'+locationLabel+'</span>',
+    className:'sw-current-location-marker',
+    iconSize:[88,108],
+    iconAnchor:[44,72],
+    popupAnchor:[0,-72]
+  });
 
 
   myMark=

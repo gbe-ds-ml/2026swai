@@ -534,12 +534,7 @@ function swAppendFacilityResults(results,command){
 
     const typeLabel = document.createElement('div');
     typeLabel.className = 'label';
-    if(result.key==='police'){
-      // 이미지와 시설 종류 라벨은 내부 상수만 사용한다.
-      typeLabel.innerHTML=getFacilityIconHtml('police')+' '+SW_CHAT_FACILITY_META.police.label;
-    }else{
-      typeLabel.textContent = swGetFacilityTypeLabel(result);
-    }
+    typeLabel.textContent = swGetFacilityTypeLabel(result);
 
     const name = document.createElement('div');
     name.className = 'value';

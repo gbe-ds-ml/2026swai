@@ -41,28 +41,6 @@ function getCctvMarkerIcon(){
   return _cctvMarkerIcon;
 }
 
-/* 치안시설: 첨부된 포돌이·포순이 원본 이미지를 공통 사용한다. */
-const POLICE_CHARACTER_URL='assets/police-podori-posuni.webp';
-let _policeMarkerIcon=null;
-function getPoliceMarkerIcon(){
-  if(!_policeMarkerIcon){
-    _policeMarkerIcon=L.icon({
-      iconUrl:POLICE_CHARACTER_URL,
-      iconRetinaUrl:POLICE_CHARACTER_URL,
-      iconSize:[52,36],
-      iconAnchor:[26,35],
-      popupAnchor:[0,-34],
-      className:'safewalk-character-marker'
-    });
-  }
-  return _policeMarkerIcon;
-}
-function getFacilityIconHtml(key){
-  return key==='police'
-    ?'<img class="facility-character-icon" src="'+POLICE_CHARACTER_URL+'" alt="" aria-hidden="true" width="30" height="22">'
-    :LAYER[key].emoji;
-}
-
 /* ── 공통: 생활안전지도 시설 조회 ──
    bounds(위경도 영역) 안의 시설 목록을 가져온다.
    실패하면 예외를 던지므로 호출하는 쪽에서 try/catch 할 것. */
@@ -236,7 +214,7 @@ function buildChips(){
     row.innerHTML=
       '<div class="chip-left">'+
         '<span class="chip-dot" style="background:'+m.color+'"></span>'+
-        '<div><div class="chip-label">'+getFacilityIconHtml(key)+' '+m.label+'</div>'+
+        '<div><div class="chip-label">'+m.emoji+' '+m.label+'</div>'+
         '<div class="chip-hint" data-key="'+key+'"></div></div>'+
       '</div>'+
       '<span class="sw-vis"><span class="toggle-thumb"><span class="mini-spin"></span></span></span>';
@@ -604,12 +582,10 @@ function mkMarker(key,lat,lng,it){
           (tel?' <span style="color:#64748b">📞 '+esc(tel)+'</span>':'');
   }
 
-  /* CCTV는 공식 SVG, 치안시설은 포돌이·포순이 이미지 사용 */
+  /* CCTV만 생활안전지도 공식 SVG 아이콘 사용 */
   let icon;
   if(key==='cctv'){
     icon=getCctvMarkerIcon();
-  }else if(key==='police'){
-    icon=getPoliceMarkerIcon();
   }else{
     icon=L.divIcon({
       html:'<div style="width:36px;height:36px;border-radius:50%;background:#fff;border:2.5px solid '+
@@ -623,7 +599,7 @@ function mkMarker(key,lat,lng,it){
 
   return L.marker([lat,lng],{icon}).bindPopup(
     L.popup({className:'safepopup',closeButton:true,maxWidth:240}).setContent(
-      '<div class="pbadge" style="background:'+m.color+'18;color:'+m.color+'">'+getFacilityIconHtml(key)+' '+m.label+'</div>'+
+      '<div class="pbadge" style="background:'+m.color+'18;color:'+m.color+'">'+m.emoji+' '+m.label+'</div>'+
       '<div class="ptitle">'+esc(name)+'</div>'+
       (addr?'<div class="prow">📍 '+esc(addr)+'</div>':'')+
       (extra?'<div class="prow">'+extra+'</div>':'')
@@ -661,7 +637,7 @@ function updateStats(){
     const suffix=(on&&markerFetchTruncated[key])?'+':'';
     items.push(
       '<div class="stat-item'+(on?'':' off')+'">'+
-        '<span class="stat-emoji">'+getFacilityIconHtml(key)+'</span>'+
+        '<span class="stat-emoji">'+m.emoji+'</span>'+
         '<div class="stat-info">'+
           '<span class="stat-num" style="color:'+m.color+'">'+(on?(failed?'조회 실패':cnt+suffix):'–')+'</span>'+
           '<span class="stat-lbl">'+m.label+'</span>'+

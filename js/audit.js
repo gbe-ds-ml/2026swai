@@ -1729,7 +1729,7 @@ function customizeIntro(){
 
 
     logo.src=
-      'assets/safewalk-logo.png';
+      'assets/safewalk-intro.svg';
 
 
     logo.alt=
