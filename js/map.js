@@ -2457,8 +2457,16 @@ function drawMe(){
   }
 
 
-  const icon=
-    L.divIcon({
+  const icon=grp==='cpted'
+    ? L.icon({
+      iconUrl:'assets/cpted-fighting.png',
+      iconRetinaUrl:'assets/cpted-fighting.png',
+      iconSize:[64,64],
+      iconAnchor:[32,61],
+      popupAnchor:[0,-58],
+      className:'safewalk-character-marker'
+    })
+    : L.divIcon({
 
       html:
 
