@@ -2457,14 +2457,12 @@ function drawMe(){
   }
 
 
-  const isCpted=grp==='cpted';
   const locationLabel=(typeof window.safeWalkIsEnglish==='function' && window.safeWalkIsEnglish())
     ? 'My location' : '내 위치';
-  const characterUrl=isCpted
-    ? 'assets/cpted-fighting.png' : 'assets/police-podori-posuni.webp';
+  const characterUrl='assets/cpted-fighting.png';
   // 캐릭터 하단 중앙(44,64)을 GPS 좌표에 맞추고 이름표만 표시합니다.
   const icon=L.divIcon({
-    html:'<img class="sw-location-character'+(isCpted?' is-cpted':'')+'" src="'+characterUrl+'" alt="" aria-hidden="true" draggable="false">'+
+    html:'<img class="sw-location-character is-cpted" src="'+characterUrl+'" alt="" aria-hidden="true" draggable="false">'+
       '<span class="sw-location-label">'+locationLabel+'</span>',
     className:'sw-current-location-marker',
     iconSize:[88,94],
