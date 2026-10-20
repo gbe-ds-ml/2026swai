@@ -76,6 +76,16 @@ function injectSafeWalkLongPressStableStyles(){
 
   style.textContent = `
 
+    /* 이미지 자체의 iOS 길게 누르기 메뉴와 드래그를 방지한다. */
+    .sw-longpress-enabled .sw-facility-marker,
+    .sw-longpress-enabled .sw-facility-marker *{
+      -webkit-touch-callout:none;
+      -webkit-user-select:none;
+      user-select:none;
+      -webkit-user-drag:none;
+    }
+
+
     /* ========================================================
        Long Press 성공 표시
        ======================================================== */
@@ -352,6 +362,9 @@ bindSafeWalkLongPress =
     let feedbackEl =
       null;
 
+    // 성공한 길게 누르기 뒤의 지연 click이 시설 팝업을 다시 열지 않도록 한다.
+    let releasedPress = null;
+
 
     /* ========================================================
        Timer 정리
@@ -616,6 +629,14 @@ bindSafeWalkLongPress =
       }
 
 
+      if(state.facility){
+        if(!mapEl.contains(state.facility))return null;
+        const lat=Number(state.facility.dataset.swFacilityLat);
+        const lng=Number(state.facility.dataset.swFacilityLng);
+        if(!Number.isFinite(lat)||!Number.isFinite(lng))return null;
+        return L.latLng(lat,lng);
+      }
+
       const rect =
         mapEl.getBoundingClientRect();
 
@@ -700,6 +721,10 @@ bindSafeWalkLongPress =
     function onPointerDown(
       event
     ){
+      // 새 터치는 이전 터치의 지연 click과 구분한다.
+      releasedPress = null;
+      resetGesture();
+      clearPopupTimer();
 
       /*
         PC 마우스 제외
@@ -745,13 +770,14 @@ bindSafeWalkLongPress =
 
 
       /*
-        마커 / 버튼 / 팝업 /
+        시설 외 마커 / 버튼 / 팝업 /
         Leaflet control 위 터치는 제외
       */
 
       if(
         !isSafeWalkLongPressTargetAllowed(
-          event.target
+          event.target,
+          true
         )
       ){
         return;
@@ -772,8 +798,11 @@ bindSafeWalkLongPress =
          새 터치 기록
          ====================================================== */
 
+      const facility = event.target.closest
+        ?event.target.closest('.sw-facility-marker'):null;
       state = {
-
+        facility,
+        target:facility||event.target,
         pointerId:
           event.pointerId,
 
@@ -1019,12 +1048,18 @@ bindSafeWalkLongPress =
       */
 
       const latlng =
-
         success
-
           ?state.latlng
-
           :null;
+
+      if(success){
+        releasedPress={
+          target:state.target,
+          x:event.clientX,
+          y:event.clientY,
+          until:Date.now()+800
+        };
+      }
 
 
       /*
@@ -1107,6 +1142,16 @@ bindSafeWalkLongPress =
     }
 
 
+    function onClick(event){
+      const press=releasedPress;
+      if(!press||Date.now()>press.until||event.detail===0)return;
+      if(!press.target.contains(event.target))return;
+      if(Math.hypot(event.clientX-press.x,event.clientY-press.y)>32)return;
+      releasedPress=null;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+
     /* ========================================================
        모바일 기본 Context Menu 차단
        ======================================================== */
@@ -1139,6 +1184,7 @@ bindSafeWalkLongPress =
       onPointerDown,
 
       {
+        capture:true,
         passive:true
       }
 
@@ -1152,6 +1198,7 @@ bindSafeWalkLongPress =
       onPointerMove,
 
       {
+        capture:true,
         passive:true
       }
 
@@ -1165,6 +1212,7 @@ bindSafeWalkLongPress =
       onPointerUp,
 
       {
+        capture:true,
         passive:true
       }
 
@@ -1178,14 +1226,15 @@ bindSafeWalkLongPress =
       onPointerCancel,
 
       {
+        capture:true,
         passive:true
       }
 
     );
 
 
+    mapEl.addEventListener('click',onClick,true);
     mapEl.addEventListener(
-
       'contextmenu',
 
       onContextMenu
@@ -1223,44 +1272,21 @@ bindSafeWalkLongPress =
             Event Listener 제거
           */
 
+          mapEl.removeEventListener('pointerdown',onPointerDown,true);
+
+
+          mapEl.removeEventListener('pointermove',onPointerMove,true);
+
+
+          mapEl.removeEventListener('pointerup',onPointerUp,true);
+
+
+          mapEl.removeEventListener('pointercancel',onPointerCancel,true);
+
+
+          releasedPress=null;
+          mapEl.removeEventListener('click',onClick,true);
           mapEl.removeEventListener(
-
-            'pointerdown',
-
-            onPointerDown
-
-          );
-
-
-          mapEl.removeEventListener(
-
-            'pointermove',
-
-            onPointerMove
-
-          );
-
-
-          mapEl.removeEventListener(
-
-            'pointerup',
-
-            onPointerUp
-
-          );
-
-
-          mapEl.removeEventListener(
-
-            'pointercancel',
-
-            onPointerCancel
-
-          );
-
-
-          mapEl.removeEventListener(
-
             'contextmenu',
 
             onContextMenu

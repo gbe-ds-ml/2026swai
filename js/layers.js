@@ -597,7 +597,15 @@ function mkMarker(key,lat,lng,it){
     });
   }
 
-  return L.marker([lat,lng],{icon}).bindPopup(
+  return L.marker([lat,lng],{icon}).on('add',function(){
+    // 시설 아이콘을 길게 누르면 그림의 위치가 아닌 실제 시설 좌표를 선택한다.
+    const el=this.getElement();
+    if(!el)return;
+    const point=this.getLatLng();
+    el.classList.add('sw-facility-marker');
+    el.dataset.swFacilityLat=String(point.lat);
+    el.dataset.swFacilityLng=String(point.lng);
+  }).bindPopup(
     L.popup({className:'safepopup',closeButton:true,maxWidth:240}).setContent(
       '<div class="pbadge" style="background:'+m.color+'18;color:'+m.color+'">'+m.emoji+' '+m.label+'</div>'+
       '<div class="ptitle">'+esc(name)+'</div>'+

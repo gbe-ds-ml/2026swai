@@ -25,7 +25,7 @@
    - CPTED 화면
    - 기존 지도 직접 선택 모드
    - 즐겨찾기 위치 선택 모드
-   - 마커 / 팝업 / 지도 컨트롤
+   - 마커 / 팝업 / 지도 컨트롤 (안정화 버전은 시설 마커 허용)
    ============================================================ */
 
 
@@ -313,7 +313,7 @@ function canUseSafeWalkLongPress(){
    Long Press 허용 대상
    ============================================================ */
 
-function isSafeWalkLongPressTargetAllowed(target){
+function isSafeWalkLongPressTargetAllowed(target,allowFacilities=false){
 
   if(
     !target ||
@@ -329,7 +329,9 @@ function isSafeWalkLongPressTargetAllowed(target){
       [
         '.leaflet-control',
         '.leaflet-popup',
-        '.leaflet-marker-icon',
+        allowFacilities
+          ?'.leaflet-marker-icon:not(.sw-facility-marker)'
+          :'.leaflet-marker-icon',
         '.leaflet-marker-shadow',
         '.leaflet-tooltip',
 
