@@ -385,7 +385,9 @@
     const firstBubble=document.querySelector('#chatMessages .chat-row.bot .chat-bubble');
     if(firstBubble&&firstBubble.textContent.startsWith('안녕하세요. SafeWalk 이용 방법'))firstBubble.textContent='Hello. I can explain SafeWalk, find nearby safety facilities, and help with walking directions. You can type “Take me to Pohang Station” or search a destination in English. SafeWalk verifies places through VWorld before starting directions. In an emergency, call 112 or 119 instead of waiting for an AI response.';
 
-    const quickBtns=document.querySelectorAll('#chatPanel .chat-quick-btn');
+    /* '가까운 안전시설' 버튼(chat-facility.js가 맨 앞에 추가)과 날씨 버튼은
+       별도로 처리하므로 순서 기반 번역 대상에서 제외한다. */
+    const quickBtns=document.querySelectorAll('#chatPanel .chat-quick-btn:not([data-sw-facility-quick]):not(#chatWeatherQuick)');
     if(quickBtns[0]){
       quickBtns[0].textContent='AI directions example';
       quickBtns[0].setAttribute('onclick',"askChatQuick('Take me from my current location to Pohang Station')");
@@ -412,7 +414,7 @@
 
     const chatInput=document.getElementById('chatInput');
     if(chatInput){
-      chatInput.placeholder='e.g. Take me to Pohang Station / Where is the nearest CCTV?';
+      chatInput.placeholder='e.g. Take me to Pohang Station';
       chatInput.setAttribute('aria-label','Ask the SafeWalk AI safety guide');
     }
 

@@ -1,5 +1,5 @@
 /* ============================================================
-   SafeWalk English hotfix v1.3 — 2026-09-22
+   SafeWalk English hotfix v1.4 — 2026-11-11
 
    목적
    1) 영어 모드에서 경로 결과/타이머/안내/토스트 등
@@ -7,6 +7,10 @@
    2) search.js가 영문 검색을 담당하고, 이 파일은 추가 UI 번역만 제공
    3) AI 채팅 요청에 현재 UI 언어(ko/en)를 명시적으로 전달
    4) 여성·청소년 카드의 표시 구조를 안정적으로 통일
+   5) v1.4: 영어 모드에서 한글로 남던 문구 보완
+      (레이어 이름, 지도 팝업, 즐겨찾기, 길게 누르기 경로 지정, CPTED,
+       AI 안내 화면의 장소 확인·오류 문구, 여러 줄 메시지, 이미지 대체 문구,
+       브라우저 탭 제목)
 
    중요
    - AI가 만든 장소명 후보를 목적지로 확정하지 않음
@@ -188,6 +192,313 @@
     '어린이안전지킴이집':'Child Safety House'
   };
 
+
+  /* ----------------------------------------------------------
+     v1.4 추가 사전 (기존 항목이 있으면 기존 번역을 유지)
+     ---------------------------------------------------------- */
+  const EXACT_EN_V14 = {
+    /* 초기화면 · 상단 · 접근성 문구 */
+    '위치 확인됨':'Located',
+    '레이어 설정 접기':'Hide layers',
+    '점수 계산 접기':'Hide score calculation',
+    '여성 및 청소년':'Women and youth',
+    '여성과 남녀 청소년':'Women and youth',
+    'CPTED 아이콘':'CPTED icon',
+    '도착 확인 필요':'Arrival confirmation needed',
+    '검색 패널 닫기':'Close search panel',
+    '경로 패널 닫기':'Close route panel',
+    '평가 패널 닫기':'Close feedback panel',
+    'AI 안전 도우미 닫기':'Close AI safety guide',
+
+    /* 레이어 이름 */
+    '여성밤길안전':'Women’s night-walk safety',
+    '노인범죄주의':'Senior crime-caution areas',
+    '어린이범죄주의':'Child crime-caution areas',
+    '범죄예방환경설계':'CPTED areas',
+    '범죄주의구간':'Crime caution area',
+    '안전시설':'Safety facility',
+    '(이 지역 시설 밀집)':'(dense facility area)',
+    '지도를 확대하면 선택한 레이어가 표시됩니다.':'Zoom in to display the selected layer.',
+    '조회 실패':'Lookup failed',
+    '일부 시설 조회에 실패했습니다. 지도를 이동하거나 다시 시도해 주세요.':'Some facility lookups failed. Move the map or try again.',
+    '+ 표시는 조회 제한으로 일부 데이터만 집계되었음을 뜻합니다.':'A “+” mark means only part of the data was counted because of the lookup limit.',
+    '일부 시설 조회에 실패했습니다. 지도를 이동하거나 다시 시도해 주세요. + 표시는 조회 제한으로 일부 데이터만 집계되었음을 뜻합니다.':'Some facility lookups failed. Move the map or try again. A “+” mark means only part of the data was counted because of the lookup limit.',
+    '시설 조회 응답 형식이 올바르지 않습니다.':'The facility lookup response was not in the expected format.',
+
+    /* 지도 팝업 */
+    '📍 현재 내 위치':'📍 My current location',
+    '현재 지도 화면 범위의 안전시설을 표시합니다':'Safety facilities within the current map view are shown.',
+    '✓ 경찰 연계':'✓ Linked to police',
+    '✗ 경찰 미연계':'✗ Not linked to police',
+    '🏠 어린이 보호':'🏠 Child protection',
+    '경찰서':'Police station',
+    '지구대':'Police precinct',
+    '파출소':'Police box',
+    '치안센터':'Community police center',
+    '생활방범':'Crime prevention',
+    '어린이보호':'Child protection',
+    '교통단속':'Traffic enforcement',
+    '교통정보수집':'Traffic information',
+    '시설물관리':'Facility management',
+    '쓰레기단속':'Illegal-dumping enforcement',
+    '재난재해':'Disaster monitoring',
+    '차량방범':'Vehicle crime prevention',
+    '다목적':'Multi-purpose',
+    '현재 위치를 다시 확인합니다. 위치 권한과 수신 상태를 확인해 주세요.':'Checking your location again. Please check location permission and signal.',
+    '지도 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침해 주세요.':'The map library could not be loaded. Check your internet connection and refresh the page.',
+
+    /* CPTED 화면 */
+    '🏗 가장 가까운 CPTED':'🏗 Nearest CPTED area',
+    '조회 가능한 CPTED 정보 없음':'No CPTED information available',
+    '현재 화면 주변에서 CPTED 상세 정보를 찾지 못했습니다.':'No detailed CPTED information was found near the current view.',
+    '가장 가까운 CPTED 구역':'Nearest CPTED area',
+    '지도에 점선으로 선택 지점과 CPTED 대표 좌표를 연결했습니다.':'A dotted line on the map connects the selected point to the reference point of the CPTED area.',
+    'CPTED 화면에서는 지도에서 지점을 찍으면 가장 가까운 CPTED 구역까지 직선으로 안내합니다.':'On the CPTED screen, tap a point on the map to see a straight line to the nearest CPTED area.',
+    'CPTED 화면에서는 일반 보행 길찾기를 실행할 수 없습니다. 다른 이용자 유형의 안전지도로 이동한 뒤 다시 시도해 주세요.':'Walking directions are not available on the CPTED screen. Switch to the safety map for another user type and try again.',
+    'CPTED 화면에서는 일반 보행 길찾기를 실행할 수 없습니다. 다른 이용자 유형의 안전지도로 이동한 뒤 다시 요청해 주세요.':'Walking directions are not available on the CPTED screen. Switch to the safety map for another user type and ask again.',
+    'CPTED 화면에서는 일반 보행 길찾기를 실행할 수 없습니다. 어린이·여성·청소년·노인 안전지도로 이동한 뒤 다시 시도해 주세요.':'Walking directions are not available on the CPTED screen. Switch to the Child, Women · Youth, or Senior safety map and try again.',
+
+    /* 즐겨찾는 장소 */
+    '즐겨찾는 장소':'Favorite place',
+    '즐겨찾는 장소 추가':'Add favorite place',
+    '즐겨찾는 장소 추가하기':'Add a favorite place',
+    '지도에서 즐겨찾는 장소 추가하기':'Add a favorite place on the map',
+    '즐겨찾기 패널 닫기':'Close favorites panel',
+    '예: 집, 학교, 자주 가는 정류장':'e.g. Home, school, bus stop',
+    '⭐ 즐겨찾기에 저장할 장소를 지도에서 한 번 터치하세요.':'⭐ Tap the place on the map that you want to save to favorites.',
+    '⭐ 즐겨찾는 장소에 저장했습니다.':'⭐ Saved to favorite places.',
+    '즐겨찾기 저장에 실패했습니다. 저장 공간을 확인해 주세요.':'Could not save the favorite. Check the storage available on this device.',
+    '즐겨찾기에서 삭제했습니다.':'Removed from favorites.',
+    '🗑 즐겨찾기 삭제':'🗑 Remove favorite',
+
+    /* (이전 버전 화면) 체감 안전 평가 항목 */
+    '조명':'Lighting',
+    '밤에 밝은가요?':'Is it well lit at night?',
+    '주변 시야':'Visibility',
+    '주변이 트여 있고 사람 눈길이 닿나요?':'Is the area open and visible to passers-by?',
+    '체감 안심':'Sense of safety',
+    '전체적으로 안심되는 곳인가요?':'Does the place feel safe overall?',
+
+    /* 장소 검색 */
+    'VWorld 검색 요청 시간이 초과되었습니다.':'The VWorld search request timed out.',
+    'VWorld 검색 서버에 연결하지 못했습니다.':'Could not connect to the VWorld search server.',
+    'VWorld에서 올바른 검색 응답을 받지 못했습니다.':'VWorld did not return a valid search response.',
+    '출발지를 마저 지정해 주세요.':'Please set the origin as well.',
+    '도착지를 마저 지정해 주세요.':'Please set the destination as well.',
+
+    /* 경로 */
+    '⚠️ 경로는 표시했지만 안전시설 조회에 실패해 시설 접근성을 계산하지 못했습니다.':'⚠️ The route is shown, but the safety-facility lookup failed, so infrastructure accessibility could not be calculated.',
+    '⚠️ 보행 경로를 조회하지 못했습니다. 점선은 두 지점을 연결한 참고선이며 실제 이동 경로가 아닙니다.':'⚠️ The walking route could not be retrieved. The dotted line only connects the two points for reference and is not an actual route.',
+    '경로 API 실패 · 임시 직선 안내':'Route service unavailable · Temporary straight-line reference',
+    '실제 도로망 경로 요청 실패':'The walking-network route request failed',
+    '경로 geometry 없음':'No route geometry was returned',
+    '프록시 응답에 경로 geometry 없음':'The proxy response contained no route geometry',
+    'OSRM 응답에 경로 geometry 없음':'The OSRM response contained no route geometry',
+    'Valhalla 응답에 경로 geometry 없음':'The Valhalla response contained no route geometry',
+    "경로는 계속 유지됩니다. 종료하려면 '길찾기 취소'를 눌러주세요.":'The route is kept. To end it, select “Cancel directions”.',
+
+    /* 지도 길게 누르기 · 지도에서 직접 지정 */
+    '지도 선택 출발지':'Origin selected on map',
+    '지도 선택 목적지':'Destination selected on map',
+    '📍 현재 위치':'📍 Current location',
+    '현재 위치':'Current location',
+    '🚩 출발지를 설정했습니다. 경로를 계산합니다.':'🚩 Origin set. Calculating the route.',
+    '🚩 출발지를 설정했습니다. 목적지를 지도에서 길게 눌러 지정하세요.':'🚩 Origin set. Press and hold the map to choose a destination.',
+    '🚩 출발지를 설정했습니다. 목적지를 지정해 주세요.':'🚩 Origin set. Please choose a destination.',
+    '📍 현재 위치를 출발지로 설정하고 있습니다.':'📍 Setting your current location as the origin.',
+    '현재 위치를 확인하지 못했습니다. 위치 권한을 허용하거나 출발지를 직접 지정해 주세요.':'Could not determine your current location. Allow location access or set the origin yourself.',
+    '현재 위치를 확인하지 못했습니다. 출발지를 직접 지정해 주세요.':'Could not determine your current location. Please set the origin yourself.',
+    '🏁 목적지를 설정했습니다. 현재 위치에서 경로를 계산합니다.':'🏁 Destination set. Calculating the route from your current location.',
+    '🏁 목적지를 설정했습니다. 출발지를 지정해 주세요.':'🏁 Destination set. Please choose an origin.',
+    '🏁 목적지를 설정했습니다. 경로를 계산합니다.':'🏁 Destination set. Calculating the route.',
+    '🏁 현재 위치에서 선택한 목적지까지 경로를 계산합니다.':'🏁 Calculating the route from your current location to the selected destination.',
+    '📍 지도에서 선택':'📍 Selected on map',
+    '이 위치를 경로에 사용할까요?':'Use this location for the route?',
+    '목적지만 설정하면 현재 위치가 자동으로 출발지가 됩니다.':'If you set only a destination, your current location becomes the origin automatically.',
+    '🚩 출발지로 설정':'🚩 Set as origin',
+    '🏁 목적지로 설정':'🏁 Set as destination',
+    '선택됨 · 손을 떼세요':'Selected · Release your finger',
+    '현재 위치 기능을 지원하지 않습니다.':'Location services are not supported.',
+    '현재 위치 기능을 지원하지 않는 브라우저입니다.':'This browser does not support location services.',
+    '현재 위치 좌표가 올바르지 않습니다.':'The current location coordinates are invalid.',
+
+    /* 보행 안내 */
+    '기존 경로 미리보기를 유지합니다.':'Keeping the existing route preview.',
+    '목적지 정보를 확인하지 못했습니다. 다시 길찾기해 주세요.':'Destination information could not be confirmed. Please run directions again.',
+    '경로 재계산 기능을 불러오지 못했습니다.':'The route recalculation function could not be loaded.',
+    '출발지 정보를 갱신할 수 없습니다.':'The origin could not be updated.',
+    '재계산된 경로를 찾지 못했습니다.':'No recalculated route was found.',
+
+    /* AI 안내 화면 */
+    '가까운 안전시설':'Nearby safety facilities',
+    'AI가 답변을 작성하고 있습니다':'The AI is writing a response',
+    '주소와 기준 지점으로부터의 직선거리를 확인하고 정확한 장소를 선택해 주세요.':'Check the address and the straight-line distance from the reference point, then select the correct place.',
+    '주소를 확인하고 정확한 장소를 선택해 주세요.':'Check the address and select the correct place.',
+    '원하는 장소가 없다면 시·도 또는 구·군 이름을 포함해 다시 입력해 주세요.':'If the place you want is not listed, enter it again with the province, city, or district name.',
+    '장소 검색 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.':'Could not connect to the place-search server. Please try again shortly.',
+    '다음 출발지와 도착지가 맞습니까?':'Are this origin and destination correct?',
+    '지도가 아직 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.':'The map is not ready yet. Please try again shortly.',
+    '지도가 아직 준비되지 않았습니다.':'The map is not ready yet.',
+    '현재 위치를 아직 확인하지 못했습니다. 위치 권한을 허용하고 잠시 후 다시 요청해 주세요.':'Your current location is not available yet. Allow location access and ask again shortly.',
+    '현재 위치를 다시 확인한 뒤 길찾기를 시도해 주세요.':'Confirm your current location again, then try directions.',
+    'AI 서버가 올바른 JSON을 반환하지 않았습니다.':'The AI server returned an invalid response.',
+    'AI 명령 형식이 올바르지 않습니다.':'The AI returned an invalid action.',
+    'AI 답변을 확인하지 못했습니다.':'No AI response was returned.',
+    '답변을 생성하지 못했습니다.':'A response could not be generated.',
+    'AI 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.':'The AI response is delayed. Please try again shortly.',
+    '현재 AI 안내 서비스에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.':'Could not connect to the AI guide service. Please try again shortly.',
+    '길찾기 요청을 정확하게 이해하지 못했습니다. 출발지와 목적지를 조금 더 구체적으로 말씀해 주세요.':'The directions request could not be understood. Please state the origin and destination more specifically.',
+    '길찾기 요청을 취소했습니다.':'The directions request was cancelled.',
+    '안전시설 조회 모듈을 사용할 수 없습니다.':'The safety-facility lookup module is unavailable.',
+    '안전시설 조회 명령이 올바르지 않습니다.':'The safety-facility lookup request is invalid.',
+    '현재 위치 권한이 차단되어 있습니다. 브라우저의 사이트 위치 권한을 허용한 뒤 다시 시도해 주세요.':'Location permission is blocked. Allow location access for this site in your browser and try again.',
+    '현재 위치 신호를 확인하기 어렵습니다. 잠시 후 다시 시도해 주세요.':'The location signal is weak. Please try again shortly.',
+    '현재 위치 확인이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.':'Location confirmation is taking longer than usual. Please try again shortly.',
+    '현재 브라우저에서는 위치 기능을 사용할 수 없습니다.':'Location services are not available in this browser.',
+    '현재 위치를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.':'Could not determine your current location. Please try again shortly.',
+    '지원하지 않는 안전시설 종류입니다.':'Unsupported safety-facility type.',
+    '시설 자료가 일부만 조회되어 결과를 확인할 수 없습니다.':'Only part of the facility data was retrieved, so the result cannot be confirmed.',
+    '현재 위치 주변에서 요청한 안전시설을 찾지 못했습니다. 생활안전지도 데이터 제공 범위에 따라 일부 지역은 결과가 없을 수 있습니다.':'The requested safety facility was not found near your current location. Some areas may return no results depending on SafeMap data coverage.',
+    '현재 위치 기준 가까운 안전시설을 종류별로 확인했습니다.':'The nearest safety facilities from your current location are listed by type.',
+    '거리는 현재 GPS 좌표 기준 직선거리입니다. 실제 보행거리는 “여기로 길찾기”에서 확인해 주세요.':'Distances are straight-line distances from your current GPS position. Use “Directions here” to check the actual walking distance.',
+    '시설 조회 기능을 사용할 수 없습니다. 페이지를 새로고침해 주세요.':'The facility lookup function is unavailable. Please refresh the page.',
+    '모든 시설 조회 실패':'All facility lookups failed',
+    '일부 시설 자료를 확인하지 못했습니다. 조회된 결과를 안내하며, 더 가까운 시설이 있을 수 있습니다.':'Some facility data could not be retrieved. The results shown use the data available; a closer facility may exist.',
+    '생활안전지도에서 주변 시설을 조회하지 못했습니다. 잠시 후 다시 시도해 주세요.':'Nearby facilities could not be retrieved from SafeMap. Please try again shortly.',
+
+    /* 시설 접근성 점수 설명 (AI 서버를 거치지 않는 고정 안내) */
+    '시설 접근성 점수 계산 안내':'How the infrastructure accessibility score is calculated',
+    '현재 계산식: 시설 원점수 ÷ 45 × 100':'Formula: raw facility score ÷ 45 × 100',
+    '현재 버전은 기본점수와 거리 보너스를 더하지 않습니다.':'This version adds no base score and no distance bonus.',
+    '시설별 최대 점수':'Maximum score by facility type',
+    '• 치안시설: 17점':'• Police facilities: 17 pts',
+    '• CCTV: 11점':'• CCTV: 11 pts',
+    '• 안전비상벨: 11점':'• Emergency bells: 11 pts',
+    '• 아동안전지킴이집: 6점':'• Child Safety Houses: 6 pts',
+    '• 어린이안전지킴이집: 6점':'• Child Safety Houses: 6 pts',
+    '시설별 가중 점수에 경로와의 거리를 반영합니다.':'The weighted score of each facility reflects its distance from the route.',
+    '• 30m 이내: 100%':'• Within 30 m: 100%',
+    '• 30m 초과~60m 이내: 75%':'• Over 30 m, up to 60 m: 75%',
+    '• 60m 초과~100m 이내: 40%':'• Over 60 m, up to 100 m: 40%',
+    '• 100m 초과~150m 이내: 15%':'• Over 100 m, up to 150 m: 15%',
+    '• 150m 초과: 반영하지 않음':'• Over 150 m: not counted',
+    '정상 조회 결과 시설이 없으면 0점입니다. 모든 시설 조회가 실패하면 점수를 산출하지 않습니다.':'If a successful lookup finds no facilities, the score is 0. If every facility lookup fails, no score is produced.',
+    '일부 자료만 조회되면 실제보다 낮게 계산될 수 있습니다.':'If only part of the data is retrieved, the score may be lower than it would be with complete data.',
+    '100점은 평가항목의 상한이며, 안전 확률이나 실제 안전을 보장하는 수치가 아닙니다.':'100 is the upper limit of the evaluated items. It is not a probability of safety and does not guarantee actual safety.'
+  };
+
+  for(const [ko,en] of Object.entries(EXACT_EN_V14)){
+    if(!EXACT_EN.has(ko))EXACT_EN.set(ko,en);
+  }
+
+  /* 영어 모드에서 앱이 사용자 말풍선에 대신 적어 주는 문구 */
+  const USER_BUBBLE_EN={
+    '내 주변 안전시설 알려줘':'Show safety facilities near me',
+    '장소를 다시 선택할게요.':'I will choose the place again.'
+  };
+
+  const SCORE_HELP_QUESTION_EN='How is the SafeWalk infrastructure accessibility score calculated?';
+  const SCORE_HELP_QUESTION_KO='SafeWalk 시설 접근성 점수는 어떻게 계산하나요?';
+  const SCORE_HELP_LINES_KO=[
+    '시설 접근성 점수 계산 안내','',
+    '현재 계산식: 시설 원점수 ÷ 45 × 100',
+    '현재 버전은 기본점수와 거리 보너스를 더하지 않습니다.','',
+    '시설별 최대 점수',
+    '• 치안시설: 17점','• CCTV: 11점','• 안전비상벨: 11점','• 아동안전지킴이집: 6점','',
+    '시설별 가중 점수에 경로와의 거리를 반영합니다.',
+    '• 30m 이내: 100%','• 30m 초과~60m 이내: 75%','• 60m 초과~100m 이내: 40%',
+    '• 100m 초과~150m 이내: 15%','• 150m 초과: 반영하지 않음','',
+    '정상 조회 결과 시설이 없으면 0점입니다. 모든 시설 조회가 실패하면 점수를 산출하지 않습니다.',
+    '일부 자료만 조회되면 실제보다 낮게 계산될 수 있습니다.',
+    '100점은 평가항목의 상한이며, 안전 확률이나 실제 안전을 보장하는 수치가 아닙니다.'
+  ];
+
+  function fullTranslate(value){
+    return typeof window.safeWalkTranslate==='function'
+      ?window.safeWalkTranslate(value)
+      :translateDynamic(value);
+  }
+
+  function facilityNameEn(ko){
+    const key=String(ko||'').trim();
+    return FACILITY_EN[key]||EXACT_EN.get(key)||key;
+  }
+
+  function lowerFirst(value){
+    const text=String(value||'');
+    if(/^(CCTV|CPTED|Child Safety House)/.test(text))return text;
+    return text.charAt(0).toLowerCase()+text.slice(1);
+  }
+
+  /* v1.4에서 추가한 동적 문구 규칙. 일치하지 않으면 null. */
+  function translateDynamicV14(text){
+    let m;
+
+    /* 지도 팝업 · 통계 */
+    m=text.match(/^(\d+)대$/);
+    if(m)return m[1]+(m[1]==='1'?' camera':' cameras');
+    m=text.match(/^저장일 (\d{4})\. ?(\d{1,2})\. ?(\d{1,2})\.?$/);
+    if(m)return 'Saved on '+m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0');
+    m=text.match(/^저장일 (.+)$/);
+    if(m)return 'Saved on '+m[1];
+    m=text.match(/^위도 (-?\d+(?:\.\d+)?) · 경도 (-?\d+(?:\.\d+)?)$/);
+    if(m)return 'Latitude '+m[1]+' · Longitude '+m[2];
+    m=text.match(/^“(.+)”을\(를\) 즐겨찾기에서 삭제할까요\?$/);
+    if(m)return 'Remove “'+(m[1]==='즐겨찾는 장소'?'Favorite place':m[1])+'” from favorites?';
+    m=text.match(/^선택 지점에서 직선거리 약 (.+)$/);
+    if(m)return 'Approx. '+m[1]+' in a straight line from the selected point';
+
+    /* 레이어 */
+    m=text.match(/^(.+)은\(는\) (이 지역 시설 밀집으로 )?zoom (\d+) 이상에서 표시됩니다\.$/);
+    if(m)return facilityNameEn(m[1])+' is shown at zoom level '+m[3]+' or higher'+(m[2]?' because this area has many facilities':'')+'.';
+    m=text.match(/^알 수 없는 레이어: (.+)$/);
+    if(m)return 'Unknown layer: '+m[1];
+    m=text.match(/^시설 조회 실패: HTTP (\d+)$/);
+    if(m)return 'Facility lookup failed: HTTP '+m[1];
+    m=text.match(/^(.*?)(치안시설|CCTV|안전비상벨|아동안전지킴이집|어린이안전지킴이집)\s+(\d)순위$/u);
+    if(m&&/^[^\p{L}\p{N}]*$/u.test(m[1]))return m[1]+FACILITY_EN[m[2]]+' · Priority '+m[3];
+
+    /* 장소 검색 */
+    m=text.match(/^(.+): VWorld 검색 요청에 실패했습니다\.$/);
+    if(m)return m[1]+': The VWorld search request failed.';
+    m=text.match(/^지원하지 않는 VWorld 검색 유형입니다: (.+)$/);
+    if(m)return 'Unsupported VWorld search type: '+m[1];
+
+    /* 보행 안내 */
+    m=text.match(/^현재 위치 ↔ 설정 출발지 · 약 (.+)$/);
+    if(m)return 'Current location ↔ route origin · approx. '+m[1];
+
+    /* AI 안내 화면 */
+    m=text.match(/^조회된 시설 중 현재 위치에서 가까운 (.+)입니다\.$/);
+    if(m)return 'This is the nearest '+lowerFirst(facilityNameEn(m[1]))+' found from your current location.';
+    m=text.match(/^‘(.+)’의 장소 검색 결과를 찾지 못했습니다\. 지역명과 시설명을 함께 입력해 주세요\. 예: “현재 위치에서 포항시 포항역까지”$/);
+    if(m)return 'No place results were found for “'+m[1]+'”. Enter the area name together with the place name, e.g. “From my current location to Pohang Station, Pohang”.';
+    m=text.match(/^질문은 (\d+)자 이하로 입력해 주세요\.$/);
+    if(m)return 'Please keep your question within '+m[1]+' characters.';
+    m=text.match(/^AI 요청 실패: HTTP (\d+)$/);
+    if(m)return 'AI request failed: HTTP '+m[1];
+    m=text.match(/^(출발지|도착지) 선택: ([\s\S]+)$/);
+    if(m)return (m[1]==='출발지'?'Origin':'Destination')+' selected: '+m[2];
+    m=text.match(/^📍 현재 위치 · (.+)$/);
+    if(m)return '📍 Current location · '+fullTranslate(m[1]);
+
+    /* 여러 줄 메시지: 줄 단위로 번역 */
+    if(text.includes('\n')){
+      const lines=text.split('\n');
+      const translated=lines.map(line=>line.trim()?fullTranslate(line):line);
+      if(translated.some((line,index)=>line!==lines[index]))return translated.join('\n');
+    }
+
+    /* 앞에 그림 문자만 붙은 표시 이름: "🗺 어린이범죄주의", "🧒 어린이" 등 */
+    m=text.match(/^([^\p{L}\p{N}]+?)\s*([\p{L}\p{N}][\s\S]*)$/u);
+    if(m&&/[가-힣]/.test(m[2])){
+      const rest=fullTranslate(m[2]);
+      if(rest!==m[2])return m[1]+' '+rest;
+    }
+
+    return null;
+  }
+
   function translateDynamic(rawValue){
     const raw=String(rawValue||'');
     const text=raw.trim();
@@ -243,13 +554,13 @@
 
     /* 시간 */
     m=text.match(/^약\s*(\d+)\s*분$/);
-    if(m)return raw.replace(text,'Approx. '+m[1]+' min');
+    if(m)return raw.replace(text,'~'+m[1]+' min');
 
     m=text.match(/^약\s*(\d+)\s*시간\s*(\d+)\s*분$/);
-    if(m)return raw.replace(text,'Approx. '+m[1]+' hr '+m[2]+' min');
+    if(m)return raw.replace(text,'~'+m[1]+' hr '+m[2]+' min');
 
     m=text.match(/^약\s*(\d+)\s*시간$/);
-    if(m)return raw.replace(text,'Approx. '+m[1]+' hr');
+    if(m)return raw.replace(text,'~'+m[1]+' hr');
 
     /* 점수 */
     m=text.match(/^(\d+(?:\.\d+)?)점$/);
@@ -320,10 +631,17 @@
     /* 경로/보행 경고 */
     m=text.match(/^⚠️?\s*검색 지점과 실제 보행로 진입점이 떨어져 있습니다\s*[—-]\s*(.+?)\s*\(OpenStreetMap에 보행로가 없는 구간일 수 있습니다\)$/);
     if(m){
+      const detail=m[1]
+        .split(' · ')
+        .map(part=>{
+          const item=part.match(/^(.+) 약 (\d+)m$/);
+          return item?fullTranslate(item[1])+' approx. '+item[2]+' m':part;
+        })
+        .join(' · ');
       return raw.replace(
         text,
         '⚠️ The searched point is separated from the mapped walking-network entry point — '+
-        m[1]+
+        detail+
         ' (OpenStreetMap may not contain a walkable segment here)'
       );
     }
@@ -364,6 +682,9 @@
     if(text==='경로 정보를 확인하지 못했습니다. 경로를 다시 계산해 주세요.'){
       return raw.replace(text,'Route information could not be confirmed. Please calculate the route again.');
     }
+
+    const added=translateDynamicV14(text);
+    if(added!==null)return raw.replace(text,added);
 
     return raw;
   }
@@ -492,6 +813,95 @@
     };
   }
 
+
+  /* ----------------------------------------------------------
+     v1.4: 본문 밖 문구(탭 제목, 요약 설명)와 이미지 대체 문구
+     ---------------------------------------------------------- */
+  function translateDocumentMeta(){
+    document.title='SafeWalk | AI-Assisted Safe Walking Directions';
+    const description='SafeWalk is a walking-safety map service that shows police facilities, CCTV, emergency bells, and Child Safety Houses from public data, with an infrastructure accessibility score for walking routes.';
+    for(const selector of ['meta[name="description"]','meta[property="og:description"]','meta[name="twitter:description"]']){
+      const meta=document.querySelector(selector);
+      if(meta&&/[가-힣]/.test(meta.getAttribute('content')||''))meta.setAttribute('content',description);
+    }
+    for(const selector of ['meta[property="og:title"]','meta[name="twitter:title"]','meta[name="apple-mobile-web-app-title"]']){
+      const meta=document.querySelector(selector);
+      if(meta&&/[가-힣]/.test(meta.getAttribute('content')||''))meta.setAttribute('content','SafeWalk | AI-Assisted Safe Walking Directions');
+    }
+  }
+
+  function translateAlt(el){
+    if(!el||typeof el.getAttribute!=='function')return;
+    const value=el.getAttribute('alt');
+    if(!value||!/[가-힣]/.test(value))return;
+    const translated=fullTranslate(value);
+    if(translated!==value)el.setAttribute('alt',translated);
+  }
+
+  function translateAllAlt(root){
+    if(!root)return;
+    if(root.nodeType===Node.ELEMENT_NODE){
+      translateAlt(root);
+      root.querySelectorAll('[alt]').forEach(translateAlt);
+    }
+  }
+
+  function installAltObserver(){
+    if(!document.body)return;
+    translateAllAlt(document.body);
+    new MutationObserver(mutations=>{
+      for(const mutation of mutations){
+        if(mutation.type==='attributes'){
+          translateAlt(mutation.target);
+          continue;
+        }
+        mutation.addedNodes.forEach(translateAllAlt);
+      }
+    }).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['alt']});
+  }
+
+  /* ----------------------------------------------------------
+     v1.4: AI 안내 화면
+     - 사용자 말풍선은 번역 대상에서 제외되어 있으므로,
+       앱이 대신 적어 주는 문구만 표시 직전에 영어로 바꾼다.
+       (사용자가 직접 입력한 문장과 장소명·주소는 바꾸지 않는다.)
+     - 점수 설명은 한국어 모드와 같이 AI 서버를 거치지 않고 고정 안내로 답한다.
+     ---------------------------------------------------------- */
+  function installChatEnglishFix(){
+    if(typeof appendChatMessage==='function'&&!appendChatMessage.__swEnglish){
+      const originalAppend=appendChatMessage;
+      const wrappedAppend=function(role,text,isError){
+        let shown=text;
+        if(isEnglish()&&role==='user'&&typeof text==='string'){
+          const m=text.match(/^(출발지|도착지) 선택: ([\s\S]+)$/);
+          if(m)shown=(m[1]==='출발지'?'Origin':'Destination')+' selected: '+m[2];
+          else if(USER_BUBBLE_EN[text])shown=USER_BUBBLE_EN[text];
+        }
+        return originalAppend.call(this,role,shown,isError);
+      };
+      wrappedAppend.__swEnglish=true;
+      appendChatMessage=wrappedAppend;
+    }
+
+    if(typeof askChatQuick==='function'&&!askChatQuick.__swEnglish){
+      const originalAsk=askChatQuick;
+      const wrappedAsk=function(message){
+        if(isEnglish()&&(message===SCORE_HELP_QUESTION_EN||message===SCORE_HELP_QUESTION_KO)){
+          if(typeof chatBusy!=='undefined'&&chatBusy)return;
+          if(typeof openChatPanel==='function')openChatPanel();
+          const answer=SCORE_HELP_LINES_KO.map(line=>line?fullTranslate(line):line).join('\n');
+          appendChatMessage('user',SCORE_HELP_QUESTION_EN);
+          appendChatMessage('bot',answer);
+          if(typeof safeWalkAgentRememberTurn==='function')safeWalkAgentRememberTurn(SCORE_HELP_QUESTION_EN,answer);
+          return;
+        }
+        return originalAsk.apply(this,arguments);
+      };
+      wrappedAsk.__swEnglish=true;
+      askChatQuick=wrappedAsk;
+    }
+  }
+
   /* ----------------------------------------------------------
      동적 UI 감시
      ---------------------------------------------------------- */
@@ -512,6 +922,9 @@
     installAgentLanguageFix();
 
     if(isEnglish()){
+      translateDocumentMeta();
+      installAltObserver();
+      installChatEnglishFix();
       translateWholePage();
 
       /* 다른 SafeWalk 초기화 함수가 직후 DOM을 다시 쓰는 경우 한 번 더 보정 */
