@@ -531,6 +531,17 @@ async function fetchLayer(key,token=null,force=false){
   }
 }
 
+/* ── CCTV 상세정보: 현재 Marker API와 기존 필드명을 함께 지원 ── */
+function getCctvDetails(it){
+  return {
+    addr:xv(it,'rn_adres')||xv(it,'lctn_rona_addr')||
+         xv(it,'adres')||xv(it,'lctn_lotno_addr')||'',
+    purpose:xv(it,'ins_purpos')||xv(it,'instl_prps_se')||'',
+    count:xv(it,'cmr_co')||xv(it,'cmr_cntom')||'',
+    tel:xv(it,'mng_tel')||xv(it,'mng_inst_telno')||''
+  };
+}
+
 /* ── 시설 이름·주소 추출(마커 팝업과 안전도 평가가 공용) ── */
 function getFacilityInfo(key,it){
   let name='',addr='';
@@ -542,7 +553,7 @@ function getFacilityInfo(key,it){
     addr=xv(it,'rn_adres')||xv(it,'adres')||'';
   }else if(key==='cctv'){
     name=xv(it,'TITLE')||xv(it,'title')||'CCTV';
-    addr=xv(it,'lctn_rona_addr')||xv(it,'lctn_lotno_addr')||'';
+    addr=getCctvDetails(it).addr;
   }else if(key==='child_house'){
     name=xv(it,'fclty_nm')||'어린이안전지킴이집';
     addr=xv(it,'rn_adres')||xv(it,'adres')||'';
@@ -570,9 +581,10 @@ function mkMarker(key,lat,lng,it){
     extra=(tp?'<span style="color:#7c3aed">'+esc(tp)+'</span> ':'')+
           (tel?'<span style="color:#64748b">📞 '+esc(tel)+'</span>':'');
   }else if(key==='cctv'){
-    const prps=xv(it,'instl_prps_se')||'';
-    const cnt=xv(it,'cmr_cntom')||'';
-    const tel=xv(it,'mng_inst_telno')||'';
+    const details=getCctvDetails(it);
+    const prps=details.purpose;
+    const cnt=details.count;
+    const tel=details.tel;
     extra=(prps?'<span style="color:#2563eb">'+esc(prps)+'</span> ':'')+
           (cnt?'<span style="color:#64748b"> '+esc(cnt)+'대</span> ':'')+
           (tel?'<span style="color:#64748b">📞 '+esc(tel)+'</span>':'');

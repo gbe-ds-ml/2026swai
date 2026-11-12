@@ -360,25 +360,19 @@ function wrapSafeWalkCctvPopup(){
         );
 
 
+      const details=getCctvDetails(it);
+
+
       const prps=
-        xv(
-          it,
-          'instl_prps_se'
-        )||'';
+        details.purpose;
 
 
       const cnt=
-        xv(
-          it,
-          'cmr_cntom'
-        )||'';
+        details.count;
 
 
       const tel=
-        xv(
-          it,
-          'mng_inst_telno'
-        )||'';
+        details.tel;
 
 
       /*
